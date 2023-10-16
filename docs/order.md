@@ -6,71 +6,60 @@ class Order(TradeRequest)
 ```
 Trade order related functions and properties. Subclass of [TradeRequest](#traderequest).
 
-#### \_\_init\_\_
+### \_\_init\_\_
 ```python
 def __init__(**kwargs)
 ```
 Initialize the order object with keyword arguments, symbol must be provided.
 Provides default values for action, type_time and type_filling if not provided.
-
-*Arguments*:
-
-|Name|Type|Description|Default|
-|---|---|---|---|
-|**kwargs**|**kwargs**|Keyword arguments must match the attributes of TradeRequest as well as the attributes of Order class as specified in the annotations in the class definition.|None|
-
-
-*Default Arguments*:
-
-|Name|Type|Description|Default|
-|---|---|---|---|
-|**action**|**TradeAction**|Trade action|TradeAction.DEAL|
-|**type_time**|**OrderTime**|Order time|OrderTime.DAY|
-|**type_filling**|**OrderFilling**|Order filling|OrderFilling.FOK|
-
-*Raises*:
+#### Arguments:
+|Name| Type                    | Description  | Default           |
+|---|-------------------------|--------------|-------------------|
+|**symbol**| **str** \|   **Symbol** | Symbol name. Required keyword argument |                   |
+|**action**| **TradeAction**         | Trade action | TradeAction.DEAL  |
+|**type_time**| **OrderTime**           | Order time   | OrderTime.DAY     |
+|**type_filling**| **OrderFilling**        | Order filling | OrderFilling.FOK  |
+#### Raises:
 
 |Exception|Description|
 |---|---|
 |**SymbolError**|If symbol is not provided|
 
-#### <a id=order.Order.orders_total> orders_total
+### <a id=order.Order.orders_total> orders_total
 ```python
 async def orders_total()
 ```
 Get the number of active orders.
 
-*returns*:
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**int**|total number of active orders|
 
-#### orders
+### orders
 ```python
 async def orders() -> tuple[TradeOrder]
 ```
 Get the list of active orders for the current symbol.
 
-*Returns*:
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**tuple[TradeOrder]**|A Tuple of active trade orders as TradeOrder objects|
 
-#### check
+### check
 ```python
 async def check() -> OrderCheckResult
 ```
 Check funds sufficiency for performing a required trading operation and the possibility to execute it at
 
-*returns*:
+#### Returns::
 
 |Type|Description|
 |---|---|
 |**OrderCheckResult**|An OrderCheckResult object|
 
-*raises*:
+#### Raises:
 
 |Exception|Description|
 |---|---|
@@ -84,51 +73,42 @@ async def send() -> OrderSendResult
 ```
 Send a request to perform a trading operation from the terminal to the trade server.
 
-*returns*:
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**OrderSendResult**|An OrderSendResult object|
 
-*raises*:
-
+#### Raises:
 |Exception|Description|
 |---|---|
 |**OrderError**|If not successful|
 
-#### <a id="order.Order.calc_margin"></a> calc_margin
+### calc_margin
 ```python
 async def calc_margin() -> float
 ```
 Return the required margin in the account currency to perform a specified trading operation.
-
-*returns*:
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**float**|Returns float value if successful|
 
-*raises*:
-
+#### Raises:
 |Exception|Description|
 |---|---|
 |**OrderError**|If not successful|
 
 
-#### <a id="order.Order.calc_profit"></a> calc_profit
+### calc_profit
 ```python
 async def calc_profit() -> float
 ```
 Return profit in the account currency for a specified trading operation.
-
-*returns*:
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**float**|Returns float value if successful|
-
-*raises*:
-
+#### Raises:
 |Exception|Description|
 |---|---|
 |**OrderError**|If not successful|

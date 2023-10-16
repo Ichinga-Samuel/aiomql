@@ -20,7 +20,6 @@
 ```python
 class Base()
 ```
-
 A base class for all data model classes in the aiomql package.
 This class provides a set of common methods and attributes for all data model classes.
 For the data model classes attributes are annotated on the class body and are set as object attributes when the

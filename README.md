@@ -16,6 +16,7 @@ pip install aiomql
 - Record and keep track of trades and strategies in csv files.
 - Utility classes for using the MetaTrader 5 Library
 - Sample Pre-Built strategies
+- Trade sessions for managing trading sessions
 
 ## Simple Usage as an asynchronous MetaTrader5 Libray
 ```python
@@ -60,6 +61,7 @@ bot.add_strategy(ft_eur_usd)
 bot.execute()
 ```
 ## API Documentation
+
 <a id="aiomql"></a>
 
 # aiomql

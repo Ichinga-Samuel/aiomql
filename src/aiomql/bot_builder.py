@@ -1,14 +1,14 @@
 import asyncio
-from typing import Type, Iterable, TypeVar
+from typing import Type, Iterable, TypeVar, Callable, Coroutine
 import logging
 
 from .executor import Executor
 from .account import Account
 from .symbol import Symbol as _Symbol
 from .strategy import Strategy as _Strategy
-# from
 
 logger = logging.getLogger(__name__)
+
 Strategy = TypeVar('Strategy', bound=_Strategy)
 Symbol = TypeVar('Symbol', bound=_Symbol)
 
@@ -41,11 +41,26 @@ class Bot:
         await self.init_symbols()
         self.executor.remove_workers()
 
-    def add_func(self, func, kwargs):
-        self.executor.add_func(func, kwargs)
+    def add_function(self, func: Callable, **kwargs: dict):
+        """Add a function to the executor.
 
-    def add_coro(self, coro, **kwargs):
-        self.executor.add_coro(coro, kwargs)
+        Args:
+            func (Callable): A function to be executed
+            **kwargs (dict): Keyword arguments for the function
+        """
+        self.executor.add_function(func, kwargs)
+
+    def add_coroutine(self, coro: Coroutine, **kwargs):
+        """Add a coroutine to the executor.
+
+        Args:
+            coro (Coroutine): A coroutine to be executed
+            **kwargs (dict): keyword arguments for the coroutine
+
+        Returns:
+
+        """
+        self.executor.add_coroutine(coro, kwargs)
 
     def execute(self):
         """Execute the bot.

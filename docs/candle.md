@@ -1,16 +1,12 @@
 ## <a id="candle"></a> Candle
-
 Candle and Candles classes for handling bars from the MetaTrader 5 terminal.
-
-
 ```python
 class Candle
 ```
 A class representing bars from the MetaTrader 5 terminal as a customized class analogous to Japanese Candlesticks.
 You can subclass this class for added customization.
 
-**Attributes**
-
+### Attributes
 |Name|Type|Description|
 |---|---|---|
 |**time**|**int**|Period start time|
@@ -28,9 +24,7 @@ You can subclass this class for added customization.
 def __init__(**kwargs)
 ```
 Create a Candle object from keyword arguments. Kwargs are set as instance attributes.
-
-**Parameters**
-
+#### Arguments: 
 |Name|Type|Description|
 |---|---|---|
 |**kwargs**|**Any**|Candle attributes and values as keyword arguments.|
@@ -47,22 +41,17 @@ Set keyword arguments as instance attributes
 def mid() -> float
 ```
 The median of open and close
-
-**returns**
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**float**|The median of open and close|
 
 ### is_bullish
-
 ```python
 def is_bullish() -> bool
 ```
 A simple check to see if the candle is bullish.
-
-**returns**
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**bool**|True or False|
@@ -72,23 +61,17 @@ A simple check to see if the candle is bullish.
 def is_bearish() -> bool
 ```
 A simple check to see if the candle is bearish.
-
-**returns**
-
+#### Returns:
 |Type|Description|
 |---|---|
 |bool|True or False|
 
-
-## <a id="candles"></a> Candles 
-
+## <a id="candles"></a> Candles
 ```python
 class Candles(Generic[_Candle])
 ```
 An iterable container class of Candle objects in chronological order. A wrapper around Pandas DataFrame object.
-
-**Attributes**
-
+### Attributes:
 |Name|Type|Description|
 |---|---|---|
 |**data**|**DataFrame**|A pandas DataFrame of all candles in the object.|
@@ -108,7 +91,6 @@ An iterable container class of Candle objects in chronological order. A wrapper 
 **Notes**: When subclassing this class make sure to Candle attribute is set to your desired candle class.
 
 #### \_\_init\_\_
-
 ```python
 def __init__(*,
              data: DataFrame | _Candles | Iterable,
@@ -116,26 +98,21 @@ def __init__(*,
              candle_class: Type[_Candle] = None)
 ```
 A container class of Candle objects in chronological order.
-
-**Arguments**:
-
+#### Arguments:
 |Name|Type|Description|Default|
 |---|---|---|---|
 |**data**|**DataFrame** or **Candles** or **Iterable**|A pandas dataframe, a Candles object or any suitable iterable|
 |**flip**|**bool**|Reverse the chronological order of the candles to the oldest first.|False|
 |**candle_class**|**Type[Candle]**|A subclass of Candle to use as the candle class.|Candle|
 
-
 #### ta
-
 ```python
 @property
 def ta()
 ```
 Access to the pandas_ta library for performing technical analysis on the underlying data attribute. Use this as you would use the pandas_ta library.
 
-**returns**:
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**pandas_ta**|The pandas_ta library|
@@ -148,8 +125,7 @@ def ta_lib()
 Access to the ta library for performing technical analysis. Not dependent on the underlying data attribute. Use this for
 functions that require pandas Series as input.
 
-**returns**:
-
+#### Returns:
 |Type|Description|
 |---|---|
 |ta|The ta library|
@@ -166,16 +142,13 @@ A pandas DataFrame of all candles in the object.
 def rename(inplace=True, **kwargs) -> _Candles | None
 ```
 Rename columns of the candles class.
-
-**Arguments**:
-
+#### Arguments:
 | Name    | Type     |Description|Default|
 |---------|----------|---|---|
 | inplace | **bool** |Rename the columns inplace or return a new instance of the class with the renamed columns|True|
 | **kwargs** | **str**  |The new names of the columns||
 
-**returns**:
-
+#### Returns:
 |Type|Description|
 |---|---|
 |**Candles**|A new instance of the class with the renamed columns if inplace is False.|

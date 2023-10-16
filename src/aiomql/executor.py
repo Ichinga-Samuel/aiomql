@@ -11,23 +11,23 @@ class Executor:
     Attributes:
         executor (ThreadPoolExecutor): The executor object.
         workers (list): List of strategies.
-        coros (dict[Coroutine, dict]): A dictionary of coroutines to run in the executor
-        funcs (dict[Callable, dict]): A dictionary of functions to run in the executor
+        coroutines (dict[Coroutine, dict]): A dictionary of coroutines to run in the executor
+        functions (dict[Callable, dict]): A dictionary of functions to run in the executor
 
     """
 
     def __init__(self, bot=None):
         self.executor = ThreadPoolExecutor
         self.workers: list[type(Strategy)] = []
-        self.coros: dict[Coroutine|Callable: dict] = {}
-        self.funcs: dict[Callable: dict] = {}
+        self.coroutines: dict[Coroutine | Callable: dict] = {}
+        self.functions: dict[Callable: dict] = {}
         self.bot = bot
 
-    def add_func(self, func, kwargs):
-        self.funcs[func] = kwargs | {'bot': self.bot}
+    def add_function(self, func: Callable, kwargs: dict):
+        self.functions[func] = kwargs | {'bot': self.bot}
 
-    def add_coro(self, coro, kwargs):
-        self.coros[coro] = kwargs | {'bot': self.bot}
+    def add_coroutine(self, coro: Coroutine, kwargs: dict):
+        self.coroutines[coro] = kwargs | {'bot': self.bot}
 
     def add_workers(self, strategies: Sequence[type(Strategy)]):
         """Add multiple strategies at once
@@ -38,8 +38,7 @@ class Executor:
         self.workers.extend(strategies)
 
     def remove_workers(self):
-        """Removes any worker running on a symbol not successfully initialized.
-        """
+        """Removes any worker running on a symbol not successfully initialized."""
         self.workers = [worker for worker in self.workers if worker.symbol in self.bot.symbols]
 
     def add_worker(self, strategy: type(Strategy)):
@@ -78,10 +77,10 @@ class Executor:
         Notes:
             No matter the number specified, the executor will always use a minimum of 5 workers.
         """
-        workers = workers or sum([len(self.workers), len(self.funcs), len(self.coros)])
+        workers = workers or sum([len(self.workers), len(self.functions), len(self.coroutines)])
         workers = max(workers, 5)
         loop = asyncio.get_running_loop()
         with self.executor(max_workers=workers) as executor:
             [loop.run_in_executor(executor, self.trade, worker) for worker in self.workers]
-            [loop.run_in_executor(executor, self.run, coro, kwargs) for coro, kwargs in self.coros.items()]
-            [loop.run_in_executor(executor, func, kwargs) for func, kwargs in self.funcs.items()]
+            [loop.run_in_executor(executor, self.run, coro, kwargs) for coro, kwargs in self.coroutines.items()]
+            [loop.run_in_executor(executor, func, kwargs) for func, kwargs in self.functions.items()]

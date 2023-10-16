@@ -35,7 +35,7 @@ class Strategy(ABC):
     mt5: MetaTrader()
     config = Config()
 
-    def __init__(self, *, symbol: Symbol, params: dict = None, session: Session):
+    def __init__(self, *, symbol: Symbol, params: dict = None, sessions: Sessions = None):
         """Initiate the parameters dict and add name and symbol fields.
         Use class name as strategy name if name is not provided
 
@@ -47,7 +47,7 @@ class Strategy(ABC):
         self.parameters = params.copy() if isinstance(params, dict) else {}
         self.parameters['symbol'] = symbol.name
         self.parameters['name'] = self.name or self.__class__.__name__
-        self.session = session or Sessions(Session(8, 13))
+        self.sessions = sessions or Sessions(Session(start=0, end=23))
 
     def __repr__(self):
         return f"{self.name}({self.symbol!r})"
