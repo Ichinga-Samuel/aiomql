@@ -162,11 +162,12 @@ This is a dummy method that returns the minimum volume of the symbol. It is mean
 Checkout Forex Symbol implementation in [ForexSymbol](#forexsymbol) 
 
 #### Arguments:
-|Name| Type               | Description                 | Default           |
-|---|--------------------|-----------------------------|-------------------|
-|**amount**| **float** | Amount to risk in the trade | None |
-|**pips**| **float** | Number of pips to target | None |
-|**use_minimum**| **bool** | If True, the minimum volume is returned if the computed volume is less than the minimum volume. | True |
+| Name           | Type               | Description                                                                                                                                                                                                | Default |
+|----------------|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| **amount**     | **float** | Amount to risk in the trade                                                                                                                                                                                | None    |
+| **pips**       | **float** | Number of pips to target                                                                                                                                                                                   | None    |
+| **use_limits** | **bool** | If True, the minimum volume is returned if the computed volume is less than the minimum volume and the maximum volume is returned if the computed volume is greater than the maximum volume for the symbol | False   |
+
 #### Returns:
 |Type|Description|
 |---|---|
@@ -308,3 +309,14 @@ Get ticks for the specified date range from the MetaTrader 5 terminal.
 |Exception|Description|
 |---|---|
 |**ValueError**|If request was unsuccessful and None was returned|
+
+### compute_volume
+```python
+async def compute_volume(*,
+                         amount: float,
+                         pips: float,
+                         use_limits: bool = True) -> float
+```
+Computes the volume of a trade based on the amount and the number of pips to target.
+This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
+Checkout Forex Symbol implementation in [ForexSymbol](#forexsymbol)

@@ -8,14 +8,16 @@ class Session()
 A session is a time period between two datetime.time objects specified in utc.
 
 ### Attributes:
-|Name|Type|Description|Default|
-|---|---|---|---|
-|**start**|**datetime.time**|The start time of the session.|None|
-|**end**|**datetime.time**|The end time of the session.|None|
-|**on_start**|**str**|The action to take when the session starts. Default is None.|None|
-|**on_end**|**str**|The action to take when the session ends. Default is None.|None|
-|**custom_start**|**Callable**|A custom function to call when the session starts. Default is None.|None|
-|**custom_end**|**Callable**|A custom function to call when the session ends. Default is None.|None|
+|Name| Type           | Description                                                            | Default |
+|---|----------------|------------------------------------------------------------------------|----|
+|**start**| **datetime.time** | The start time of the session.                                         | None |
+|**end**| **datetime.time** | The end time of the session.                                           | None |
+|**on_start**| **Literal['close_all', 'close_win', 'close_loss', 'custom_start']**  | The action to take when the session starts. Default is None.           | None |
+|**on_end**| **Literal['close_all', 'close_win', 'close_loss', 'custom_end']**           | The action to take when the session ends. Default is None.             | None |
+|**custom_start**| **Callable**   | A custom function to call when the session starts. Default is None.    | None |
+|**custom_end**| **Callable**   | A custom function to call when the session ends. Default is None.      | None |
+|**name**| **str**        | The name of the session. Default is a combination of start and finish. |    |
+|**seconds**| **set[int]**   | The set of seconds in the session.                                     | None |
 
 ### Methods:
 |Name|Description|
@@ -23,7 +25,6 @@ A session is a time period between two datetime.time objects specified in utc.
 |**begin**|Call the action specified in on_start or custom_start.|
 |**close**|Call the action specified in on_end or custom_end.|
 |**action**|Used by begin and close to call the action specified.|
-|**delta**|Get the timedelta of a datetime.time object.|
 |**until**|Get the seconds until the session starts from the current time.|
 
 ### \_\_init\_\_
@@ -49,6 +50,7 @@ Create a session.
 |**on_end**| **Literal['close_all', 'close_win', 'close_loss', 'custom_end']** | The action to take when the session ends. Default is None. | None |
 |**custom_start**| **Callable** | A custom function to call when the session starts. Default is None. | None |
 |**custom_end**| **Callable** | A custom function to call when the session ends. Default is None. | None |
+|**name**| **str** | The name of the session. Default is None. | None |
 
 ### begin
 ```python

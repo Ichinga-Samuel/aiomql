@@ -135,17 +135,15 @@ class Symbol(SymbolInfo):
         """
         return await self.mt5.market_book_release(self.name)
 
-    async def compute_volume(self, *, amount: float, pips: float, use_minimum: bool = True) -> float:
+    async def compute_volume(self, *, amount: float, pips: float, use_limits: bool = True) -> float:
         """Computes the volume of a trade based on the amount and the number of pips to target.
         This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
-        Checkout Forex Symbol implementation in src\aiomql\lib\ForexSymbol.py
+        that implements the computation of volume.
 
         Args:
             amount (float): Amount to risk in the trade
             pips (float): Number of pips to target
-
-        Keyword Args:
-            use_minimum (bool): If True, the minimum volume is returned if the computed volume is less than the minimum volume.
+            use_limits (bool): If True, the computed volume is rounded to the nearest step and checked against
 
         Returns:
             float: Returns the volume of the trade

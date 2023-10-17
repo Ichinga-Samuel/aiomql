@@ -10,6 +10,21 @@ from .positions import Positions
 logger = getLogger(__name__)
 
 
+def delta(obj: time):
+    """Get the timedelta of a datetime.time object.
+
+    Args:
+        obj (datetime.time): A datetime.time object.
+    """
+    return timedelta(hours=obj.hour, minutes=obj.minute, seconds=obj.second, microseconds=obj.microsecond)
+
+
+def seconds(start: time, end: time) -> set[int]:
+    if start > end:
+        return set(range(delta(start).seconds, 86400)) | set(range(0, delta(end).seconds))
+    return set(range(delta(start).seconds, delta(end).seconds))
+
+
 class Session:
     """A session is a time period between two datetime.time objects specified in utc.
 
@@ -20,6 +35,8 @@ class Session:
         on_end (str): The action to take when the session ends. Default is None.
         custom_start (Callable): A custom function to call when the session starts. Default is None.
         custom_end (Callable): A custom function to call when the session ends. Default is None.
+        name (str): A name for the session. Default is a combination of start and end.
+        seconds (set[int]): A set of seconds between start and end.
 
     Methods:
         begin: Call the action specified in on_start or custom_start.
@@ -31,7 +48,7 @@ class Session:
     def __init__(self, *, start: int | time, end: int | time,
                  on_start: Literal['close_all', 'close_win', 'close_loss', 'custom_start'] = None,
                  on_end: Literal['close_all', 'close_win', 'close_loss', 'custom_end'] = None,
-                 custom_start: Callable = None, custom_end: Callable = None):
+                 custom_start: Callable = None, custom_end: Callable = None, name: str = ''):
         """Create a session.
 
         Keyword Args:
@@ -43,21 +60,28 @@ class Session:
                 ends. Default is None.
             custom_start (Callable): A custom function to call when the session starts. Default is None.
             custom_end (Callable): A custom function to call when the session ends. Default is None.
+            name (str): A name for the session. Default is a combination of start and end.
         """
         self.start = start if isinstance(start, time) else time(hour=start)
         self.end = end if isinstance(end, time) else time(hour=end)
-        self.__from = self.delta(self.start)
-        self.__to = self.delta(self.end)
         self.on_start = on_start
         self.on_end = on_end
         self.custom_start = custom_start
         self.custom_end = custom_end
+        self.name = name or f'{self.start} - {self.end}'
+        self.seconds = seconds(self.start, self.end)
 
     def __contains__(self, item: time):
-        return self.start <= item < self.end
+        return delta(item).seconds in self.seconds
+
+    def __str__(self):
+        return f'{self.start}-->{self.name}-->{self.end}' if self.name else f'{self.start}-->{self.end}'
 
     def __repr__(self):
-        return f'{self.start}<-{len(self)}->{self.end}'
+        return f'{self.start}-->{self.end}'
+
+    def __len__(self):
+        return (delta(self.start) - delta(self.end)).seconds
 
     async def begin(self):
         """Call the action specified in on_start or custom_start."""
@@ -111,21 +135,9 @@ class Session:
         except Exception as exe:
             logger.warning(f'Failed to call action {action} due to {exe}')
 
-    @staticmethod
-    def delta(obj: time):
-        """Get the timedelta of a datetime.time object.
-
-        Args:
-            obj (datetime.time): A datetime.time object.
-        """
-        return timedelta(hours=obj.hour, minutes=obj.minute, seconds=obj.second, microseconds=obj.microsecond)
-
-    def __len__(self):
-        return (self.__to - self.__from).seconds
-
     def until(self):
-        """Get the seconds until the session starts from the current time."""
-        return (self.__from - self.delta(datetime.utcnow().time())).seconds
+        """Get the seconds until the session starts from the current time in seconds."""
+        return (delta(self.start) - delta(datetime.utcnow().time())).seconds
 
 
 class Sessions:
@@ -143,8 +155,8 @@ class Sessions:
     """
     def __init__(self, *sessions: Session):
         self.sessions = list(sessions)
-        self.sessions.sort(key=lambda x: x.start)
-        self.current_session = sessions[0]
+        self.sessions.sort(key=lambda x: (x.start, x.end))
+        self.current_session = None
 
     def find(self, obj: time) -> Session | None:
         """Find a session that contains a datetime.time object.
@@ -172,7 +184,7 @@ class Sessions:
         for session in self.sessions:
             if obj < session.start:
                 return session
-        return self.sessions[-1]
+        return self.sessions[0]
 
     def __contains__(self, item: time):
         return True if self.find(item) is not None else False
@@ -187,15 +199,21 @@ class Sessions:
     async def check(self):
         """Check if the current session has started and if not, wait until it starts."""
         now = datetime.utcnow().time()
-        if now in self.current_session:
-            return
-        await self.current_session.close()
-
         current_session = self.find(now)
-        if current_session is None:
-            current_session = self.find_next(now)
-            secs = current_session.until() + 10
-            print(f'sleeping for {secs} seconds until next session')
-            await sleep(secs)
+        if current_session:
+            if self.current_session:
+                if self.current_session == current_session:
+                    return
+                await self.current_session.close()
+
+            self.current_session = current_session
+            await self.current_session.begin()
+            return
+
+        await self.current_session.close() if self.current_session else ...
+        current_session = self.find_next(now)
+        secs = current_session.until() + 10
+        print(f'sleeping for {secs} seconds until next {current_session} session')
+        await sleep(secs)
         self.current_session = current_session
         await self.current_session.begin()
