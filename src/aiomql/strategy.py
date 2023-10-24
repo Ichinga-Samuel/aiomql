@@ -47,8 +47,7 @@ class Strategy(ABC):
         self.parameters = params.copy() if isinstance(params, dict) else {}
         self.parameters['symbol'] = symbol.name
         self.parameters['name'] = self.name or self.__class__.__name__
-        self.sessions = sessions or Sessions(Session(start=0, end=dtime(hour=23, minute=59, second=59,
-                                                                        microsecond=999999)))
+        self.sessions = sessions or Sessions(Session(start=0, end=dtime(hour=23, minute=59, second=59)))
 
     def __repr__(self):
         return f"{self.name}({self.symbol!r})"
