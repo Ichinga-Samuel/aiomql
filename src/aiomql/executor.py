@@ -13,7 +13,6 @@ class Executor:
         workers (list): List of strategies.
         coroutines (dict[Coroutine, dict]): A dictionary of coroutines to run in the executor
         functions (dict[Callable, dict]): A dictionary of functions to run in the executor
-
     """
 
     def __init__(self, bot=None):

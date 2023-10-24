@@ -1,6 +1,7 @@
 """Symbol class for handling a financial instrument."""
 from datetime import datetime
 from logging import getLogger
+from math import log10, ceil
 
 from .core.constants import TimeFrame, CopyTicks
 from .core.models import SymbolInfo, BookInfo
@@ -135,7 +136,20 @@ class Symbol(SymbolInfo):
         """
         return await self.mt5.market_book_release(self.name)
 
-    async def compute_volume(self, *, amount: float, pips: float, use_limits: bool = True) -> float:
+    def check_volume(self, volume) -> tuple[bool, float]:
+        check = self.volume_min <= volume <= self.volume_max
+        if check:
+            return check, volume
+        if not check and volume < self.volume_min:
+            return check, self.volume_min
+        else:
+            return check, self.volume_max
+
+    def round_off_volume(self, volume):
+        step = ceil(abs(log10(self.volume_step)))
+        return round(volume, step)
+
+    async def compute_volume(self, *, amount: float, pips: float, use_limits: bool = False) -> float:
         """Computes the volume of a trade based on the amount and the number of pips to target.
         This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
         that implements the computation of volume.

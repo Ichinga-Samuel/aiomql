@@ -54,7 +54,8 @@ class Trader:
         """
         # check if pips is passed in as a keyword argument, if not use the pips attribute of the ram instance
         pips = kwargs.get('pips', 0) or self.ram.pips
-        self.order.volume = kwargs.get('volume', self.ram.volume) or await self.ram.get_volume(symbol=self.symbol, pips=pips)
+        self.order.volume = kwargs.get('volume', self.ram.volume) or await self.ram.get_volume(symbol=self.symbol,
+                                                                                               pips=pips)
         self.order.type = order_type
         await self.set_order_limits(pips=pips)
 

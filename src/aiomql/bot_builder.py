@@ -19,7 +19,7 @@ class Bot:
     Attributes:
         account (Account): Account Object.
         executor: The default thread executor.
-        symbols (set[Symbols]): A set of symbols for the trading session
+        symbols (list[Symbols]): A set of symbols for the trading session
     """
     account: Account = Account()
 
@@ -82,7 +82,6 @@ class Bot:
         Notes:
             Make sure the symbol has been added to the market
         """
-        self.symbols.add(strategy.symbol)
         self.executor.add_worker(strategy)
 
     def add_strategies(self, strategies: Iterable[Strategy]):
@@ -104,9 +103,8 @@ class Bot:
         [self.add_strategy(strategy(symbol=symbol, params=params)) for symbol in self.symbols]
 
     async def init_symbols(self):
-        """Initialize the symbols for the current trading session. This method is called internally by the bot.
-        """
-        syms = [self.init_symbol(symbol) for symbol in self.symbols]
+        """Initialize the symbols for the current trading session. This method is called internally by the bot."""
+        syms = [self.init_symbol(strategy.symbol) for strategy in self.executor.workers]
         await asyncio.gather(*syms, return_exceptions=True)
 
     async def init_symbol(self, symbol: Symbol) -> Symbol:
@@ -123,9 +121,7 @@ class Bot:
         if self.account.has_symbol(symbol):
             init = await symbol.init()
             if init:
+                self.symbols.add(symbol)
                 return symbol
-            self.symbols.discard(symbol)
             logger.warning(f'Unable to initialize symbol {symbol}')
-
-        self.symbols.remove(symbol)
         logger.warning(f'{symbol} not a available for this market')
