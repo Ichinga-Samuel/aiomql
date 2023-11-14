@@ -17,7 +17,6 @@ A session is a time period between two datetime.time objects specified in utc.
 |**custom_start**| **Callable**   | A custom function to call when the session starts. Default is None.    | None |
 |**custom_end**| **Callable**   | A custom function to call when the session ends. Default is None.      | None |
 |**name**| **str**        | The name of the session. Default is a combination of start and finish. |    |
-|**seconds**| **set[int]**   | The set of seconds in the session.                                     | None |
 
 ### Methods:
 |Name|Description|

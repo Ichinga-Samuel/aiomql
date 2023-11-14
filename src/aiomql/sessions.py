@@ -19,12 +19,6 @@ def delta(obj: time):
     return timedelta(hours=obj.hour, minutes=obj.minute, seconds=obj.second, microseconds=obj.microsecond)
 
 
-def seconds(start: time, end: time) -> set[int]:
-    if start > end:
-        return set(range(delta(start).seconds, 86400)) | set(range(0, delta(end).seconds))
-    return set(range(delta(start).seconds, delta(end).seconds))
-
-
 class Session:
     """A session is a time period between two datetime.time objects specified in utc.
 
@@ -36,7 +30,6 @@ class Session:
         custom_start (Callable): A custom function to call when the session starts. Default is None.
         custom_end (Callable): A custom function to call when the session ends. Default is None.
         name (str): A name for the session. Default is a combination of start and end.
-        seconds (set[int]): A set of seconds between start and end.
 
     Methods:
         begin: Call the action specified in on_start or custom_start.
@@ -69,10 +62,13 @@ class Session:
         self.custom_start = custom_start
         self.custom_end = custom_end
         self.name = name or f'{self.start} - {self.end}'
-        self.seconds = seconds(self.start, self.end)
 
     def __contains__(self, item: time):
-        return delta(item).seconds in self.seconds
+        if self.start > self.end:
+            m1 = time(hour=23, minute=59, second=59, microsecond=9999)
+            m2 = time(hour=0)
+            return self.start <= item <= m1 or m2 <= item < self.end
+        return self.start <= item < self.end
 
     def __str__(self):
         return f'{self.start}-->{self.name}-->{self.end}' if self.name else f'{self.start}-->{self.end}'

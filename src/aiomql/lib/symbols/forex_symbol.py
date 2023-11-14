@@ -1,0 +1,32 @@
+from ...symbol import Symbol
+from ...core.exceptions import VolumeError
+
+
+class ForexSymbol(Symbol):
+    """Subclass of Symbol for Forex Symbols. Handles the conversion of currency and the computation of stop loss,
+    take profit and volume.
+    """
+
+    async def compute_volume(self, *, amount: float, pips, use_limits=False) -> float:
+        """Compute volume given an amount to risk and target pips. Round the computed volume to the nearest step.
+
+        Args:
+            amount (float): Amount to risk. Given in terms of the account currency.
+            pips (float): Target pips.
+            use_limits (bool): If True, the computed volume checked against the maximum and minimum volume.
+
+        Returns:
+            float: volume
+
+        Raises:
+            VolumeError: If the computed volume is less than the minimum volume or greater than the maximum volume.
+        """
+        if self.currency_profit != self.account.currency:
+            amount = await self.convert_currency(amount=amount, base=self.currency_profit, quote=self.account.currency)
+        volume = amount / (self.pip * pips * self.trade_contract_size)
+        volume = self.round_off_volume(volume)
+        if self.check_volume(volume)[0]:
+            return volume
+        if use_limits:
+            return self.check_volume(volume)[1]
+        raise VolumeError(f'Incorrect Volume. Computed Volume outside the range of permitted volumes')

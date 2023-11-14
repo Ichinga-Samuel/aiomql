@@ -295,7 +295,7 @@ async def copy_ticks_range(*,
                            flags: CopyTicks = CopyTicks.ALL) -> Ticks
 ```
 Get ticks for the specified date range from the MetaTrader 5 terminal.
-#### Arguments:
+#### Parameters:
 |Name| Type               | Description                 | Default           |
 |---|--------------------|-----------------------------|-------------------|
 |**date_from**| **datetime, int** | Date the ticks are requested from. Set by the 'datetime' object or as a number of seconds elapsed since 1970.01.01. | Required unnamed parameter |
@@ -310,13 +310,24 @@ Get ticks for the specified date range from the MetaTrader 5 terminal.
 |---|---|
 |**ValueError**|If request was unsuccessful and None was returned|
 
+### check_volume 
+```python
+async def check_volume(*, volume: float) -> tuple[bool, float]
+```
+Checks if the volume is within the minimum and maximum volume for the symbol. If not, return the nearest limit.
+
+### round_off_volume
+```python
+async def round_off_volume(*, volume: float) -> float
+```
+Rounds off the volume to the nearest minimum or maximum volume for the symbol.
+
+
+
 ### compute_volume
 ```python
-async def compute_volume(*,
-                         amount: float,
-                         pips: float,
-                         use_limits: bool = True) -> float
+async def compute_volume(*args, **kwargs) -> float
 ```
-Computes the volume of a trade based on the amount and the number of pips to target.
+Computes the volume of a trade based on the amount and other parameters.
 This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
 Checkout Forex Symbol implementation in [ForexSymbol](#forexsymbol)

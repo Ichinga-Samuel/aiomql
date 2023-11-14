@@ -12,6 +12,8 @@
 * [aiomql.bot\_builder](#aiomql.bot_builder)
   * [Bot](#aiomql.bot_builder.Bot)
     * [initialize](#aiomql.bot_builder.Bot.initialize)
+    * [add\_function](#aiomql.bot_builder.Bot.add_function)
+    * [add\_coroutine](#aiomql.bot_builder.Bot.add_coroutine)
     * [execute](#aiomql.bot_builder.Bot.execute)
     * [start](#aiomql.bot_builder.Bot.start)
     * [add\_strategy](#aiomql.bot_builder.Bot.add_strategy)
@@ -107,6 +109,7 @@
     * [add\_workers](#aiomql.executor.Executor.add_workers)
     * [remove\_workers](#aiomql.executor.Executor.remove_workers)
     * [add\_worker](#aiomql.executor.Executor.add_worker)
+    * [trade](#aiomql.executor.Executor.trade)
     * [run](#aiomql.executor.Executor.run)
     * [execute](#aiomql.executor.Executor.execute)
 * [aiomql.history](#aiomql.history)
@@ -120,14 +123,13 @@
 * [aiomql.lib.strategies.finger\_trap](#aiomql.lib.strategies.finger_trap)
   * [Entry](#aiomql.lib.strategies.finger_trap.Entry)
 * [aiomql.lib.strategies](#aiomql.lib.strategies)
+* [aiomql.lib.symbols.crypto\_symbol](#aiomql.lib.symbols.crypto_symbol)
+  * [CryptoSymbol](#aiomql.lib.symbols.crypto_symbol.CryptoSymbol)
+    * [compute\_volume](#aiomql.lib.symbols.crypto_symbol.CryptoSymbol.compute_volume)
 * [aiomql.lib.symbols.forex\_symbol](#aiomql.lib.symbols.forex_symbol)
   * [ForexSymbol](#aiomql.lib.symbols.forex_symbol.ForexSymbol)
-    * [pip](#aiomql.lib.symbols.forex_symbol.ForexSymbol.pip)
     * [compute\_volume](#aiomql.lib.symbols.forex_symbol.ForexSymbol.compute_volume)
 * [aiomql.lib.symbols](#aiomql.lib.symbols)
-* [aiomql.lib.traders.simple\_deal\_trader](#aiomql.lib.traders.simple_deal_trader)
-  * [DealTrader](#aiomql.lib.traders.simple_deal_trader.DealTrader)
-    * [create\_order](#aiomql.lib.traders.simple_deal_trader.DealTrader.create_order)
 * [aiomql.lib.traders](#aiomql.lib.traders)
 * [aiomql.lib](#aiomql.lib)
 * [aiomql.order](#aiomql.order)
@@ -144,12 +146,12 @@
     * [\_\_init\_\_](#aiomql.positions.Positions.__init__)
     * [positions\_total](#aiomql.positions.Positions.positions_total)
     * [positions\_get](#aiomql.positions.Positions.positions_get)
+    * [close](#aiomql.positions.Positions.close)
     * [close\_all](#aiomql.positions.Positions.close_all)
 * [aiomql.ram](#aiomql.ram)
   * [RAM](#aiomql.ram.RAM)
     * [\_\_init\_\_](#aiomql.ram.RAM.__init__)
     * [get\_amount](#aiomql.ram.RAM.get_amount)
-    * [get\_volume](#aiomql.ram.RAM.get_volume)
 * [aiomql.records](#aiomql.records)
   * [Records](#aiomql.records.Records)
     * [\_\_init\_\_](#aiomql.records.Records.__init__)
@@ -163,6 +165,18 @@
     * [\_\_init\_\_](#aiomql.result.Result.__init__)
     * [to\_csv](#aiomql.result.Result.to_csv)
     * [save\_csv](#aiomql.result.Result.save_csv)
+* [aiomql.sessions](#aiomql.sessions)
+  * [delta](#aiomql.sessions.delta)
+  * [Session](#aiomql.sessions.Session)
+    * [\_\_init\_\_](#aiomql.sessions.Session.__init__)
+    * [begin](#aiomql.sessions.Session.begin)
+    * [close](#aiomql.sessions.Session.close)
+    * [action](#aiomql.sessions.Session.action)
+    * [until](#aiomql.sessions.Session.until)
+  * [Sessions](#aiomql.sessions.Sessions)
+    * [find](#aiomql.sessions.Sessions.find)
+    * [find\_next](#aiomql.sessions.Sessions.find_next)
+    * [check](#aiomql.sessions.Sessions.check)
 * [aiomql.strategy](#aiomql.strategy)
   * [Strategy](#aiomql.strategy.Strategy)
     * [\_\_init\_\_](#aiomql.strategy.Strategy.__init__)
@@ -178,7 +192,10 @@
     * [book\_add](#aiomql.symbol.Symbol.book_add)
     * [book\_get](#aiomql.symbol.Symbol.book_get)
     * [book\_release](#aiomql.symbol.Symbol.book_release)
+    * [check\_volume](#aiomql.symbol.Symbol.check_volume)
+    * [round\_off\_volume](#aiomql.symbol.Symbol.round_off_volume)
     * [compute\_volume](#aiomql.symbol.Symbol.compute_volume)
+    * [convert\_currency](#aiomql.symbol.Symbol.convert_currency)
     * [currency\_conversion](#aiomql.symbol.Symbol.currency_conversion)
     * [copy\_rates\_from](#aiomql.symbol.Symbol.copy_rates_from)
     * [copy\_rates\_from\_pos](#aiomql.symbol.Symbol.copy_rates_from_pos)
@@ -205,6 +222,9 @@
     * [\_\_init\_\_](#aiomql.trader.Trader.__init__)
     * [create\_order](#aiomql.trader.Trader.create_order)
     * [set\_order\_limits](#aiomql.trader.Trader.set_order_limits)
+    * [set\_trade\_stop\_levels](#aiomql.trader.Trader.set_trade_stop_levels)
+    * [check\_order](#aiomql.trader.Trader.check_order)
+    * [record\_trade](#aiomql.trader.Trader.record_trade)
     * [place\_trade](#aiomql.trader.Trader.place_trade)
 * [aiomql.utils](#aiomql.utils)
   * [dict\_to\_string](#aiomql.utils.dict_to_string)
@@ -355,7 +375,7 @@ The bot class. Create a bot instance to run your strategies.
 
 - `account` _Account_ - Account Object.
 - `executor` - The default thread executor.
-- `symbols` _set[Symbols]_ - A set of symbols for the trading session
+- `symbols` _list[Symbols]_ - A set of symbols for the trading session
 
 <a id="aiomql.bot_builder.Bot.initialize"></a>
 
@@ -370,6 +390,37 @@ Prepares the bot by signing in to the trading account and initializing the symbo
 **Raises**:
 
   SystemExit if sign in was not successful
+
+<a id="aiomql.bot_builder.Bot.add_function"></a>
+
+#### add\_function
+
+```python
+def add_function(func: Callable, **kwargs: dict)
+```
+
+Add a function to the executor.
+
+**Arguments**:
+
+- `func` _Callable_ - A function to be executed
+- `**kwargs` _dict_ - Keyword arguments for the function
+
+<a id="aiomql.bot_builder.Bot.add_coroutine"></a>
+
+#### add\_coroutine
+
+```python
+def add_coroutine(coro: Coroutine, **kwargs)
+```
+
+Add a coroutine to the executor.
+
+**Arguments**:
+
+- `coro` _Coroutine_ - A coroutine to be executed
+- `**kwargs` _dict_ - keyword arguments for the coroutine
+  
 
 <a id="aiomql.bot_builder.Bot.execute"></a>
 
@@ -460,7 +511,7 @@ async def init_symbol(symbol: Symbol) -> Symbol
 
 Initialize a symbol before the beginning of a trading sessions.
 Removes it from the list of symbols if it was not successfully initialized or not available
-for the current market.
+for the account.
 
 **Arguments**:
 
@@ -2223,6 +2274,8 @@ Executor class for running multiple strategies on multiple symbols concurrently.
 
 - `executor` _ThreadPoolExecutor_ - The executor object.
 - `workers` _list_ - List of strategies.
+- `coroutines` _dict[Coroutine, dict]_ - A dictionary of coroutines to run in the executor
+- `functions` _dict[Callable, dict]_ - A dictionary of functions to run in the executor
 
 <a id="aiomql.executor.Executor.add_workers"></a>
 
@@ -2243,14 +2296,10 @@ Add multiple strategies at once
 #### remove\_workers
 
 ```python
-def remove_workers(*symbols: Sequence[Symbol])
+def remove_workers()
 ```
 
 Removes any worker running on a symbol not successfully initialized.
-
-**Arguments**:
-
-- `*symbols` - Successfully initialized symbols.
 
 <a id="aiomql.executor.Executor.add_worker"></a>
 
@@ -2266,13 +2315,13 @@ Add a strategy instance to the list of workers
 
 - `strategy` _Strategy_ - A strategy object
 
-<a id="aiomql.executor.Executor.run"></a>
+<a id="aiomql.executor.Executor.trade"></a>
 
-#### run
+#### trade
 
 ```python
 @staticmethod
-def run(strategy: type(Strategy))
+def trade(strategy: type(Strategy))
 ```
 
 Wraps the coroutine trade method of each strategy with 'asyncio.run'.
@@ -2280,6 +2329,21 @@ Wraps the coroutine trade method of each strategy with 'asyncio.run'.
 **Arguments**:
 
 - `strategy` _Strategy_ - A strategy object
+
+<a id="aiomql.executor.Executor.run"></a>
+
+#### run
+
+```python
+def run(func, kwargs: dict)
+```
+
+Run a coroutine function
+
+**Arguments**:
+
+- `func` - The coroutine. A variadic function.
+- `kwargs` - A dictionary of keyword arguments for the function
 
 <a id="aiomql.executor.Executor.execute"></a>
 
@@ -2333,8 +2397,8 @@ The history class handles completed trade deals and trade orders in the trading 
 
 ```python
 def __init__(*,
-             date_from: datetime | float = 0,
-             date_to: datetime | float = 0,
+             date_from: datetime | float = None,
+             date_to: datetime | float = None,
              group: str = "",
              ticket: int = 0,
              position: int = 0)
@@ -2441,7 +2505,7 @@ Get total number of orders within the specified period in the constructor.
 class Entry()
 ```
 
-Entry class for FingerTrap strategy.Will be used to store entry conditions and other entry related data.
+Entry class for FingerTrap strategy. Will be used to store entry conditions and other entry related data.
 
 **Attributes**:
 
@@ -2450,14 +2514,52 @@ Entry class for FingerTrap strategy.Will be used to store entry conditions and o
 - `ranging` _bool_ - True if the market is ranging
 - `snooze` _float_ - Time to wait before checking for entry conditions
 - `trend` _str_ - The current trend of the market
-- `last_candle` _Candle_ - The last candle of the market
 - `new` _bool_ - True if the last candle is new
 - `order_type` _OrderType_ - The type of order to place
-- `pips` _int_ - The number of pips to place the order from the current price
 
 <a id="aiomql.lib.strategies"></a>
 
 # aiomql.lib.strategies
+
+<a id="aiomql.lib.symbols.crypto_symbol"></a>
+
+# aiomql.lib.symbols.crypto\_symbol
+
+<a id="aiomql.lib.symbols.crypto_symbol.CryptoSymbol"></a>
+
+## CryptoSymbol Objects
+
+```python
+class CryptoSymbol(Symbol)
+```
+
+Subclass of Symbol for Crypto/Fiat Symbols. Handles the computation of volume based on the amount to risk.
+
+<a id="aiomql.lib.symbols.crypto_symbol.CryptoSymbol.compute_volume"></a>
+
+#### compute\_volume
+
+```python
+async def compute_volume(*, amount: float, points, use_limits=False) -> float
+```
+
+Compute volume given an amount to risk and target pips. Round the computed volume to the nearest step.
+
+**Arguments**:
+
+- `amount` _float_ - Amount to risk. Given in terms of the account currency.
+- `points` _float_ - Target pips.
+- `use_limits` _bool_ - If True, the computed volume checked against the maximum and minimum volume.
+  
+
+**Returns**:
+
+- `float` - volume
+  
+
+**Raises**:
+
+- `VolumeError` - If the computed volume is less than the minimum volume or greater than the maximum volume.
 
 <a id="aiomql.lib.symbols.forex_symbol"></a>
 
@@ -2474,30 +2576,12 @@ class ForexSymbol(Symbol)
 Subclass of Symbol for Forex Symbols. Handles the conversion of currency and the computation of stop loss,
 take profit and volume.
 
-<a id="aiomql.lib.symbols.forex_symbol.ForexSymbol.pip"></a>
-
-#### pip
-
-```python
-@property
-def pip()
-```
-
-Returns the pip value of the symbol. This is ten times the point value for forex symbols.
-
-**Returns**:
-
-- `float` - The pip value of the symbol.
-
 <a id="aiomql.lib.symbols.forex_symbol.ForexSymbol.compute_volume"></a>
 
 #### compute\_volume
 
 ```python
-async def compute_volume(*,
-                         amount: float,
-                         pips: float,
-                         use_minimum: bool = True) -> float
+async def compute_volume(*, amount: float, pips, use_limits=False) -> float
 ```
 
 Compute volume given an amount to risk and target pips. Round the computed volume to the nearest step.
@@ -2506,11 +2590,7 @@ Compute volume given an amount to risk and target pips. Round the computed volum
 
 - `amount` _float_ - Amount to risk. Given in terms of the account currency.
 - `pips` _float_ - Target pips.
-  
-
-**Arguments**:
-
-- `use_minimum` _bool_ - If True, the minimum volume is returned if the computed volume is less than the minimum volume.
+- `use_limits` _bool_ - If True, the computed volume checked against the maximum and minimum volume.
   
 
 **Returns**:
@@ -2525,36 +2605,6 @@ Compute volume given an amount to risk and target pips. Round the computed volum
 <a id="aiomql.lib.symbols"></a>
 
 # aiomql.lib.symbols
-
-<a id="aiomql.lib.traders.simple_deal_trader"></a>
-
-# aiomql.lib.traders.simple\_deal\_trader
-
-<a id="aiomql.lib.traders.simple_deal_trader.DealTrader"></a>
-
-## DealTrader Objects
-
-```python
-class DealTrader(Trader)
-```
-
-A base class for placing trades based on the number of pips to target
-
-<a id="aiomql.lib.traders.simple_deal_trader.DealTrader.create_order"></a>
-
-#### create\_order
-
-```python
-async def create_order(*, order_type: OrderType, pips: float = 0)
-```
-
-Using the number of target pips it determines the lot size, stop loss and take profit for the order,
-and updates the order object with the values.
-
-**Arguments**:
-
-- `order_type` _OrderType_ - Type of order
-- `pips` _float_ - Target pips
 
 <a id="aiomql.lib.traders"></a>
 
@@ -2770,24 +2820,49 @@ Get the number of open positions.
 #### positions\_get
 
 ```python
-async def positions_get()
+async def positions_get(symbol: str = '', group: str = '', ticket: int = 0)
 ```
 
 Get open positions with the ability to filter by symbol or ticket.
 
+**Arguments**:
+
+- `symbol` _str_ - Financial instrument name.
+- `group` _str_ - The filter for arranging a group of necessary symbols. Optional named parameter. If the group
+  is specified, the function returns only positions meeting a specified criteria for a symbol name.
+- `ticket` _int_ - Position ticket
+  
+
 **Returns**:
 
 - `list[TradePosition]` - A list of open trade positions
+
+<a id="aiomql.positions.Positions.close"></a>
+
+#### close
+
+```python
+async def close(*, ticket: int, symbol: str, price: float, volume: float,
+                order_type: OrderType)
+```
+
+Close an open position for the trading account.
 
 <a id="aiomql.positions.Positions.close_all"></a>
 
 #### close\_all
 
 ```python
-async def close_all() -> int
+async def close_all(symbol: str = '', group: str = '') -> int
 ```
 
 Close all open positions for the trading account.
+
+**Arguments**:
+
+- `symbol` _str_ - Financial instrument name.
+- `group` _str_ - The filter for specifying a group of symbols.
+  
 
 **Returns**:
 
@@ -2812,21 +2887,21 @@ class RAM()
 #### \_\_init\_\_
 
 ```python
-def __init__(**kwargs)
+def __init__(*,
+             risk_to_reward: float = 1,
+             risk: float = 0.01,
+             amount: float = 0,
+             **kwargs)
 ```
 
-Risk Assessment and Management. All provided keyword arguments are set as attributes.
+Initialize Risk Assessment and Management with the provided keyword arguments.
 
 **Arguments**:
 
-- `kwargs` _Dict_ - Keyword arguments.
-  
-  Defaults:
-- `risk_to_reward` _float_ - Risk to reward ratio 1
+- `risk_to_reward` _float_ - Risk to reward ratio. Defaults to 1
 - `risk` _float_ - Percentage of account balance to risk per trade 0.01 # 1%
 - `amount` _float_ - Amount to risk per trade in terms of account currency 0
-- `pips` _float_ - Target pips 0
-- `volume` _float_ - Volume to trade 0
+- `kwargs` - extra keyword arguments are set as object attributes
 
 <a id="aiomql.ram.RAM.get_amount"></a>
 
@@ -2836,7 +2911,7 @@ Risk Assessment and Management. All provided keyword arguments are set as attrib
 async def get_amount(risk: float = 0) -> float
 ```
 
-Calculate the amount to risk per trade as a percentage of free margin.
+Calculate the amount to risk per trade as a percentage of equity.
 
 **Arguments**:
 
@@ -2846,35 +2921,6 @@ Calculate the amount to risk per trade as a percentage of free margin.
 **Returns**:
 
 - `float` - Amount to risk per trade
-
-<a id="aiomql.ram.RAM.get_volume"></a>
-
-#### get\_volume
-
-```python
-async def get_volume(*,
-                     symbol: Symbol,
-                     pips: float = 0,
-                     amount: float = 0) -> float
-```
-
-Calculate the volume to trade. if pips is not provided, the pips attribute is used.
-If the amount attribute or amount argument is zero, the amount is calculated using the get_amount method based on the risk.
-
-**Arguments**:
-
-- `symbol` _Symbol_ - Financial instrument
-  
-
-**Arguments**:
-
-- `pips` _float_ - Target pips. Defaults to zero.
-- `amount` _float_ - Amount to risk per trade. Defaults to zero.
-  
-
-**Returns**:
-
-- `float` - Volume to trade
 
 <a id="aiomql.records"></a>
 
@@ -2906,7 +2952,8 @@ This utility class read trade records from csv files, and update them based on t
 def __init__(records_dir: Path = '')
 ```
 
-Initialize the Records class.
+Initialize the Records class. The main method of this class is update_records which you should call to update
+all the records specified in the records_dir.
 
 **Arguments**:
 
@@ -3020,7 +3067,7 @@ Prepare result data
 #### to\_csv
 
 ```python
-async def to_csv()
+def to_csv()
 ```
 
 Record trade results and associated parameters as a csv file
@@ -3034,6 +3081,201 @@ async def save_csv()
 ```
 
 Save trade results and associated parameters as a csv file in a separate thread
+
+<a id="aiomql.sessions"></a>
+
+# aiomql.sessions
+
+Sessions allow you to run code at specific times of the day.
+
+<a id="aiomql.sessions.delta"></a>
+
+#### delta
+
+```python
+def delta(obj: time)
+```
+
+Get the timedelta of a datetime.time object.
+
+**Arguments**:
+
+- `obj` _datetime.time_ - A datetime.time object.
+
+<a id="aiomql.sessions.Session"></a>
+
+## Session Objects
+
+```python
+class Session()
+```
+
+A session is a time period between two datetime.time objects specified in utc.
+
+**Attributes**:
+
+- `start` _datetime.time_ - The start time of the session.
+- `end` _datetime.time_ - The end time of the session.
+- `on_start` _str_ - The action to take when the session starts. Default is None.
+- `on_end` _str_ - The action to take when the session ends. Default is None.
+- `custom_start` _Callable_ - A custom function to call when the session starts. Default is None.
+- `custom_end` _Callable_ - A custom function to call when the session ends. Default is None.
+- `name` _str_ - A name for the session. Default is a combination of start and end.
+  
+
+**Methods**:
+
+- `begin` - Call the action specified in on_start or custom_start.
+- `close` - Call the action specified in on_end or custom_end.
+- `action` - Used by begin and close to call the action specified.
+- `delta` - Get the timedelta of a datetime.time object.
+- `until` - Get the seconds until the session starts from the current time.
+
+<a id="aiomql.sessions.Session.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(*,
+             start: int | time,
+             end: int | time,
+             on_start: Literal['close_all', 'close_win', 'close_loss',
+                               'custom_start'] = None,
+             on_end: Literal['close_all', 'close_win', 'close_loss',
+                             'custom_end'] = None,
+             custom_start: Callable = None,
+             custom_end: Callable = None,
+             name: str = '')
+```
+
+Create a session.
+
+**Arguments**:
+
+- `start` _int | datetime.time_ - The start time of the session in UTC.
+- `end` _int | datetime.time_ - The end time of the session in UTC.
+- `on_start` _Literal['close_all', 'close_win', 'close_loss', 'custom_start']_ - The action to take when the
+  session starts. Default is None.
+- `on_end` _Literal['close_all', 'close_win', 'close_loss', 'custom_end']_ - The action to take when the session
+  ends. Default is None.
+- `custom_start` _Callable_ - A custom function to call when the session starts. Default is None.
+- `custom_end` _Callable_ - A custom function to call when the session ends. Default is None.
+- `name` _str_ - A name for the session. Default is a combination of start and end.
+
+<a id="aiomql.sessions.Session.begin"></a>
+
+#### begin
+
+```python
+async def begin()
+```
+
+Call the action specified in on_start or custom_start.
+
+<a id="aiomql.sessions.Session.close"></a>
+
+#### close
+
+```python
+async def close()
+```
+
+Call the action specified in on_end or custom_end.
+
+<a id="aiomql.sessions.Session.action"></a>
+
+#### action
+
+```python
+async def action(action)
+```
+
+Used by begin and close to call the action specified.
+
+**Arguments**:
+
+- `action` _Literal['close_all', 'close_win', 'close_loss', 'custom_start', 'custom_end']_ - The action to take.
+
+<a id="aiomql.sessions.Session.until"></a>
+
+#### until
+
+```python
+def until()
+```
+
+Get the seconds until the session starts from the current time in seconds.
+
+<a id="aiomql.sessions.Sessions"></a>
+
+## Sessions Objects
+
+```python
+class Sessions()
+```
+
+Sessions allow you to run code at specific times of the day. It is a collection of Session objects.
+Sessions are sorted by start time. The sessions object is an asynchronous context manager.
+
+**Attributes**:
+
+- `sessions` _list[Session]_ - A list of Session objects.
+- `current_session` _Session_ - The current session.
+  
+
+**Methods**:
+
+- `find` - Find a session that contains a datetime.time object.
+- `find_next` - Find the next session that contains a datetime.time object.
+- `check` - Check if the current session has started and if not, wait until it starts.
+
+<a id="aiomql.sessions.Sessions.find"></a>
+
+#### find
+
+```python
+def find(obj: time) -> Session | None
+```
+
+Find a session that contains a datetime.time object.
+
+**Arguments**:
+
+- `obj` _datetime.time_ - A datetime.time object.
+  
+
+**Returns**:
+
+  Session | None: A Session object or None if not found.
+
+<a id="aiomql.sessions.Sessions.find_next"></a>
+
+#### find\_next
+
+```python
+def find_next(obj: time) -> Session
+```
+
+Find the next session that contains a datetime.time object.
+
+**Arguments**:
+
+- `obj` _datetime.time_ - A datetime.time object.
+  
+
+**Returns**:
+
+- `Session` - A Session object.
+
+<a id="aiomql.sessions.Sessions.check"></a>
+
+#### check
+
+```python
+async def check()
+```
+
+Check if the current session has started and if not, wait until it starts.
 
 <a id="aiomql.strategy"></a>
 
@@ -3072,7 +3314,10 @@ The base class for creating strategies.
 #### \_\_init\_\_
 
 ```python
-def __init__(*, symbol: Symbol, params: dict = None)
+def __init__(*,
+             symbol: Symbol,
+             params: dict = None,
+             sessions: Sessions = None)
 ```
 
 Initiate the parameters dict and add name and symbol fields.
@@ -3281,35 +3526,74 @@ Cancels subscription of the MetaTrader 5 terminal to the Market Depth change eve
 
 - `bool` - True if successful, otherwise – False.
 
+<a id="aiomql.symbol.Symbol.check_volume"></a>
+
+#### check\_volume
+
+```python
+def check_volume(volume) -> tuple[bool, float]
+```
+
+Check if the volume is within the limits of the symbol. If not, return the nearest limit.
+
+**Arguments**:
+
+- `volume` _float_ - Volume to check
+  
+- `Returns` - tuple[bool, float]: Returns a tuple of a boolean and a float. The boolean indicates if the volume is
+  within the limits of the symbol. The float is the volume to use if the volume is not within the limits of the
+  symbol.
+
+<a id="aiomql.symbol.Symbol.round_off_volume"></a>
+
+#### round\_off\_volume
+
+```python
+def round_off_volume(volume) -> float
+```
+
+Round off the volume to the nearest volume step.
+
+**Arguments**:
+
+- `volume` _float_ - Volume to round off
+  
+
+**Returns**:
+
+- `float` - Rounded off volume
+
 <a id="aiomql.symbol.Symbol.compute_volume"></a>
 
 #### compute\_volume
 
 ```python
-async def compute_volume(*,
-                         amount: float,
-                         pips: float,
-                         use_minimum: bool = True) -> float
+async def compute_volume(*args, **kwargs) -> float
 ```
 
-Computes the volume of a trade based on the amount and the number of pips to target.
+Computes the volume required for a trade usually based on the amount and any other keyword arguments.
 This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
-Checkout Forex Symbol implementation in srciomql\lib\ForexSymbol.py
+that implements the computation of volume.
 
 **Arguments**:
 
-- `amount` _float_ - Amount to risk in the trade
-- `pips` _float_ - Number of pips to target
-  
-
-**Arguments**:
-
-- `use_minimum` _bool_ - If True, the minimum volume is returned if the computed volume is less than the minimum volume.
+- `use_limits` _bool_ - round up or round down the computed volume to the nearest volume limit i.e volume_min
+  or volume_max
   
 
 **Returns**:
 
 - `float` - Returns the volume of the trade
+
+<a id="aiomql.symbol.Symbol.convert_currency"></a>
+
+#### convert\_currency
+
+```python
+async def convert_currency(*, amount: float, base: str, quote: str) -> float
+```
+
+Convert from one currency to the other. Alias for currency_conversion
 
 <a id="aiomql.symbol.Symbol.currency_conversion"></a>
 
@@ -3331,7 +3615,7 @@ Convert from one currency to the other.
 
 **Returns**:
 
-- `float` - Amount in terms of the base currency or None if it failed to convert
+- `float` - Amount in terms of the base currency
   
 
 **Raises**:
@@ -3351,15 +3635,13 @@ async def copy_rates_from(*,
 
 Get bars from the MetaTrader 5 terminal starting from the specified date.
 
-**Arguments**:
+Args: timeframe (TimeFrame): Timeframe the bars are requested for. Set by a value from the TimeFrame
+enumeration. Required unnamed parameter.
 
-- `timeframe` _TimeFrame_ - Timeframe the bars are requested for. Set by a value from the TimeFrame enumeration. Required unnamed parameter.
-  
-- `date_from` _datetime | int_ - Date of opening of the first bar from the requested sample. Set by the 'datetime' object or as a number
-  of seconds elapsed since 1970.01.01. Required unnamed parameter.
-  
-- `count` _int_ - Number of bars to receive. Required unnamed parameter.
-  
+date_from (datetime | int): Date of opening of the first bar from the requested sample. Set by the
+'datetime' object or as a number of seconds elapsed since 1970.01.01. Required unnamed parameter.
+
+count (int): Number of bars to receive. Required unnamed parameter.
 
 **Returns**:
 
@@ -3776,7 +4058,6 @@ async def create_order(*, order_type: OrderType, **kwargs)
 ```
 
 Complete the order object with the required values. Creates a simple order.
-Uses the ram instance to set the volume.
 
 **Arguments**:
 
@@ -3791,12 +4072,49 @@ Uses the ram instance to set the volume.
 async def set_order_limits(pips: float)
 ```
 
-Sets the stop loss and take profit for the order.
-This method uses pips as defined for forex instruments.
+Sets the stop loss and take profit for the order. This method uses pips as defined for forex instruments.
 
 **Arguments**:
 
 - `pips` - Target pips
+
+<a id="aiomql.trader.Trader.set_trade_stop_levels"></a>
+
+#### set\_trade\_stop\_levels
+
+```python
+async def set_trade_stop_levels(*, points)
+```
+
+Set the stop loss and take profit levels of the order based on the points.
+
+<a id="aiomql.trader.Trader.check_order"></a>
+
+#### check\_order
+
+```python
+async def check_order() -> bool
+```
+
+Check order before sending it to the broker.
+
+**Returns**:
+
+- `bool` - True if order can go through else false
+
+<a id="aiomql.trader.Trader.record_trade"></a>
+
+#### record\_trade
+
+```python
+async def record_trade(result: OrderSendResult)
+```
+
+Record the trade in a csv file.
+
+**Arguments**:
+
+- `result` _OrderSendResult_ - Result of the order send
 
 <a id="aiomql.trader.Trader.place_trade"></a>
 
@@ -3811,7 +4129,7 @@ Places a trade based on the order_type.
 **Arguments**:
 
 - `order_type` _OrderType_ - Type of order
-- `params` - parameters to be saved with the trade
+- `params` - parameters of the trading strategy used to place the trade
 - `kwargs` - keyword arguments as required for the specific trader
 
 <a id="aiomql.utils"></a>

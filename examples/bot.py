@@ -22,7 +22,8 @@ def build_bot():
     sess = Session(name='London', start=8, end=time(hour=15, minute=30), on_end='close_all')
     sess2 = Session(name='New York', start=13, end=time(hour=20, minute=30))
     sess3 = Session(name='Tokyo', start=23, end=time(hour=6, minute=30))
-    sessions = Sessions(sess, sess2, sess3)
+    allsess = Session(name='All', start=0, end=23, on_end='close_all')
+    sessions = Sessions(sess, sess2, sess3, allsess)
 
     # configurable parameters for the strategy
     params = {'trend_candles_count': 500, 'fast_period': 8}

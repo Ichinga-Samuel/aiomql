@@ -11,6 +11,7 @@ from .core.constants import TimeFrame
 
 logger = getLogger(__name__)
 
+
 class Candle:
     """A class representing bars from the MetaTrader 5 terminal as a customized class analogous to Japanese Candlesticks.
     You can subclass this class for added customization.
@@ -45,6 +46,7 @@ class Candle:
         self.time = kwargs.pop('time', 0)
         self.Index = kwargs.pop('Index', 0)
         self.set_attributes(**kwargs)
+
     def __repr__(self):
         keys = reprlib.repr(', '.join('%s=%s' % (i, j) for i, j in self.__dict__.items()))[1:-1]
         return '%(class)s(%(args)s)' % {'class': self.__class__.__name__, 'args': keys}

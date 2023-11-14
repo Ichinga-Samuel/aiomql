@@ -79,7 +79,7 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        
+
         info = await self.mt5.symbol_info(self.name)
         if info:
             self.set_attributes(**info._asdict())
@@ -96,6 +96,7 @@ class Symbol(SymbolInfo):
             if await self.symbol_select():
                 await self.book_add()
                 await self.info()
+                await self.info_tick()
                 return True
             logger.warning(f'Unable to initialized symbol {self}')
             return False
@@ -137,6 +138,15 @@ class Symbol(SymbolInfo):
         return await self.mt5.market_book_release(self.name)
 
     def check_volume(self, volume) -> tuple[bool, float]:
+        """Check if the volume is within the limits of the symbol. If not, return the nearest limit.
+
+        Args:
+            volume (float): Volume to check
+
+        Returns: tuple[bool, float]: Returns a tuple of a boolean and a float. The boolean indicates if the volume is
+        within the limits of the symbol. The float is the volume to use if the volume is not within the limits of the
+        symbol.
+        """
         check = self.volume_min <= volume <= self.volume_max
         if check:
             return check, volume
@@ -145,24 +155,35 @@ class Symbol(SymbolInfo):
         else:
             return check, self.volume_max
 
-    def round_off_volume(self, volume):
+    def round_off_volume(self, volume) -> float:
+        """Round off the volume to the nearest volume step.
+
+        Args:
+            volume (float): Volume to round off
+
+        Returns:
+            float: Rounded off volume
+        """
         step = ceil(abs(log10(self.volume_step)))
         return round(volume, step)
 
-    async def compute_volume(self, *, amount: float, pips: float, use_limits: bool = False) -> float:
-        """Computes the volume of a trade based on the amount and the number of pips to target.
+    async def compute_volume(self, *args, **kwargs) -> float:
+        """Computes the volume required for a trade usually based on the amount and any other keyword arguments.
         This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
         that implements the computation of volume.
 
-        Args:
-            amount (float): Amount to risk in the trade
-            pips (float): Number of pips to target
-            use_limits (bool): If True, the computed volume is rounded to the nearest step and checked against
+        Keyword Args:
+            use_limits (bool): round up or round down the computed volume to the nearest volume limit i.e volume_min
+                or volume_max
 
         Returns:
             float: Returns the volume of the trade
         """
         return self.volume_min
+
+    async def convert_currency(self, *, amount: float, base: str, quote: str) -> float:
+        """Convert from one currency to the other. Alias for currency_conversion"""
+        return await self.currency_conversion(amount=amount, base=base, quote=quote)
 
     async def currency_conversion(self, *, amount: float, base: str, quote: str) -> float:
         """Convert from one currency to the other.
@@ -173,7 +194,7 @@ class Symbol(SymbolInfo):
             quote: The quote currency of the pair
 
         Returns:
-            float: Amount in terms of the base currency or None if it failed to convert
+            float: Amount in terms of the base currency
 
         Raises:
             ValueError: If conversion is impossible
@@ -189,8 +210,7 @@ class Symbol(SymbolInfo):
             if self.account.has_symbol(pair):
                 tick = await self.info_tick(name=pair)
                 if tick is not None:
-                    amount = amount * tick.bid
-                    return amount
+                    return amount * tick.bid
         except Exception as err:
             logger.warning(f'Currency conversion failed: Unable to convert {amount} in {quote} to {base}')
             raise ValueError(f'Currency Conversion Failed: {err}')
@@ -201,11 +221,11 @@ class Symbol(SymbolInfo):
         """
         Get bars from the MetaTrader 5 terminal starting from the specified date.
 
-        Args:
-            timeframe (TimeFrame): Timeframe the bars are requested for. Set by a value from the TimeFrame enumeration. Required unnamed parameter.
+        Args: timeframe (TimeFrame): Timeframe the bars are requested for. Set by a value from the TimeFrame
+        enumeration. Required unnamed parameter.
 
-            date_from (datetime | int): Date of opening of the first bar from the requested sample. Set by the 'datetime' object or as a number
-                of seconds elapsed since 1970.01.01. Required unnamed parameter.
+            date_from (datetime | int): Date of opening of the first bar from the requested sample. Set by the
+            'datetime' object or as a number of seconds elapsed since 1970.01.01. Required unnamed parameter.
 
             count (int): Number of bars to receive. Required unnamed parameter.
 
@@ -220,7 +240,7 @@ class Symbol(SymbolInfo):
             return Candles(data=rates)
         raise ValueError(f'Could not get rates for {self.name}')
 
-    async def copy_rates_from_pos(self, *,timeframe: TimeFrame, count: int = 500, start_position: int = 0) -> Candles:
+    async def copy_rates_from_pos(self, *, timeframe: TimeFrame, count: int = 500, start_position: int = 0) -> Candles:
         """Get bars from the MetaTrader 5 terminal starting from the specified index.
 
         Args:
@@ -267,7 +287,8 @@ class Symbol(SymbolInfo):
             return Candles(data=rates)
         raise ValueError(f'Could not get rates for {self.name}')
 
-    async def copy_ticks_from(self, *, date_from: datetime | int, count: int = 100, flags: CopyTicks = CopyTicks.ALL) -> Ticks:
+    async def copy_ticks_from(self, *, date_from: datetime | int, count: int = 100,
+                              flags: CopyTicks = CopyTicks.ALL) -> Ticks:
         """
         Get ticks from the MetaTrader 5 terminal starting from the specified date.
 
@@ -289,7 +310,8 @@ class Symbol(SymbolInfo):
             return Ticks(data=ticks)
         raise ValueError(f'Could not get ticks for {self.name}')
 
-    async def copy_ticks_range(self, *, date_from: datetime | int, date_to: datetime | int, flags: CopyTicks = CopyTicks.ALL) -> Ticks:
+    async def copy_ticks_range(self, *, date_from: datetime | int, date_to: datetime | int,
+                               flags: CopyTicks = CopyTicks.ALL) -> Ticks:
         """Get ticks for the specified date range from the MetaTrader 5 terminal.
 
         Args:
@@ -298,7 +320,7 @@ class Symbol(SymbolInfo):
 
             date_to: Date, up to which the bars are requested. Set by the 'datetime' object or as a number of seconds elapsed since 1970.01.01. Bars
                 with the open time <= date_to are returned. Required unnamed parameter.
-                
+
             flags (CopyTicks):
 
         Returns:

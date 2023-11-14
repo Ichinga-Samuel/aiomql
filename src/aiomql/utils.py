@@ -1,4 +1,5 @@
 """Utility functions for aiomql."""
+
 def dict_to_string(data: dict, multi=False) -> str:
     """Convert a dict to a string. Use for logging.
 
