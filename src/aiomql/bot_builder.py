@@ -9,8 +9,8 @@ from .strategy import Strategy as _Strategy
 
 logger = logging.getLogger(__name__)
 
-Strategy = TypeVar('Strategy', bound=_Strategy)
-Symbol = TypeVar('Symbol', bound=_Symbol)
+Strategy = TypeVar("Strategy", bound=_Strategy)
+Symbol = TypeVar("Symbol", bound=_Symbol)
 
 
 class Bot:
@@ -21,6 +21,7 @@ class Bot:
         executor: The default thread executor.
         symbols (list[Symbols]): A set of symbols for the trading session
     """
+
     account: Account = Account()
 
     def __init__(self):
@@ -34,10 +35,10 @@ class Bot:
             SystemExit if sign in was not successful
         """
         init = await self.account.sign_in()
-        logger.info("Login Successful")
         if not init:
-            logger.warning('Unable to sign in to MetaTrder 5 Terminal')
+            logger.warning("Unable to sign in to MetaTrder 5 Terminal")
             raise SystemExit
+        logger.info("Login Successful")
         await self.init_symbols()
         self.executor.remove_workers()
 
@@ -63,13 +64,11 @@ class Bot:
         self.executor.add_coroutine(coro, kwargs)
 
     def execute(self):
-        """Execute the bot.
-        """
+        """Execute the bot."""
         asyncio.run(self.start())
 
     async def start(self):
-        """Starts the bot by calling the initialize method and running the strategies in the executor.
-        """
+        """Initialize the bot and execute it. Similar to calling `execute` method but is a coroutine."""
         await self.initialize()
         await self.executor.execute()
 
@@ -100,7 +99,10 @@ class Bot:
             strategy (Strategy): Strategy class
             params (dict): A dictionary of parameters for the strategy
         """
-        [self.add_strategy(strategy(symbol=symbol, params=params)) for symbol in self.symbols]
+        [
+            self.add_strategy(strategy(symbol=symbol, params=params))
+            for symbol in self.symbols
+        ]
 
     async def init_symbols(self):
         """Initialize the symbols for the current trading session. This method is called internally by the bot."""
@@ -123,5 +125,5 @@ class Bot:
             if init:
                 self.symbols.add(symbol)
                 return symbol
-            logger.warning(f'Unable to initialize symbol {symbol}')
-        logger.warning(f'{symbol} not a available for this market')
+            logger.warning(f"Unable to initialize symbol {symbol}")
+        logger.warning(f"{symbol} not a available for this market")

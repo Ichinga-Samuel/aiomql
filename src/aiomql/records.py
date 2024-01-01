@@ -3,9 +3,11 @@
 import asyncio
 from pathlib import Path
 import csv
+import logging
 
-from .history import History
-from .core import Config
+from .core import Config, MetaTrader
+
+logger = logging.getLogger(__name__)
 
 
 class Records:
@@ -17,6 +19,7 @@ class Records:
             from the config
     """
     config: Config = Config()
+    mt5: MetaTrader = MetaTrader()
 
     def __init__(self, records_dir: Path = ''):
         """Initialize the Records class. The main method of this class is update_records which you should call to update
@@ -43,16 +46,43 @@ class Records:
         Args:
             file: Trade record file
         """
-        fr = open(file, mode='r', newline='')
-        reader = csv.DictReader(fr)
-        rows = [row for row in reader]
-        rows = await self.update_rows(rows)
-        fr.close()
-        fw = open(file, mode='w', newline='')
-        writer = csv.DictWriter(fw, fieldnames=reader.fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-        fw.close()
+        try:
+            fr = open(file, mode='r', newline='')
+            reader = csv.DictReader(fr)
+            rows = [row for row in reader]
+            rows = await self.update_rows(rows)
+            fr.close()
+            fw = open(file, mode='w', newline='')
+            writer = csv.DictWriter(fw, fieldnames=reader.fieldnames, extrasaction='ignore', restval=None)
+            writer.writeheader()
+            writer.writerows(rows)
+            fw.close()
+        except Exception as err:
+            logger.error(f'Error: {err}. Unable to read and update trade records')
+
+    async def update_row(self, row: dict) -> dict:
+        """Update a single row of entered trade in the csv file with the actual profit.
+
+        Args:
+            row: A dictionary from the dictionary writer object of the csv file.
+
+        Returns:
+            dict: A dictionary with the actual profit and win status.
+        """
+        try:
+            order = int(row['order'])
+            deals = await self.mt5.history_deals_get(position=order)
+            if not deals or len(deals) <= 1:
+                return row
+            deals = [deal for deal in deals if (deal.order != deal.position_id and deal.position_id == order
+                                                and deal.entry == 1)]
+            deals.sort(key=lambda x: x.time_msc)
+            deal = deals[-1]
+            row.update(actual_profit=deal.profit, win=deal.profit > 0, closed=True)
+            return row
+        except Exception as err:
+            logging.error(f'Error: {err}. Unable to update trade record')
+            return row
 
     async def update_rows(self, rows: list[dict]) -> list[dict]:
         """Update the rows of entered trades in the csv file with the actual profit.
@@ -63,11 +93,14 @@ class Records:
         Returns:
             list[dict]: A list of dictionaries with the actual profit and win status.
         """
-        tasks = [History(position=int(row['order'])).get_deals() for row in rows]
-        deals = [deal for deals in await asyncio.gather(*tasks) for deal in deals]
-        deals = {str(deal.position_id): deal.profit for deal in deals if deal.order != deal.position_id}
-        [row.update(actual_profit=(profit := deals[order]), win=profit > 0) for row in rows if (order := row['order']) in deals]
-        return rows
+        closed, unclosed = [], []
+        for row in rows:
+            if (row.get('closed', 'FALSE')).title() == 'True':
+                closed.append(row)
+            else:
+                unclosed.append(row)
+        unclosed = await asyncio.gather(*[self.update_row(row) for row in unclosed])
+        return closed + unclosed
 
     async def update_records(self):
         """Update trade records in the records_dir folder."""

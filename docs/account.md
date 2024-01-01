@@ -3,7 +3,8 @@
 ```python
 class Account(AccountInfo)
 ```
-Singleton class for managing a trading account. A subclass of [AccountInfo](#accountinfo). All AccountInfo attributes are available in this class.
+Singleton class for managing a trading account. A subclass of [AccountInfo](#accountinfo). 
+All AccountInfo attributes are available in this class.
 
 ### Attributes:
 |Name|Type|Description|Default|
@@ -38,8 +39,8 @@ This method will only look for config details in the config instance if the logi
 ```python
 async def __aenter__() -> 'Account'
 ```
-Connect to a trading account and return the account instance.
-Async context manager for the Account class.
+Async context manager for the Account class. Connects to a trading account and returns the account instance.
+
 #### Returns:
 |Type|Description|  
 |---|---|
@@ -63,8 +64,8 @@ Connect to a trading account.
 ```python
 def has_symbol(symbol: str | Type[SymbolInfo])
 ```
-Checks to see if a symbol is available for a trading account\
-#### Arguments:
+Checks to see if a symbol is available for a trading account
+#### Parameters:
 |Name|Type|Description|
 |---|---|---|
 |**symbol**|**str** or **SymbolInfo**|A symbol name or SymbolInfo instance|
@@ -82,4 +83,3 @@ Get all financial instruments from the MetaTrader 5 terminal available for the c
 |Type|Description|
 |---|---|
 |**set[SymbolInfo]**|A set of SymbolInfo instances|
-

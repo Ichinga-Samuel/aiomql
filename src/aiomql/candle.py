@@ -26,6 +26,7 @@ class Candle:
         real_volume (float): Trade volume
         spread (float): Spread
         Index (int): Custom attribute representing the position of the candle in a sequence.
+        mid (float): The median of the high and low price.
     """
     time: float
     high: float
@@ -36,6 +37,7 @@ class Candle:
     open: float
     tick_volume: float
     Index: int
+    mid: float
 
     def __init__(self, **kwargs):
         """Create a Candle object from keyword arguments.
@@ -45,23 +47,29 @@ class Candle:
         """
         self.time = kwargs.pop('time', 0)
         self.Index = kwargs.pop('Index', 0)
+        self.mid = kwargs.pop('mid', (kwargs['high'] + kwargs['low']) / 2)
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        keys = reprlib.repr(', '.join('%s=%s' % (i, j) for i, j in self.__dict__.items()))[1:-1]
-        return '%(class)s(%(args)s)' % {'class': self.__class__.__name__, 'args': keys}
+        return ("%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s,"
+                " mid=%(mid)s)") % {"class": self.__class__.__name__, "open": self.open, "high": self.high,
+                                    "low": self.low, "close": self.close, "time": self.time, "mid": self.mid,
+                                    'Index': self.Index}
 
-    def __eq__(self, other: 'Candle'):
+    def __eq__(self, other: "Candle"):
         return self.time == other.time
 
     def __hash__(self):
         return hash(self.time)
 
-    def __lt__(self, other: 'Candle'):
+    def __lt__(self, other: "Candle"):
         return self.time < other.time
 
-    def __gt__(self, other: 'Candle'):
+    def __gt__(self, other: "Candle"):
         return self.time > other.time
+
+    def __getitem__(self, item):
+        return self.__dict__[item]
 
     def set_attributes(self, **kwargs):
         """Set keyword arguments as instance attributes
@@ -71,17 +79,8 @@ class Candle:
         """
         [setattr(self, i, j) for i, j in kwargs.items()]
 
-    @property
-    def mid(self) -> float:
-        """The median of open and close
-
-        Returns:
-            float: The median of open and close
-        """
-        return (self.open + self.close) / 2
-
     def is_bullish(self) -> bool:
-        """ A simple check to see if the candle is bullish.
+        """A simple check to see if the candle is bullish.
 
         Returns:
             bool: True or False
@@ -96,8 +95,9 @@ class Candle:
         """
         return self.open > self.close
 
-_Candle = TypeVar('_Candle', bound=Candle)
-_Candles = TypeVar('_Candles', bound='Candles')
+
+_Candle = TypeVar("_Candle", bound=Candle)
+_Candles = TypeVar("_Candles", bound="Candles")
 
 
 class Candles(Generic[_Candle]):
@@ -132,9 +132,10 @@ class Candles(Generic[_Candle]):
     tick_volume: Series
     real_volume: Series
     spread: Series
+    mid: Series
     Candle: Type[Candle]
     timeframe: TimeFrame
-    
+
     def __init__(self, *, data: DataFrame | _Candles | Iterable, flip=False, candle_class: Type[_Candle] = None):
         """A container class of Candle objects in chronological order.
 
@@ -152,43 +153,52 @@ class Candles(Generic[_Candle]):
         elif isinstance(data, Iterable):
             data = DataFrame(data)
         else:
-            raise ValueError(f'Cannot create DataFrame from object of {type(data)}')
+            raise ValueError(f"Cannot create DataFrame from object of {type(data)}")
 
-        self._data = data.iloc[::-1] if flip else data
+        self._data = data.loc[::-1].reset_index(drop=True) if flip else data
+        if 'mid' not in self._data.columns.values:
+            mid = (self._data['high'] + self._data['low']) / 2
+            self._data.insert(0, 'mid', mid)
         self.Candle = candle_class or Candle
 
     def __repr__(self):
         return self._data.__repr__()
 
     def __len__(self):
-        return self._data.shape[0]
+        return len(self._data.index)
 
     def __contains__(self, item: _Candle):
         return item.time == self[item.Index].time
 
-    def __getitem__(self, index) -> _Candle | _Candles:
+    def __getitem__(self, index) -> _Candle | _Candles | Series:
         if isinstance(index, slice):
             cls = self.__class__
             data = self._data.iloc[index]
             data.reset_index(drop=True, inplace=True)
             return cls(data=data)
 
-        if isinstance(index, str):
+        elif isinstance(index, str):
+            if index == 'Index':
+                return Series(self._data.index)
             return self._data[index]
 
-        item = self._data.iloc[index]
-        return self.Candle(Index=index, **item)
+        elif isinstance(index, int):
+            index = index if index >= 0 else len(self) + index
+            return self.Candle(**self._data.iloc[index])
+        raise TypeError(f"Expected int, slice or str got {type(index)}")
 
     def __setitem__(self, index, value: Series):
         if isinstance(value, Series):
             self._data[index] = value
             return
-        raise TypeError(f'Expected Series got {type(value)}')
+        raise TypeError(f"Expected Series got {type(value)}")
 
     def __getattr__(self, item):
         if item in list(self._data.columns.values):
             return self._data[item]
-        raise AttributeError(f'Attribute {item} not defined on class {self.__class__.__name__}')
+        if item == 'Index':
+            return Series(self._data.index)
+        raise AttributeError(f"Attribute {item} not defined on class {self.__class__.__name__}")
 
     def __iter__(self):
         return (self.Candle(**row._asdict()) for row in self._data.itertuples())
@@ -213,7 +223,7 @@ class Candles(Generic[_Candle]):
 
         Returns:
             ta: The ta library
-            """
+        """
         return ta
 
     @property
@@ -221,7 +231,7 @@ class Candles(Generic[_Candle]):
         """The original data passed to the class as a pandas DataFrame"""
         return self._data
 
-    def rename(self, inplace=True, **kwargs) -> _Candles | None :
+    def rename(self, inplace=True, **kwargs) -> _Candles:
         """Rename columns of the candles class.
 
         Keyword Args:
@@ -229,8 +239,7 @@ class Candles(Generic[_Candle]):
             **kwargs: The new names of the columns
 
         Returns:
-            Candles: A new instance of the class with the renamed columns if inplace is False.
-            None: If inplace is True
+            Candles: A new instance of the class with the renamed columns if inplace is False else the modified instance
         """
         res = self._data.rename(columns=kwargs, inplace=inplace)
-        return res if inplace else self.__class__(data=res)
+        return self if inplace else self.__class__(data=res)

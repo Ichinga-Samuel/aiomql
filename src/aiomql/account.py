@@ -27,9 +27,7 @@ class Account(AccountInfo):
         return cls._instance
 
     async def refresh(self):
-        """
-        Refreshes the account instance with the latest account details from the MetaTrader 5 terminal
-        """
+        """Refreshes the account instance with the latest account details from the MetaTrader 5 terminal"""
         account_info = await self.mt5.account_info()
         acc = account_info._asdict()
         self.set_attributes(**acc)
@@ -83,8 +81,8 @@ class Account(AccountInfo):
         await self.mt5.shutdown()
         return False
 
-    def has_symbol(self, symbol: str | Type[SymbolInfo]):
-        """Checks to see if a symbol is available for a trading account
+    def has_symbol(self, symbol: str | SymbolInfo):
+        """Checks to see if a symbol is available for a trading account.
 
         Args:
             symbol (str | SymbolInfo):
@@ -93,8 +91,7 @@ class Account(AccountInfo):
             bool: True if symbol is present otherwise False
         """
         try:
-            symbol = SymbolInfo(name=str(symbol)) if not isinstance(symbol, SymbolInfo) else symbol
-            return symbol in self.symbols
+            return str(symbol) in {s.name for s in self.symbols}
         except Exception as err:
             logger.warning(f'Error: {err}; {symbol} not available in this market')
             return False

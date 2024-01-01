@@ -137,7 +137,6 @@ class MetaTrader(metaclass=BaseMeta):
         if res is None:
             err = await self.last_error()
             logger.warning(f'Error in obtaining account information.{Error(*err)}')
-
         return res
 
     async def terminal_info(self) -> TerminalInfo | None:
@@ -210,17 +209,14 @@ class MetaTrader(metaclass=BaseMeta):
             err = await self.last_error()
             logger.warning(f'Error in obtaining rates for {symbol}.{Error(*err)}')
             return res
-
         return res
 
     async def copy_rates_from_pos(self, symbol: str, timeframe: TimeFrame, start_pos: int, count: int):
         res = await asyncio.to_thread(self._copy_rates_from_pos, symbol, timeframe, start_pos, count)
-
         if res is None:
             err = await self.last_error()
             logger.warning(f'Error in obtaining rates for {symbol}.{Error(*err)}')
             return res
-
         return res
 
     async def copy_rates_range(self, symbol: str, timeframe: TimeFrame, date_from: datetime | int,
@@ -270,7 +266,7 @@ class MetaTrader(metaclass=BaseMeta):
             ticket (int): Order ticket (ORDER_TICKET). Optional named parameter.
 
         Returns:
-            list[TradeOrder]: A list of active trade orders as TradeOrder objects
+            tuple[TradeOrder]: A list of active trade orders as TradeOrder objects
         """
         kwargs = {key: value for key, value in (('group', group), ('ticket', ticket), ('symbol', symbol)) if value}
         res = await asyncio.to_thread(self._orders_get, **kwargs)

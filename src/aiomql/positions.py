@@ -54,10 +54,8 @@ class Positions:
         Returns:
             list[TradePosition]: A list of open trade positions
         """
-        symbol = symbol or self.symbol
-        group = group or self.group
-        ticket = ticket or self.ticket
-        positions = await self.mt5.positions_get(group=group, symbol=symbol, ticket=ticket)
+        positions = await self.mt5.positions_get(group=group or self.group, symbol=symbol or self.symbol,
+                                                 ticket=ticket or self.ticket)
         if not positions:
             return []
         return [TradePosition(**pos._asdict()) for pos in positions]

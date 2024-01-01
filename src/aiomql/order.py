@@ -79,7 +79,7 @@ class Order(TradeRequest):
         """
         res = await self.mt5.order_send(self.dict)
         if res is None:
-            raise OrderError(f'Failed to send order {self.symbol} {self.type} {self.volume} {self.price} {res}')
+            raise OrderError(f'Failed to send order {self.symbol} {self.type} {self.volume} {self.price}')
         return OrderSendResult(**res._asdict())
 
     async def calc_margin(self) -> float:

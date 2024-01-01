@@ -7,6 +7,8 @@ class RAM:
     risk_to_reward: float
     risk: float
     amount: float
+    points: float
+    pips: float
 
     def __init__(self, *, risk_to_reward: float = 1, risk: float = 0.01, amount: float = 0, **kwargs):
         """Initialize Risk Assessment and Management with the provided keyword arguments.

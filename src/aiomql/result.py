@@ -17,7 +17,6 @@ class Result:
         name: Any desired name for the result file object
     """
     config = Config()
-    data: dict
 
     def __init__(self, result: OrderSendResult, parameters: dict = None, name: str = ''):
         """
@@ -29,30 +28,28 @@ class Result:
         """
         self.parameters = parameters or {}
         self.result = result
-        self.name = name or parameters.get('name', 'Strategy')
+        self.name = name or parameters.get('name', 'Trades')
 
     def get_data(self) -> dict:
-        result = self.result.get_dict(exclude={'retcode', 'retcode_external', 'request_id', 'request'})
-        return self.parameters | result | {'actual_profit': 0, 'closed': False, 'win': False}
+        return (self.parameters | self.result.get_dict(exclude={'retcode', 'comment', 'retcode_external', 'request_id', 'request'})
+                | {'actual_profit': 0, 'closed': False, 'win': False})
 
     def to_csv(self):
         """Record trade results and associated parameters as a csv file
         """
         try:
-            self.data = self.get_data()
+            data = self.get_data()
             file = self.config.records_dir / f"{self.name}.csv"
             exists = file.exists()
             with open(file, 'a', newline='') as fh:
-                writer = csv.DictWriter(fh, fieldnames=sorted(list(self.data.keys())), extrasaction='ignore', restval=None)
+                writer = csv.DictWriter(fh, fieldnames=sorted(list(data.keys())), extrasaction='ignore', restval=None)
                 if not exists:
                     writer.writeheader()
-                writer.writerow(self.data)
+                writer.writerow(data)
         except Exception as err:
             logger.error(f'Error: {err}. Unable to save trade results')
 
     async def save_csv(self):
         """Save trade results and associated parameters as a csv file in a separate thread
         """
-        # exe = self.config.executor
-        loop = asyncio.get_running_loop()
-        loop.run_in_executor(None, self.to_csv)
+        self.to_csv()

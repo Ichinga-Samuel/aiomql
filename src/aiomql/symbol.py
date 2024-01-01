@@ -79,11 +79,12 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-
         info = await self.mt5.symbol_info(self.name)
         if info:
-            self.set_attributes(**info._asdict())
-            return SymbolInfo(**info._asdict())
+            info = info._asdict()
+            info['swap_rollover3days'] = info.get('swap_rollover3days', 0) % 7
+            self.set_attributes(**info)
+            return SymbolInfo(**info)
         raise ValueError(f'Could not get info for {self.name}')
 
     async def init(self) -> bool:
