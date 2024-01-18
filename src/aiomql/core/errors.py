@@ -19,6 +19,7 @@ class Error:
         -10004: 'internal IPC no ipc',
         -10005: 'internal timeout',
     }
+
     def __init__(self, code: int, description: str = ''):
         self.code = code
         self.description = description or self.descriptions.get(code, 'Unknown Error')

@@ -69,5 +69,7 @@ target/
 
 .vscode/
 
-# config file
+# config files
+config.json
 aiomql.json
+config/

@@ -24,8 +24,8 @@ class History:
         mt5 (MetaTrader): MetaTrader instance
         config (Config): Config instance
     """
-    mt5: MetaTrader = MetaTrader()
-    config: Config = Config()
+    mt5: MetaTrader
+    config: Config
 
     def __init__(self, *, date_from: datetime | float = None, date_to: datetime | float = None,
                  group: str = "", ticket: int = 0, position: int = 0):
@@ -41,6 +41,8 @@ class History:
             ticket (int): Filter for selecting history by ticket number
             position (int): Filter for selecting history deals by position
         """
+        self.config = Config()
+        self.mt5 = MetaTrader()
         self.date_from = date_from
         self.date_to = date_to
         self.group = group
@@ -77,11 +79,12 @@ class History:
         """
         deals = await self.mt5.history_deals_get(date_from=self.date_from, date_to=self.date_to, position=self.position,
                                                  group=self.group, ticket=self.ticket)
-        if deals is not None:
-            self.deals = [TradeDeal(**deal._asdict()) for deal in deals] if deals else []
-            self.total_deals = len(self.deals)
-            return self.deals
+        if deals is None:
+            logger.warning(f'Failed to get deals due to {self.mt5.error.description}')
+            deals = []
 
+        self.deals = [TradeDeal(**deal._asdict()) for deal in deals]
+        self.total_deals = len(self.deals)
         return self.deals
 
     async def deals_total(self) -> int:
@@ -103,7 +106,8 @@ class History:
         orders = await self.mt5.history_orders_get(date_from=self.date_from, date_to=self.date_to, group=self.group,
                                                    position=self.position, ticket=self.ticket)
         if orders is None:
-            return self.orders
+            logger.warning(f'Failed to get orders due to {self.mt5.error.description}')
+            orders = []
 
         self.orders = [TradeOrder(**order._asdict()) for order in orders]
         self.total_orders = len(self.orders)

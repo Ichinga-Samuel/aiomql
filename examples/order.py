@@ -7,7 +7,7 @@ async def main():
     async with Account():
 
         # create a symbol
-        sym = ForexSymbol(name="EURUSD")
+        sym = ForexSymbol(name="EURUSD-T")
 
         # Confirm the symbol is available for this account and initialize with default values.
         res = await sym.init()
@@ -15,7 +15,7 @@ async def main():
         # I want to place a market buy order, risk only 2usd, and target 10 pips in this trade.
         # The ForexSymbol object has a compute_volume method that can be used to compute the volume
         # given a target pips and amount.
-        volume = await sym.compute_volume(amount=2, pips=10)
+        volume = await sym.compute_volume(amount=2, points=100)
 
         # a risk to reward ratio of 1:2
         # get the price tick of the symbol

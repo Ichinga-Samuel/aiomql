@@ -26,7 +26,16 @@ class Symbol(SymbolInfo):
         Make sure Symbol is always initialized with a name argument
     """
     tick: Tick
-    account = Account()
+    account: Account
+
+    def __init__(self, **kwargs):
+        """Initialize the Symbol object with the name of the financial instrument.
+
+        Args:
+            name (str): Name of the financial instrument
+        """
+        super().__init__(**kwargs)
+        self.account = Account()
 
     @property
     def pip(self):

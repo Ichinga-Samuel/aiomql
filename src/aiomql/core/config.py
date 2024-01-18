@@ -25,7 +25,7 @@ class Config:
         server (str): Broker server
         path (str): Path to terminal file
         timeout (int): Timeout for terminal connection
-
+        _initialize (bool): First time initialization flag
     Notes:
         By default, the config class looks for a file named aiomql.json.
         You can change this by passing the filename keyword argument to the constructor.
@@ -38,10 +38,11 @@ class Config:
     path: str = ""
     timeout: int = 60000
     record_trades: bool = True
-    filename: str = "aiomql.json"
+    filename: str
     win_percentage: float = 0.85
     records_dir = Path.home() / "Documents" / "Aiomql" / "Trade Records"
-    _load = 1
+    config_dir: str = ''
+    _initialize = True
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
@@ -49,8 +50,10 @@ class Config:
         return cls._instance
 
     def __init__(self, **kwargs):
-        self.load_config(reload=False)
-        [setattr(self, key, value) for key, value in kwargs]
+        self.filename = kwargs.pop('filename', "aiomql.json")
+        self.config_dir = kwargs.pop('config_dir', '')
+        self.load_config(reload=kwargs.pop('reload', False))
+        [setattr(self, key, value) for key, value in kwargs.items()]
 
     @staticmethod
     def walk_to_root(path: str) -> Iterator[str]:
@@ -76,6 +79,7 @@ class Config:
             frame = frame.f_back
         frame_filename = frame.f_code.co_filename
         path = os.path.dirname(os.path.abspath(frame_filename))
+        path = os.path.join(path, self.config_dir) if self.config_dir else path
 
         for dirname in self.walk_to_root(path):
             check_path = os.path.join(dirname, self.filename)
@@ -83,14 +87,14 @@ class Config:
                 return check_path
         return None
 
-    def load_config(self, file: str = None, reload: bool = True):
-        if reload:
-            self._load = 1
-        if self._load != 1:
+    def load_config(self, file: str = None, reload: bool = True, filename: str = None, config_dir: str = ''):
+        """Load configuration settings from a file."""
+        if not (self._initialize or reload):
             return
-
-        self._load = 0
+        self._initialize = False
         data = {}
+        self.filename = filename or self.filename
+        self.config_dir = config_dir or self.config_dir
         if (file := (file or self.find_config())) is None:
             logger.warning("No Config File Found")
         else:
@@ -100,7 +104,7 @@ class Config:
         [setattr(self, key, value) for key, value in data.items()]
         self.records_dir.mkdir(parents=True, exist_ok=True) if self.records_dir else ...
 
-    def account_info(self) -> dict["login", "password", "server"]:
+    def account_info(self) -> dict[str, int | str]:
         """Returns Account login details as found in the config object if available
 
         Returns:

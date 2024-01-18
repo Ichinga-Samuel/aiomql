@@ -18,8 +18,8 @@ class Records:
         records_dir(Path): Path to directory containing record of placed trades, If not given takes the default
             from the config
     """
-    config: Config = Config()
-    mt5: MetaTrader = MetaTrader()
+    config: Config
+    mt5: MetaTrader
 
     def __init__(self, records_dir: Path = ''):
         """Initialize the Records class. The main method of this class is update_records which you should call to update
@@ -28,6 +28,8 @@ class Records:
         Keyword Args:
             records_dir (Path): Path to directory containing record of placed trades.
         """
+        self.config = Config()
+        self.mt5 = MetaTrader()
         self.records_dir = records_dir or self.config.records_dir
 
     async def get_records(self):

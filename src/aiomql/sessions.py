@@ -209,7 +209,7 @@ class Sessions:
         await self.current_session.close() if self.current_session else ...
         current_session = self.find_next(now)
         secs = current_session.until() + 10
-        print(f'sleeping for {secs} seconds until next {current_session} session')
+        logger.info(f'sleeping for {secs} seconds until next {current_session} session')
         await sleep(secs)
         self.current_session = current_session
         await self.current_session.begin()

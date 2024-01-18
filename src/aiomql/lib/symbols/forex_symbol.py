@@ -12,7 +12,7 @@ class ForexSymbol(Symbol):
 
         Args:
             amount (float): Amount to risk. Given in terms of the account currency.
-            points (float): Target pips.
+            points (float): Target points.
             use_limits (bool): If True, the computed volume checked against the maximum and minimum volume.
 
         Returns:

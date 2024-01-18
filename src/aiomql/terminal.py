@@ -4,7 +4,7 @@ from typing import NamedTuple
 from logging import getLogger
 from .core.models import TerminalInfo
 
-logger = getLogger()
+logger = getLogger(__name__)
 
 
 class Terminal(TerminalInfo):

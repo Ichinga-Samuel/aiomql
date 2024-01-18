@@ -51,6 +51,8 @@ class Order(TradeRequest):
             tuple[TradeOrder]: A Tuple of active trade orders as TradeOrder objects
         """
         orders = await self.mt5.orders_get(symbol=self.symbol)
+        if orders is None:
+            raise OrderError(f'Failed to get orders for {self.symbol} due to {self.mt5.error.description}')
         orders = (TradeOrder(**order._asdict()) for order in orders)
         return tuple(orders)
 
@@ -65,7 +67,7 @@ class Order(TradeRequest):
         """
         res = await self.mt5.order_check(self.dict)
         if res is None:
-            raise OrderError(f'Failed to check order {self.symbol} {self.type} {self.volume} {self.price} {res}')
+            raise OrderError(f'Failed to check order due to {self.mt5.error.description}')
         return OrderCheckResult(**res._asdict())
 
     async def send(self) -> OrderSendResult:
@@ -79,7 +81,7 @@ class Order(TradeRequest):
         """
         res = await self.mt5.order_send(self.dict)
         if res is None:
-            raise OrderError(f'Failed to send order {self.symbol} {self.type} {self.volume} {self.price}')
+            raise OrderError(f'Failed to send order {self.symbol} due to {self.mt5.error.description}')
         return OrderSendResult(**res._asdict())
 
     async def calc_margin(self) -> float:
@@ -93,7 +95,7 @@ class Order(TradeRequest):
         """
         res = await self.mt5.order_calc_margin(self.type, self.symbol, self.volume, self.price)
         if res is None:
-            raise OrderError(f'Failed to calculate margin for {self.symbol} {self.type} {self.volume} {self.price} {res}')
+            raise OrderError(f'Failed to calculate margin for {self.symbol} due to {self.mt5.error.description}')
         return res
 
     async def calc_profit(self) -> float:
@@ -107,6 +109,5 @@ class Order(TradeRequest):
         """
         res = await self.mt5.order_calc_profit(self.type, self.symbol, self.volume, self.price, self.tp)
         if res is None:
-            raise OrderError(
-                f'Failed to calculate profit for {self.symbol} {self.type} {self.volume} {self.price} {self.tp}')
+            raise OrderError(f'Failed to calculate profit for {self.symbol} due to {self.mt5.error.description}')
         return res

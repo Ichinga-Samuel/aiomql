@@ -1,46 +1,36 @@
-## <a id="account"></a> Account
 
+- [Account](#Account)
+  - [__aenter__](#Account.__aenter__)
+  - [sign_in](#Account.sign_in)
+  - [refresh](#Account.refresh)
+  - [has_symbol](#Account.has_symbol)
+  - [symbols_get](#Account.symbols_get)
+  - [AccountInfo](#AccountInfo)
+  - [Account](#Account)
+  - [sign_in](#Account.sign_in)
+  - [has_symbol](#Account.has_symbol)
+  - [symbols_get](#Account.symbols_get)
+- 
+
+<a id="Account"></a>
+### Account
 ```python
 class Account(AccountInfo)
 ```
-Singleton class for managing a trading account. A subclass of [AccountInfo](#accountinfo). 
+Singleton class for managing a trading account. A subclass of [AccountInfo](#AccountInfo). 
 All AccountInfo attributes are available in this class.
-
 ### Attributes:
 |Name|Type|Description|Default|
 |---|---|---|---|
 |**connected**|**bool**|Status of connection to MetaTrader 5 Terminal|False|
 |symbols|set[SymbolInfo]|A set of available symbols for the financial market.|set()|
 
-### Notes
-Other Account properties are defined in the AccountInfo class.
-
-### refresh
-```python
-async def refresh()
-```
-Refreshes the account instance with the latest data from the MetaTrader 5 terminal
-
-### account_info
-```python
-@property
-def account_info() -> dict
-```
-Get account login, server and password details. If the login attribute of the account instance returns
-a falsy value, the config instance is used to get the account details.
-#### Returns:
-|Type|Description|
-|---|---|
-|**dict**|A dict of login, server and password details|
-#### Note:
-This method will only look for config details in the config instance if the login attribute of the account Instance returns a falsy value
-
-### __aenter__
+<a id="Account.__aenter__"></a>
+#### __aenter__
 ```python
 async def __aenter__() -> 'Account'
 ```
 Async context manager for the Account class. Connects to a trading account and returns the account instance.
-
 #### Returns:
 |Type|Description|  
 |---|---|
@@ -50,7 +40,8 @@ Async context manager for the Account class. Connects to a trading account and r
 |---|---|
 |**LoginError**|If login fails|
 
-### sign_in
+<a id="Account.sign_in"></a>
+#### sign_in
 ```python
 async def sign_in() -> bool
 ```
@@ -60,7 +51,15 @@ Connect to a trading account.
 |---|---|
 |**bool**|True if login was successful else False|
 
-### has_symbol
+<a id="Account.refresh"></a>
+#### refresh
+```python
+async def refresh()
+```
+Refreshes the account instance with the latest data from the MetaTrader 5 terminal
+
+<a id="Account.has_symbol"></a>
+#### has_symbol
 ```python
 def has_symbol(symbol: str | Type[SymbolInfo])
 ```
@@ -74,7 +73,8 @@ Checks to see if a symbol is available for a trading account
 |---|---|
 |**bool**|True if symbol is available else False|
 
-### symbols_get
+<a id="Account.symbols_get"></a>
+#### symbols_get
 ```python
 async def symbols_get() -> set[SymbolInfo]
 ```

@@ -2,7 +2,6 @@
 
 from typing import Type, TypeVar, Generic, Iterable
 from logging import getLogger
-import reprlib
 
 from pandas import DataFrame, Series
 import pandas_ta as ta

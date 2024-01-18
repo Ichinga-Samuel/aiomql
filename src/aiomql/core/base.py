@@ -16,16 +16,15 @@ class Base:
 
     Keyword Args:
         **kwargs: Object attributes and values as keyword arguments. Only added if they are annotated on the class body.
-
-    Class Attributes:
-        mt5 (MetaTrader): An instance of the MetaTrader class
-        config (Config): An instance of the Config class
-        Meta (Type[Meta]): The Meta class for configuration of the data model class
     """
-    mt5: MetaTrader = MetaTrader()
-    config = Config()
+    mt5: MetaTrader
+    config: Config
 
     def __init__(self, **kwargs):
+        self.config = Config()
+        self.mt5 = MetaTrader()
+        self.exclude = {'mt5', "config", 'exclude', 'include', 'annotations', 'class_vars', 'dict'}
+        self.include = set()
         self.set_attributes(**kwargs)
 
     def __repr__(self):
@@ -114,27 +113,8 @@ class Base:
             dict: A dictionary of instance and class attributes
         """
         try:
+            _filter = self.exclude.difference(self.include)
             return {key: value for key, value in (self.class_vars | self.__dict__).items() if
-                    key not in self.Meta.filter}
+                    key not in _filter}
         except Exception as err:
             logger.warning(err)
-
-    class Meta:
-        """A class for defining class attributes to be excluded or included in the dict property
-
-        Attributes:
-            exclude (set): A set of attributes to be excluded
-            include (set): Specific attributes to be returned. Include supercedes exclude.
-        """
-        exclude = {'mt5', "Config"}
-        include = set()
-
-        @classmethod
-        @property
-        def filter(cls) -> set:
-            """Combine the exclude and include attributes to return a set of attributes to be excluded.
-
-            Returns:
-                set: A set of attributes to be excluded
-            """
-            return cls.exclude.difference(cls.include)

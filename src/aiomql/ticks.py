@@ -1,7 +1,6 @@
 """Module for working with price ticks."""
 
 from typing import TypeVar, Iterable
-import reprlib
 
 from pandas import DataFrame, Series
 import pandas_ta as ta
@@ -31,26 +30,29 @@ class Tick:
     ask: float
     last: float
     volume: float
-    time_msc:float
+    time_msc: float
     flags: float
-    volume_real:float
+    volume_real: float
     Index: int
+
     def __init__(self, **kwargs):
         self.time = kwargs.pop('time', 0)
         self.Index = kwargs.pop('Index', 0)
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        keys = reprlib.repr(', '.join('%s=%s' % (i, j) for i, j in self.__dict__.items()))[1:-1]
-        return '%(class)s(%(args)s)' % {'class': self.__class__.__name__, 'args': keys}
-
+        return ("%(class)s(Index=%(Index)s, time=%(time)s, bid=%(bid)s, ask=%(ask)s, last=%(last)s, volume=%(volume)s,"
+                " mid=%(mid)s)") % {"class": self.__class__.__name__, "time": self.time, "bid": self.bid,
+                                    "ask": self.ask, "last": self.last, "volume": self.volume, 'Index': self.Index}
 
     def set_attributes(self, **kwargs):
         """Set attributes from keyword arguments"""
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+
 _Ticks = TypeVar('_Ticks', bound='Ticks')
+
 
 class Ticks:
     """Container data class for price ticks. Arrange in chronological order.

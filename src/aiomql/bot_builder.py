@@ -4,6 +4,7 @@ import logging
 
 from .executor import Executor
 from .account import Account
+from .core.config import Config
 from .symbol import Symbol as _Symbol
 from .strategy import Strategy as _Strategy
 
@@ -20,11 +21,17 @@ class Bot:
         account (Account): Account Object.
         executor: The default thread executor.
         symbols (list[Symbols]): A set of symbols for the trading session
-    """
+        config (Config): Config instance
 
-    account: Account = Account()
+    """
+    config: Config
+    account: Account
+    symbols: set
+    executor: Executor
 
     def __init__(self):
+        self.config = Config()
+        self.account = Account()
         self.symbols = set()
         self.executor = Executor(bot=self)
 

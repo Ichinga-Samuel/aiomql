@@ -25,7 +25,7 @@ class FingerTrap(Strategy):
     trend_candles_count: int
     trader: Trader
     tracker: Tracker
-    _parameters = {"trend": 3, "fast_period": 8, "slow_period": 34, "entry_time_frame": TimeFrame.M5,
+    parameters = {"trend": 3, "fast_period": 8, "slow_period": 34, "entry_time_frame": TimeFrame.M5,
                    "trend_time_frame": TimeFrame.H1, "entry_period": 8,
                    "trend_candles_count": 48, "entry_candles_count": 50}
 

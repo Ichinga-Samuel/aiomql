@@ -1,27 +1,33 @@
-# aiomql
+# Aiomql - Bot Building Framework and Asynchronous MetaTrader5 Library
 ![GitHub](https://img.shields.io/github/license/ichinga-samuel/aiomql?style=plastic)
 ![GitHub issues](https://img.shields.io/github/issues/ichinga-samuel/aiomql?style=plastic)
 ![PyPI](https://img.shields.io/pypi/v/aiomql)
 
-## Installation
+### Installation
 ```bash
 pip install aiomql
 ```
 
-## Key Features
-- Asynchronous Python Library For MetaTrader 5
+### Key Features
+- Asynchronous Python Library For MetaTrader5
+- Asynchronous Bot Building Framework
 - Build bots for trading in different financial markets using a bot factory
 - Use threadpool executors to run multiple strategies on multiple instruments concurrently
-- Record and keep track of trades and strategies in csv files.
-- Utility classes for using the MetaTrader 5 Library
+- Records and keep track of trades and strategies in csv files.
+- Helper classes for Bot Building. Easy to use and extend.
+- Compatible with pandas-ta.
 - Sample Pre-Built strategies
-- Trade sessions for managing trading sessions
+- Manage Trading periods using Sessions
+- Risk Management
+- Run multiple bots concurrently with different accounts from the same broker or different brokers
 
-## Simple Usage as an asynchronous MetaTrader5 Libray
+### As an asynchronous MetaTrader5 Libray
 ```python
 import asyncio
-# import the class
-from aiomql import MetaTrader, Account, TimeFrame, OrderType
+
+from aiomql import MetaTrader
+
+
 async def main():
     mt5 = MetaTrader()
     await mt5.initialize()
@@ -31,54 +37,63 @@ async def main():
     
 asyncio.run(main())
 ```
-## As a Bot Building FrameWork using a Sample Strategy
+
+### As a Bot Building FrameWork using a Sample Strategy
+***The following code is a sample bot that uses the FingerTrap strategy from the library.\
+It assumes that you have a config file in the same directory as the script.\
+The config file should be named aiomql.json and should contain the login details for your account.\
+It demonstrates the use of sessions and risk management.\
+Sessions allows you to specify the trading period for a strategy. You can also set an action to be performed at the end of a session.\
+Risk Management allows you to manage the risk of a strategy. You can set the risk per trade and the risk to reward ratio.\
+The trader class handles the placing of orders and risk management. It is an attribute of the strategy class.***
+
 ```python
 from datetime import time
 import logging
 
-from aiomql.lib import FingerTrap
-from aiomql import Bot, Account, ForexSymbol, Session, Sessions, RAM
+from aiomql import Bot, ForexSymbol, FingerTrap, Session, Sessions, RAM, SimpleTrader, TimeFrame
 
 logging.basicConfig(level=logging.INFO)
 
 
 def build_bot():
-    # Either initialize an account here with your login details here or set them in the aiomql.json file.
-    # acc = Account(login=1234567, password='*******', server='Broker-Server')
     bot = Bot()
-
-    # Prebuilt strategy from the library.
-    # Disclaimer: These strategy is only for demonstration purposes.
-    # The author of this library is not responsible for any losses incurred from using this strategy.
-
-    # using trade sessions is optional. the strategy will run with a default session of 24 hours if not specified.
-    # session start and end times are in UTC. Make sure to convert to UTC if you are in a different timezone.
-    # sessions can be used to close positions at the end of a trading session.
-    sess = Session(name='London', start=8, end=time(hour=15, minute=30), on_end='close_all')
-    sess2 = Session(name='New York', start=13, end=time(hour=20, minute=30))
-    sess3 = Session(name='Tokyo', start=23, end=time(hour=6, minute=30))
-    sessions = Sessions(sess, sess2, sess3)
     
-    # configurable parameters for the strategy
-    params = {'trend_candles_count': 500, 'fast_period': 8}
+    # create sessions for the strategies
+    london = Session(name='London', start=8, end=time(hour=15, minute=30), on_end='close_all')
+    new_york = Session(name='New York', start=13, end=time(hour=20, minute=30))
+    tokyo = Session(name='Tokyo', start=23, end=time(hour=6, minute=30))
     
-    st1 = FingerTrap(symbol=ForexSymbol(name='GBPUSD'), params=params, sessions=sessions)
-    st3 = FingerTrap(symbol=ForexSymbol(name='AUDUSD'), params=params, sessions=sessions)
-    st4 = FingerTrap(symbol=ForexSymbol(name='USDCAD'), params=params, sessions=sessions)
-    st5 = FingerTrap(symbol=ForexSymbol(name='USDJPY'), params=params, sessions=sessions)
-    st6 = FingerTrap(symbol=ForexSymbol(name='EURGBP'), params=params, sessions=sessions)
+    # configure the parameters and the trader for a strategy
+    params = {'trend_candles_count': 500, 'fast_period': 8, 'slow_period': 34, 'entry_timeframe': TimeFrame.M5}
+    gbpusd = ForexSymbol(name='GBPUSD')
+    st1 = FingerTrap(symbol=gbpusd, params=params, trader=SimpleTrader(symbol=gbpusd, ram=RAM(risk=0.05, risk_to_reward=2)),
+                     sessions=Sessions(london, new_york))
     
-    # Risk Management
-    ram = RAM(risk=0.05, risk_to_reward=2)
-    # change the risk management of a strategy. This is done on the trader attribute of the strategy.
-    st5.trader.ram = ram 
+    # use the default for the other strategies
+    st2 = FingerTrap(symbol=ForexSymbol(name='AUDUSD'), sessions=Sessions(tokyo, new_york))
+    st3 = FingerTrap(symbol=ForexSymbol(name='USDCAD'), sessions=Sessions(new_york))
+    st4 = FingerTrap(symbol=ForexSymbol(name='USDJPY'), sessions=Sessions(tokyo))
+    st5 = FingerTrap(symbol=ForexSymbol(name='EURGBP'), sessions=Sessions(london))
+    
+    # sessions are not required
+    st6 = FingerTrap(symbol=ForexSymbol(name='EURUSD'))
     
     # add strategies to the bot
-    bot.add_strategies([st1, st3, st4, st5, st6])
+    bot.add_strategies([st1, st2, st3, st4, st5, st6])
     bot.execute()
 
-
+# run the bot
 build_bot()
 ```
 ## API Documentation
 see [API Documentation](https://github.com/Ichinga-Samuel/aiomql/tree/master/docs) for more details
+
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+## Support
+Feeling generous, like the package or want to see it become more a mature package?
+
+Consider supporting the project by buying me a coffee.\
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ichingasamuel)

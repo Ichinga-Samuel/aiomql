@@ -1,4 +1,3 @@
-import asyncio
 import csv
 from logging import getLogger
 
@@ -16,7 +15,7 @@ class Result:
         config (Config): The configuration object
         name: Any desired name for the result file object
     """
-    config = Config()
+    config: Config
 
     def __init__(self, result: OrderSendResult, parameters: dict = None, name: str = ''):
         """
@@ -26,6 +25,7 @@ class Result:
             parameters:
             name:
         """
+        self.config = Config()
         self.parameters = parameters or {}
         self.result = result
         self.name = name or parameters.get('name', 'Trades')

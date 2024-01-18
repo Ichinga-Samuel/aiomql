@@ -1,6 +1,6 @@
 * [MetaTrader](#MetaTrader)
-  * [\_\_aenter\_\_](#__aenter__)
-  * [\_\_aexit\_\_](#aexit)
+  * [\_\_aenter\_\_](#MetaTrader.__aenter__)
+  * [\_\_aexit\_\_](#MetaTrader.__aexit__)
   * [login](#MetaTrader.login)
   * [initialize](#MetaTrader.initialize)
   * [shutdown](#MetaTrader.shutdown)
@@ -35,14 +35,25 @@
   * [history\_deals\_get](#MetaTrader.history_deals_get)
   
   
-## <a id="MetaTrader"></a> MetaTrader
+<a id="MetaTrader"></a>
+### MetaTrader
 ```python
 class MetaTrader(metaclass=BaseMeta)
 ```
 The MetaTrader class is a wrapper around the MetaTrader terminal.
 It provides methods for connecting to the MetaTrader terminal and retrieving data from it.
+#### Attributes:
+|Name|Type|Description|Default|
+|---|---|---|---|
+|error|Error|The last error encountered by the MetaTrader terminal.|Error(0, '')|
 
-### <a id="MetaTrader.__aenter__"></a> \_\_aenter\_\_ 
+#### Notes:
+All the attributes, enums and constants of the MetaTrader5 class are also available here. Although, they are more easily
+accessible and used via the various enums and models defined in the module.
+
+
+<a id="MetaTrader.__aenter__"></a> 
+#### \_\_aenter\_\_ 
 ```python
 async def __aenter__() -> 'MetaTrader'
 ```
@@ -54,13 +65,15 @@ Initializes the connection to the MetaTrader terminal.
 |---|---|
 |**MetaTrader**|An instance of the MetaTrader class|
 
-#### <a id="MetaTrader.__aexit__"></a> \_\_aexit\_\_
+<a id="MetaTrader.__aexit__"></a> 
+#### \_\_aexit\_\_
 ```python
 async def __aexit__(exc_type, exc_val, exc_tb)
 ```
 Async context manager exit point. Closes the connection to the MetaTrader terminal.
 
-#### <a id="MetaTrader.login"></a> login
+<a id="MetaTrader.login"></a>
+#### login
 ```python
 async def login(login: int,
                 password: str,
@@ -80,7 +93,8 @@ Connects to the MetaTrader terminal using the specified login, password and serv
 |---|---|
 |**bool**|True if successful, False otherwise.|
 
-#### <a id="MetaTrader.initialize"></a> initialize
+<a id="MetaTrader.initialize"></a>
+#### initialize
 ```python
 async def initialize(path: str = "",
                      login: int = 0,
@@ -104,13 +118,15 @@ Initializes the connection to the MetaTrader terminal. All parameters are option
 |---|---|
 |**bool**|True if successful, False otherwise.|
 
-#### <a id="MetaTrader.shutdown"></a> shutdown
+<a id="MetaTrader.shutdown"></a>
+#### shutdown
 ```python
 async def shutdown() -> None
 ```
 Closes the connection to the MetaTrader terminal.
 
-#### <a id="MetaTrader.version"></a> version
+<a id="MetaTrader.version"></a>
+#### version
 ```python
 async def version() -> tuple[int, int, str] | None
 ```

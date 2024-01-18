@@ -28,7 +28,7 @@ class Trader(ABC):
     Class Attributes:
         config (Config): Config instance.
     """
-    config = Config()
+    config: Config
 
     def __init__(self, *, symbol: Symbol, ram: RAM = None):
         """Initializes the order object and RAM instance
@@ -37,6 +37,7 @@ class Trader(ABC):
             symbol (Symbol): Financial instrument
             ram (RAM): Risk Assessment and Management instance
         """
+        self.config = Config()
         self.symbol = symbol
         self.order = Order(symbol=symbol.name)
         self.ram = ram or RAM()
@@ -92,39 +93,41 @@ class Trader(ABC):
         """
         check = await self.order.check()
         if check.retcode != 0:
-            logger.warning(f"Symbol: {self.order.symbol}\nResult:\n"
-                           f"{dict_to_string(check.get_dict(include={'comment', 'retcode'}), multi=True)}")
+            logger.warning(f"""Unable to place order for {self.symbol}\n
+            {dict_to_string(check.get_dict(include={'comment', 'retcode'}) | check.request._asdict(), multi=True)}""")
             return False
         return True
 
     async def send_order(self):
         """Send the order to the broker."""
-        parameters = self.parameters.copy()
         result = await self.order.send()
         if result.retcode != 10009:
-            logger.warning(f"Symbol: {self.order.symbol}\nResult:\n"
-                           f"{dict_to_string(result.get_dict(include={'comment', 'retcode'}), multi=True)}")
+            logger.warning(f"""Unable to place order for {self.symbol}\n
+                           {dict_to_string(result.get_dict(include={'comment', 'retcode'}) | result.request._asdict(), 
+                                           multi=True)}\n""")
             return
-        logger.info(f"Symbol: {self.order.symbol}\nOrder: {dict_to_string(result.dict, multi=True)}\n")
-        await self.record_trade(result, parameters)
+        logger.info(f"""Placed Trade for {self.symbol}\n{dict_to_string(
+            result.get_dict(exclude={'request', 'retcode_external', 'retcode', 'request_id'}), multi=True)}\n""")
+        await self.record_trade(result, parameters=self.parameters.copy())
 
-    async def record_trade(self, result: OrderSendResult, parameters: dict):
+    async def record_trade(self, result: OrderSendResult, parameters: dict = None, name: str = ''):
         """Record the trade in a csv file.
 
         Args:
             result (OrderSendResult): Result of the order send
             parameters: parameters of the trading strategy used to place the trade
+            name: Name of the trading strategy
         """
         if result.retcode != 10009 or not self.config.record_trades:
             return
-        params = parameters
+        params = parameters or self.parameters.copy()
         profit = await self.order.calc_profit()
         params["expected_profit"] = profit
         date = datetime.utcnow()
         date = date.replace(tzinfo=ZoneInfo("UTC"))
-        params["date"] = date
-        params["time"] = date.timestamp()
-        res = Result(result=result, parameters=params)
+        params["date"] = str(date.date())
+        params["time"] = str(date.time())
+        res = Result(result=result, parameters=params, name=name)
         await res.save_csv()
 
     @abstractmethod

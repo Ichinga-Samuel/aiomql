@@ -18,7 +18,7 @@ class Positions:
         ticket (int): Position ticket.
         mt5 (MetaTrader): MetaTrader instance.
     """
-    mt5: MetaTrader = MetaTrader()
+    mt5: MetaTrader
 
     def __init__(self, *, symbol: str = "", group: str = "", ticket: int = 0):
         """Get Open Positions.
@@ -30,6 +30,7 @@ class Positions:
             ticket (int): Position ticket
 
         """
+        self.mt5 = MetaTrader()
         self.symbol = symbol
         self.group = group
         self.ticket = ticket
@@ -42,7 +43,7 @@ class Positions:
         """
         return await self.mt5.positions_total()
 
-    async def positions_get(self, symbol: str = '', group: str = '', ticket: int = 0):
+    async def positions_get(self, symbol: str = '', group: str = '', ticket: int = 0) -> list[TradePosition]:
         """Get open positions with the ability to filter by symbol or ticket.
 
         Keyword Args:
@@ -56,8 +57,9 @@ class Positions:
         """
         positions = await self.mt5.positions_get(group=group or self.group, symbol=symbol or self.symbol,
                                                  ticket=ticket or self.ticket)
-        if not positions:
-            return []
+        if positions is None:
+            logger.warning(f'Failed to get positions for {symbol or self.symbol} due to {self.mt5.error.description}')
+            positions = []
         return [TradePosition(**pos._asdict()) for pos in positions]
 
     async def close(self, *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType):
@@ -84,5 +86,4 @@ class Positions:
                              symbol=pos.symbol) for pos in positions]
 
         results = await asyncio.gather(*[order for order in orders], return_exceptions=True)
-        amount_closed = len([res for res in results if res.retcode == 10009])
-        return amount_closed
+        return len([res for res in results if res.retcode == 10009])

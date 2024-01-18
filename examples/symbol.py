@@ -1,10 +1,12 @@
 import asyncio
 from datetime import datetime
-from aiomql import ForexSymbol, Symbol, TimeFrame, Account
+from aiomql import ForexSymbol, TimeFrame, Account, Config
 
+
+config = Config()
 async def main():
     async with Account():
-        sym = ForexSymbol(name="EURUSD")
+        sym = ForexSymbol(name="EURUSD-T")
         res = await sym.init()
         if not res:
             print('Symbol not available')

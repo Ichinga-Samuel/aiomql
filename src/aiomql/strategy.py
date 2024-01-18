@@ -7,7 +7,6 @@ from datetime import time as dtime
 
 from .core.meta_trader import MetaTrader
 from .symbol import Symbol as _Symbol
-from .account import Account
 from .core import Config
 from .sessions import Sessions, Session
 
@@ -23,21 +22,15 @@ class Strategy(ABC):
         parameters (Dict): A dictionary of parameters for the strategy.
         sessions (Sessions): The sessions to use for the strategy.
 
-    Class Attributes:
-        account (Account): Account instance.
-        mt5 (MetaTrader): MetaTrader instance.
-        config (Config): Config instance.
-
     Notes:
         Define the name of a strategy as a class attribute. If not provided, the class name will be used as the name.
     """
     name: str
     symbol: Symbol
     sessions: Sessions
-    account = Account()
-    mt5: MetaTrader()
-    config = Config()
-    _parameters = {}
+    mt5: MetaTrader
+    config: Config
+    parameters = {}
 
     def __init__(self, *, symbol: Symbol, params: dict = None, sessions: Sessions = None, name=''):
         """Initiate the parameters dict and add name and symbol fields.
@@ -47,12 +40,14 @@ class Strategy(ABC):
             symbol (Symbol): The Financial instrument
             params (Dict): Trading strategy parameters
         """
-        self.parameters = self._parameters | (params or {})
+        self.parameters = self.parameters | (params or {})
         self.symbol = symbol
         self.name = name or self.__class__.__name__
         self.parameters["symbol"] = symbol.name
         self.parameters["name"] = self.name
         self.sessions = sessions or Sessions(Session(start=0, end=dtime(hour=23, minute=59, second=59)))
+        self.config = Config()
+        self.mt5 = MetaTrader()
 
     def __repr__(self):
         return f"{self.name}({self.symbol!r})"

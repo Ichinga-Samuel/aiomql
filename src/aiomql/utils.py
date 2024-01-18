@@ -1,5 +1,6 @@
 """Utility functions for aiomql."""
 
+
 def dict_to_string(data: dict, multi=False) -> str:
     """Convert a dict to a string. Use for logging.
 
@@ -11,4 +12,4 @@ def dict_to_string(data: dict, multi=False) -> str:
         str: The string representation of the dict.
     """
     sep = '\n' if multi else ', '
-    return f"{sep}".join(f"{key}: {value}\n" for key, value in data.items())
+    return f"{sep}".join(f"{key}: {value}" for key, value in data.items())

@@ -3,12 +3,14 @@ from .account import Account
 
 
 class RAM:
-    account: Account = Account()
+    account: Account
     risk_to_reward: float
     risk: float
     amount: float
     points: float
     pips: float
+    min_amount: float
+    max_amount: float
 
     def __init__(self, *, risk_to_reward: float = 1, risk: float = 0.01, amount: float = 0, **kwargs):
         """Initialize Risk Assessment and Management with the provided keyword arguments.
@@ -22,17 +24,14 @@ class RAM:
         self.risk_to_reward = risk_to_reward
         self.risk = risk
         self.amount = amount
+        self.account = Account()
         [setattr(self, key, value) for key, value in kwargs.items()]
 
-    async def get_amount(self, risk: float = 0) -> float:
+    async def get_amount(self) -> float:
         """Calculate the amount to risk per trade as a percentage of equity.
-
-        Keyword Args:
-            risk (float): Percentage of account balance to risk per trade. Defaults to zero.
 
         Returns:
             float: Amount to risk per trade
         """
         await self.account.refresh()
-        risk = risk or self.risk
-        return self.account.equity * risk
+        return self.account.equity * self.risk

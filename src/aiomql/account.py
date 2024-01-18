@@ -1,5 +1,4 @@
 from logging import getLogger
-from typing import Type
 
 from .core.models import AccountInfo, SymbolInfo
 from .core.exceptions import LoginError
@@ -18,6 +17,7 @@ class Account(AccountInfo):
     Notes:
         Other Account properties are defined in the AccountInfo class.
     """
+    _instance: 'Account'
     connected: bool
     symbols = set()
     
@@ -26,26 +26,17 @@ class Account(AccountInfo):
             cls._instance = super().__new__(cls)
         return cls._instance
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if not self.login:
+            acc = self.config.account_info()
+            self.set_attributes(**acc)
+
     async def refresh(self):
         """Refreshes the account instance with the latest account details from the MetaTrader 5 terminal"""
         account_info = await self.mt5.account_info()
         acc = account_info._asdict()
         self.set_attributes(**acc)
-
-    @property
-    def account_info(self) -> dict:
-        """Get account login, server and password details. If the login attribute of the account instance returns
-         a falsy value, the config instance is used to get the account details.
-
-        Returns:
-            dict: A dict of login, server and password details
-
-        Note:
-            This method will only look for config details in the config instance if the login attribute of the
-            account Instance returns a falsy value
-        """
-        acc_info = self.get_dict(include={'login', 'server', 'password'})
-        return acc_info if acc_info['login'] else self.config.account_info()
 
     async def __aenter__(self) -> 'Account':
         """Connect to a trading account and return the account instance.
@@ -72,8 +63,9 @@ class Account(AccountInfo):
         Returns:
             bool: True if login was successful else False
         """
-        await self.mt5.initialize(**self.account_info)
-        self.connected = await self.mt5.login(**self.account_info)
+        acc = self.get_dict(include={'login', 'server', 'password'})
+        await self.mt5.initialize(**acc, path=self.config.path)
+        self.connected = await self.mt5.login(**acc)
         if self.connected:
             await self.refresh()
             self.symbols = await self.symbols_get()
