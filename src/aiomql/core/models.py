@@ -24,7 +24,7 @@ class AccountInfo(Base):
         leverage: float
         profit: float
         point: float
-        amount: float = 0
+        amount: float
         equity: float
         credit: float
         margin: float

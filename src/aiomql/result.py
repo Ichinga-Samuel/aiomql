@@ -1,5 +1,7 @@
+import asyncio
 import csv
 from logging import getLogger
+from threading import RLock
 
 from .core import Config
 from .core.models import OrderSendResult
@@ -34,22 +36,18 @@ class Result:
         return (self.parameters | self.result.get_dict(exclude={'retcode', 'comment', 'retcode_external', 'request_id', 'request'})
                 | {'actual_profit': 0, 'closed': False, 'win': False})
 
-    def to_csv(self):
+    async def to_csv(self):
         """Record trade results and associated parameters as a csv file
         """
         try:
             data = self.get_data()
             file = self.config.records_dir / f"{self.name}.csv"
             exists = file.exists()
-            with open(file, 'a', newline='') as fh:
-                writer = csv.DictWriter(fh, fieldnames=sorted(list(data.keys())), extrasaction='ignore', restval=None)
-                if not exists:
-                    writer.writeheader()
-                writer.writerow(data)
+            with RLock():
+                with open(file, 'a', newline='') as fh:
+                    writer = csv.DictWriter(fh, fieldnames=sorted(list(data.keys())), extrasaction='ignore', restval=None)
+                    if not exists:
+                        writer.writeheader()
+                    writer.writerow(data)
         except Exception as err:
             logger.error(f'Error: {err}. Unable to save trade results')
-
-    async def save_csv(self):
-        """Save trade results and associated parameters as a csv file in a separate thread
-        """
-        self.to_csv()

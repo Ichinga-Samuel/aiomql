@@ -20,7 +20,7 @@ class Executor:
         self.workers: list[type(Strategy)] = []
         self.coroutines: dict[Coroutine | Callable: dict] = {}
         self.functions: dict[Callable: dict] = {}
-        self.bot = bot
+        self.bot: 'Bot' = bot
 
     def add_function(self, func: Callable, kwargs: dict):
         self.functions[func] = kwargs | {'bot': self.bot}

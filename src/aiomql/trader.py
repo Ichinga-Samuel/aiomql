@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from .order import Order
 from .symbol import Symbol as _Symbol
+from .ticks import Tick
 from .ram import RAM
 from .core.models import OrderType, OrderSendResult
 from .core.config import Config
@@ -43,19 +44,15 @@ class Trader(ABC):
         self.ram = ram or RAM()
         self.parameters = {}
 
-    @abstractmethod
-    async def create_order(self, *args, **kwargs):
-        """Complete the order object with the required values. Creates a simple order."""
-
-    async def set_order_limits(self, *, pips: float):
+    def set_order_limits(self, *, pips: float, tick: Tick):
         """Sets the stop loss and take profit for the order. This method uses pips as defined for forex instruments.
 
         Args:
             pips: Target pips
+            tick: Tick object
         """
         pips = pips * self.symbol.pip
         sl, tp = pips, pips * self.ram.risk_to_reward
-        tick = await self.symbol.info_tick()
         if self.order.type == OrderType.BUY:
             self.order.sl, self.order.tp = round(tick.ask - sl, self.symbol.digits), round(tick.ask + tp,
                                                                                            self.symbol.digits)
@@ -67,15 +64,15 @@ class Trader(ABC):
         else:
             raise ValueError(f"Invalid order type: {self.order.type}")
 
-    async def set_trade_stop_levels(self, *, points):
-        """Set the stop loss and take profit levels of the order based on the points.
+    def set_trade_stop_levels(self, *, points: float, tick: Tick):
+        """Set the stop loss and take profit levels of the order based on the points and price tick.
 
         Args:
             points: Target points
+            tick: Tick object
         """
         points = points * self.symbol.point
         sl, tp = points, points * self.ram.risk_to_reward
-        tick = await self.symbol.info_tick()
         if self.order.type == OrderType.BUY:
             self.order.sl, self.order.tp = round(tick.ask - sl, self.symbol.digits), round(tick.ask + tp,
                                                                                            self.symbol.digits)
@@ -93,22 +90,22 @@ class Trader(ABC):
         """
         check = await self.order.check()
         if check.retcode != 0:
-            logger.warning(f"""Unable to place order for {self.symbol}\n
-            {dict_to_string(check.get_dict(include={'comment', 'retcode'}) | check.request._asdict(), multi=True)}""")
+            logger.warning(f"""Invalid order for {self.symbol}
+            \r\r{dict_to_string(check.request._asdict() | check.get_dict(include={'comment', 'retcode'}))}""")
             return False
         return True
 
-    async def send_order(self):
+    async def send_order(self) -> OrderSendResult:
         """Send the order to the broker."""
         result = await self.order.send()
         if result.retcode != 10009:
-            logger.warning(f"""Unable to place order for {self.symbol}\n
-                           {dict_to_string(result.get_dict(include={'comment', 'retcode'}) | result.request._asdict(), 
-                                           multi=True)}\n""")
-            return
-        logger.info(f"""Placed Trade for {self.symbol}\n{dict_to_string(
-            result.get_dict(exclude={'request', 'retcode_external', 'retcode', 'request_id'}), multi=True)}\n""")
+            logger.warning(f"""Unable to place order for {self.symbol}
+            \r\r{dict_to_string(result.request._asdict() | result.get_dict(include={'comment', 'retcode'}))}\n""")
+            return result
+        logger.info(f"""Placed Trade for {self.symbol}
+        \r\r{dict_to_string(result.get_dict(exclude={'request', 'retcode_external', 'retcode', 'request_id'}), multi=True)}\n""")
         await self.record_trade(result, parameters=self.parameters.copy())
+        return result
 
     async def record_trade(self, result: OrderSendResult, parameters: dict = None, name: str = ''):
         """Record the trade in a csv file.
@@ -128,7 +125,7 @@ class Trader(ABC):
         params["date"] = str(date.date())
         params["time"] = str(date.time())
         res = Result(result=result, parameters=params, name=name)
-        await res.save_csv()
+        self.config.task_queue.add_task(res.to_csv)
 
     @abstractmethod
     async def place_trade(self, *args, **kwargs):

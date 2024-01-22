@@ -2,6 +2,7 @@
 from datetime import datetime
 from logging import getLogger
 from math import log10, ceil
+import decimal
 
 from .core.constants import TimeFrame, CopyTicks
 from .core.models import SymbolInfo, BookInfo
@@ -9,6 +10,8 @@ from .ticks import Tick
 from .account import Account
 from .candle import Candles
 from .ticks import Ticks
+from .utils import round_off
+
 
 logger = getLogger(__name__)
 
@@ -165,17 +168,22 @@ class Symbol(SymbolInfo):
         else:
             return check, self.volume_max
 
-    def round_off_volume(self, volume) -> float:
+    def round_off_volume(self, volume: float, round_down: bool = True) -> float:
         """Round off the volume to the nearest volume step.
 
         Args:
             volume (float): Volume to round off
+            down (bool): If True, round down. If False, round up. Optional unnamed parameter. Defaults to True.
 
         Returns:
             float: Rounded off volume
         """
-        step = ceil(abs(log10(self.volume_step)))
-        return round(volume, step)
+        return round_off(value=volume, step=self.volume_step, round_down=round_down)
+
+    async def check_amount(self, amount: float) -> float:
+        if self.currency_profit != self.account.currency:
+            amount = await self.convert_currency(amount=amount, base=self.currency_profit, quote=self.account.currency)
+        return amount
 
     async def compute_volume(self, *args, **kwargs) -> float:
         """Computes the volume required for a trade usually based on the amount and any other keyword arguments.

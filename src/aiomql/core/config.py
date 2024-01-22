@@ -1,19 +1,16 @@
 import os
 from pathlib import Path
-from sys import _getframe
 from typing import Iterator
 import json
 from logging import getLogger
+
+from .task_queue import TaskQueue
 
 logger = getLogger(__name__)
 
 
 class Config:
     """A class for handling configuration settings for the aiomql package.
-
-    Keyword Args:
-        **kwargs: Configuration settings as keyword arguments.
-        Variables set this way supersede those set in the config file.
 
     Attributes:
         record_trades (bool): Whether to keep record of trades or not.
@@ -26,9 +23,12 @@ class Config:
         path (str): Path to terminal file
         timeout (int): Timeout for terminal connection
         _initialize (bool): First time initialization flag
+        state (dict): A global state dictionary for storing data across the framework
+        root_dir (str): The root directory of the project
     Notes:
         By default, the config class looks for a file named aiomql.json.
-        You can change this by passing the filename keyword argument to the constructor.
+        You can change this by passing the filename and/or the config_dir keyword argument(s) to the constructor
+        or the load_config method.
         By passing reload=True to the load_config method, you can reload and search again for the config file.
     """
 
@@ -38,11 +38,16 @@ class Config:
     path: str = ""
     timeout: int = 60000
     record_trades: bool = True
-    filename: str
+    filename: str = "aiomql.json"
     win_percentage: float = 0.85
     records_dir = Path.home() / "Documents" / "Aiomql" / "Trade Records"
     config_dir: str = ''
     _initialize = True
+    state: dict = {}
+    root_dir: Path = Path('.').absolute().resolve()
+    task_queue: TaskQueue = TaskQueue()
+
+    _instance: 'Config'
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
@@ -50,13 +55,17 @@ class Config:
         return cls._instance
 
     def __init__(self, **kwargs):
-        self.filename = kwargs.pop('filename', "aiomql.json")
-        self.config_dir = kwargs.pop('config_dir', '')
-        self.load_config(reload=kwargs.pop('reload', False))
+        reload = kwargs.pop('reload', False)
         [setattr(self, key, value) for key, value in kwargs.items()]
+        self.load_config(reload=reload)
+
+    def __setattr__(self, key, value):
+        if key == 'root_dir':
+            value = Path(value).absolute().resolve()
+        super().__setattr__(key, value)
 
     @staticmethod
-    def walk_to_root(path: str) -> Iterator[str]:
+    def walk_to_root(path: str | Path) -> Iterator[str]:
         if not os.path.exists(path):
             raise IOError("Starting path not found")
 
@@ -71,21 +80,15 @@ class Config:
             last_dir, current_dir = current_dir, parent_dir
 
     def find_config(self):
-        current_file = __file__
-        frame = _getframe()
-        while frame.f_code.co_filename == current_file:
-            if frame.f_back is None:
-                return None
-            frame = frame.f_back
-        frame_filename = frame.f_code.co_filename
-        path = os.path.dirname(os.path.abspath(frame_filename))
-        path = os.path.join(path, self.config_dir) if self.config_dir else path
-
-        for dirname in self.walk_to_root(path):
-            check_path = os.path.join(dirname, self.filename)
-            if os.path.isfile(check_path):
-                return check_path
-        return None
+        try:
+            path = self.root_dir / self.config_dir
+            for dirname in self.walk_to_root(path):
+                check_path = os.path.join(dirname, self.filename)
+                if os.path.isfile(check_path):
+                    return check_path
+            return None
+        except Exception as _:
+            return
 
     def load_config(self, file: str = None, reload: bool = True, filename: str = None, config_dir: str = ''):
         """Load configuration settings from a file."""

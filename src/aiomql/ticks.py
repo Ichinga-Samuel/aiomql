@@ -120,7 +120,7 @@ class Ticks:
             return self._data[index]
 
         item = self._data.iloc[index]
-        return Tick(Index=index, **item)
+        return Tick(**item, Index=index)
 
     def __setitem__(self, index, value: Series):
         if isinstance(value, Series):

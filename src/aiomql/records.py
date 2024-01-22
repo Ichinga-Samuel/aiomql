@@ -102,7 +102,7 @@ class Records:
             else:
                 unclosed.append(row)
         unclosed = await asyncio.gather(*[self.update_row(row) for row in unclosed])
-        return closed + unclosed
+        return closed + list(unclosed)
 
     async def update_records(self):
         """Update trade records in the records_dir folder."""

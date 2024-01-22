@@ -1,7 +1,7 @@
 """Order Class"""
 from logging import getLogger
 
-from .core.models import TradeRequest, OrderSendResult, OrderCheckResult, TradeOrder
+from .core.models import TradeRequest, OrderSendResult, OrderCheckResult, TradeOrder, SymbolInfo
 from .core.constants import TradeAction, OrderTime, OrderFilling
 from .core.exceptions import SymbolError, OrderError
 from .symbol import Symbol
@@ -23,14 +23,9 @@ class Order(TradeRequest):
             action (TradeAction.DEAL): Trade action
             type_time (OrderTime.DAY): Order time
             type_filling (OrderFilling.FOK): Order filling
-
-        Raises:
-            SymbolError: If symbol is not provided
         """
-        if 'symbol' not in kwargs:
-            raise SymbolError('symbol is required')
-        sym = kwargs.pop('symbol')
-        self.symbol = sym.name if isinstance(sym, Symbol) else sym
+        if 'symbol' in kwargs:
+            kwargs['symbol'] = str(kwargs['symbol'])
         self.action = kwargs.pop('action', TradeAction.DEAL)
         self.type_time = kwargs.pop('type_time', OrderTime.DAY)
         self.type_filling = kwargs.pop('type_filling', OrderFilling.FOK)

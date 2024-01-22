@@ -3,26 +3,22 @@ from logging import getLogger
 from ..symbols import ForexSymbol
 from ...ram import RAM
 from ...core.models import OrderType
-from ...positions import Positions
 from ...trader import Trader
 
 logger = getLogger(__name__)
 
 
 class SimpleTrader(Trader):
-    """A simple trader class. Limits the number of loosing trades per symbol"""
-    def __init__(self, *, symbol: ForexSymbol, ram: RAM = None, loss_limit: int = 3):
+    """A simple trader class"""
+    def __init__(self, *, symbol: ForexSymbol, ram: RAM = None):
         """Initializes the order object and RAM instance
-        The default risk to reward ratio is 1:1.
 
         Args:
             symbol (Symbol): Financial instrument
             ram (RAM): Risk Assessment and Management instance
-            loss_limit (int): Maximum number of losing trades allowed at a time.
         """
-        ram = ram or RAM(risk_to_reward=1, points=100)
+        ram = ram or RAM(risk_to_reward=2)
         super().__init__(symbol=symbol, ram=ram)
-        self.loss_limit = loss_limit
 
     async def create_order(self, *, order_type: OrderType):
         """Complete the order object with the required values. Creates a simple order.
@@ -30,16 +26,16 @@ class SimpleTrader(Trader):
         Args:
             order_type (OrderType): Type of order
         """
-        positions = await Positions().positions_get()
-        loosing = [trade for trade in positions if trade.profit < 0]
-        if (losses := len(loosing)) > self.loss_limit:
-            raise RuntimeError(f"Last {losses} trades in a losing position")
-        points = self.ram.points or self.symbol.trade_stops_level * 3
+        losing = await self.ram.check_losing_positions()
+        if losing:
+            raise RuntimeError(f"More than {self.ram.loss_limit} losing positions")
         amount = await self.ram.get_amount()
-        self.order.volume = await self.symbol.compute_volume(amount=amount, points=points)
+        points = self.symbol.compute_points(amount=amount, volume=self.symbol.volume_min)
+        self.order.volume = self.symbol.volume_min
         self.order.type = order_type
-        self.order.comment = self.parameters.get('name', '')
-        await self.set_trade_stop_levels(points=points)
+        self.order.comment = self.parameters.get('name', 'SimpleTrader')
+        tick = await self.symbol.info_tick()
+        self.set_trade_stop_levels(points=points, tick=tick)
 
     async def place_trade(self, order_type: OrderType, parameters: dict = None):
         """Places a trade based on the order_type."""

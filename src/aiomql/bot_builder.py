@@ -37,6 +37,7 @@ class Bot:
 
     async def initialize(self):
         """Prepares the bot by signing in to the trading account and initializing the symbols for the trading session.
+        Starts the global task queue.
 
         Raises:
             SystemExit if sign in was not successful
@@ -48,6 +49,7 @@ class Bot:
         logger.info("Login Successful")
         await self.init_symbols()
         self.executor.remove_workers()
+        self.add_coroutine(self.config.task_queue.start)
 
     def add_function(self, func: Callable, **kwargs: dict):
         """Add a function to the executor.
@@ -58,7 +60,7 @@ class Bot:
         """
         self.executor.add_function(func, kwargs)
 
-    def add_coroutine(self, coro: Coroutine, **kwargs):
+    def add_coroutine(self, coro: Coroutine | Callable, **kwargs):
         """Add a coroutine to the executor.
 
         Args:

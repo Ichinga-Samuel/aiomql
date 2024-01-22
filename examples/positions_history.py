@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime
 from aiomql import ForexSymbol, Account, Positions, History, SimpleTrader as Trader, OrderType, RAM
 
-logging.basicConfig(level=logging.INFO, filemode='w', filename='example.log', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO)
 
 async def main():
     # Account details are in the aiomql.json file

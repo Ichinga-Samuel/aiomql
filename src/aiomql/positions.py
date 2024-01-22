@@ -69,8 +69,13 @@ class Positions:
                       type=order_type.opposite)
         return await order.send()
 
+    async def close_by(self, pos: TradePosition):
+        """Close an open position for the trading account."""
+        order = Order(position=pos.ticket, symbol=pos.symbol, volume=pos.volume, type=pos.type.opposite, price=pos.price_current)
+        return await order.send()
+
     async def close_all(self, symbol: str = '', group: str = '') -> int:
-        """Close all open positions for the trading account.
+        """Close all open positions for the trading account. Specify a symbol or group to filter positions.
 
         Keyword Args:
             symbol (str): Financial instrument name.
@@ -82,8 +87,6 @@ class Positions:
         symbol = symbol or self.symbol
         group = group or self.group
         positions = [pos for pos in await self.positions_get(symbol=symbol, group=group)]
-        orders = [self.close(price=pos.price_current, ticket=pos.ticket, order_type=pos.type, volume=pos.volume,
-                             symbol=pos.symbol) for pos in positions]
-
+        orders = [self.close_by(pos) for pos in positions]
         results = await asyncio.gather(*[order for order in orders], return_exceptions=True)
-        return len([res for res in results if res.retcode == 10009])
+        return len([res for res in results if (res and res.retcode) == 10009])

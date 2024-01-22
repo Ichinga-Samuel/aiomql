@@ -183,7 +183,7 @@ class Candles(Generic[_Candle]):
 
         elif isinstance(index, int):
             index = index if index >= 0 else len(self) + index
-            return self.Candle(**self._data.iloc[index])
+            return self.Candle(**self._data.iloc[index], Index=index)
         raise TypeError(f"Expected int, slice or str got {type(index)}")
 
     def __setitem__(self, index, value: Series):

@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aiomql"
-version = "3.15"
+version = "3.16"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
