@@ -1,4 +1,5 @@
 import asyncio
+from concurrent.futures import ProcessPoolExecutor
 from typing import Type, Iterable, TypeVar, Callable, Coroutine
 import logging
 
@@ -35,6 +36,14 @@ class Bot:
         self.symbols = set()
         self.executor = Executor(bot=self)
 
+    @classmethod
+    def run_bots(cls, bots: dict[Callable: dict] = None, num_workers: int = None):
+        """Run multiple bots at the same time."""
+        num_workers = num_workers or len(bots) * 2
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            for bot, kwargs in bots.items():
+                executor.submit(bot, **kwargs)
+
     async def initialize(self):
         """Prepares the bot by signing in to the trading account and initializing the symbols for the trading session.
         Starts the global task queue.
@@ -44,7 +53,7 @@ class Bot:
         """
         init = await self.account.sign_in()
         if not init:
-            logger.warning("Unable to sign in to MetaTrder 5 Terminal")
+            logger.warning(f"Unable to sign in to MetaTrder 5 Terminal")
             raise SystemExit
         logger.info("Login Successful")
         await self.init_symbols()

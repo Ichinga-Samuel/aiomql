@@ -64,14 +64,25 @@ class Account(AccountInfo):
             bool: True if login was successful else False
         """
         acc = self.get_dict(include={'login', 'server', 'password'})
-        await self.mt5.initialize(**acc, path=self.config.path)
-        self.connected = await self.mt5.login(**acc)
+        self.connected = await self._login(acc=acc)
         if self.connected:
             await self.refresh()
             self.symbols = await self.symbols_get()
             return self.connected
         await self.mt5.shutdown()
         return False
+
+    async def _login(self, *, acc:dict, tries=3):
+        res = False
+        if tries == 0:
+            return False
+        ini = await self.mt5.initialize(**acc, path=self.config.path)
+        if ini:
+            res = await self.mt5.login(**acc)
+        if ini and res:
+            return True
+        else:
+            return await self._login(acc=acc, tries=tries-1)
 
     def has_symbol(self, symbol: str | SymbolInfo):
         """Checks to see if a symbol is available for a trading account.
