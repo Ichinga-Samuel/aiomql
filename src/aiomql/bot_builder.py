@@ -51,14 +51,18 @@ class Bot:
         Raises:
             SystemExit if sign in was not successful
         """
-        init = await self.account.sign_in()
-        if not init:
-            logger.warning(f"Unable to sign in to MetaTrder 5 Terminal")
+        try:
+            init = await self.account.sign_in()
+            if not init:
+                logger.warning(f"Unable to sign in to MetaTrder 5 Terminal")
+                raise SystemExit
+            logger.info("Login Successful")
+            await self.init_symbols()
+            self.executor.remove_workers()
+            self.add_coroutine(self.config.task_queue.start)
+        except Exception as err:
+            logger.error(f"{err}. Bot initialization failed")
             raise SystemExit
-        logger.info("Login Successful")
-        await self.init_symbols()
-        self.executor.remove_workers()
-        self.add_coroutine(self.config.task_queue.start)
 
     def add_function(self, func: Callable, **kwargs: dict):
         """Add a function to the executor.

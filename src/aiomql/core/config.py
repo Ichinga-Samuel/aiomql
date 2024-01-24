@@ -40,7 +40,7 @@ class Config:
     record_trades: bool = True
     filename: str = "aiomql.json"
     win_percentage: float = 0.85
-    records_dir = Path.home() / "Documents" / "Aiomql" / "Trade Records"
+    records_dir = Path(Path.home() / "Documents" / "Aiomql" / "Trade Records").mkdir(parents=True, exist_ok=True)
     config_dir: str = ''
     _initialize = True
     state: dict = {}
@@ -62,6 +62,8 @@ class Config:
     def __setattr__(self, key, value):
         if key == 'root_dir':
             value = Path(value).absolute().resolve()
+        if key == 'records_dir':
+            value = self.create_records_dir(value)
         super().__setattr__(key, value)
 
     @staticmethod
@@ -90,6 +92,15 @@ class Config:
         except Exception as _:
             return
 
+    def create_records_dir(self, records_dir: str | Path):
+        """Create records directory if it does not exist"""
+        try:
+            records_dir = Path(records_dir).absolute().resolve() if isinstance(records_dir, str) else records_dir
+            records_dir.mkdir(parents=True, exist_ok=True)
+            return records_dir
+        except Exception as _:
+            logger.warning("Unable to create records directory")
+
     def load_config(self, file: str = None, reload: bool = True, filename: str = None, config_dir: str = ''):
         """Load configuration settings from a file."""
         if not (self._initialize or reload):
@@ -105,7 +116,6 @@ class Config:
             data = json.load(fh)
             fh.close()
         [setattr(self, key, value) for key, value in data.items()]
-        self.records_dir.mkdir(parents=True, exist_ok=True) if self.records_dir else ...
 
     def account_info(self) -> dict[str, int | str]:
         """Returns Account login details as found in the config object if available
