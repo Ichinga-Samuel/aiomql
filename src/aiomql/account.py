@@ -1,3 +1,4 @@
+import asyncio
 from logging import getLogger
 
 from .core.models import AccountInfo, SymbolInfo
@@ -72,7 +73,7 @@ class Account(AccountInfo):
         await self.mt5.shutdown()
         return False
 
-    async def _login(self, *, acc:dict, tries=3):
+    async def _login(self, *, acc: dict, tries=3):
         res = False
         if tries == 0:
             return False
@@ -82,6 +83,7 @@ class Account(AccountInfo):
         if ini and res:
             return True
         else:
+            await asyncio.sleep(tries)
             return await self._login(acc=acc, tries=tries-1)
 
     def has_symbol(self, symbol: str | SymbolInfo):

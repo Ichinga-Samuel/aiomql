@@ -71,21 +71,27 @@ class History:
         self.initialized = all(res)
         return self.initialized
 
-    async def get_deals(self) -> list[TradeDeal]:
+    async def get_deals(self, retries=3) -> list[TradeDeal]:
         """Get deals from trading history using the parameters set in the constructor.
 
         Returns:
             list[TradeDeal]: A list of trade deals
         """
+        if retries < 1:
+            logger.warning(f'Failed to get deals: {self.mt5.error}')
+            return []
         deals = await self.mt5.history_deals_get(date_from=self.date_from, date_to=self.date_to, position=self.position,
                                                  group=self.group, ticket=self.ticket)
-        if deals is None:
-            logger.warning(f'Failed to get deals due to {self.mt5.error.description}')
-            deals = []
+        if deals is not None:
+            self.deals = [TradeDeal(**deal._asdict()) for deal in deals]
+            self.total_deals = len(self.deals)
+            return self.deals
+        if self.mt5.error.is_connection_error():
+            await asyncio.sleep(retries)
+            return await self.get_deals(retries=retries - 1)
 
-        self.deals = [TradeDeal(**deal._asdict()) for deal in deals]
-        self.total_deals = len(self.deals)
-        return self.deals
+        logger.warning(f'Failed to get deals: {self.mt5.error}')
+        return []
 
     async def deals_total(self) -> int:
         """Get total number of deals within the specified period in the constructor.
@@ -96,22 +102,26 @@ class History:
         self.total_deals = await self.mt5.history_deals_total(self.date_from, self.date_to)
         return self.total_deals
 
-    async def get_orders(self) -> list[TradeOrder]:
+    async def get_orders(self, retries=3) -> list[TradeOrder]:
         """Get orders from trading history using the parameters set in the constructor.
 
         Returns:
             list[TradeOrder]: A list of trade orders
         """
-
+        if retries < 1:
+            logger.warning(f'Failed to get orders: {self.mt5.error}')
+            return []
         orders = await self.mt5.history_orders_get(date_from=self.date_from, date_to=self.date_to, group=self.group,
                                                    position=self.position, ticket=self.ticket)
-        if orders is None:
-            logger.warning(f'Failed to get orders due to {self.mt5.error.description}')
-            orders = []
-
-        self.orders = [TradeOrder(**order._asdict()) for order in orders]
-        self.total_orders = len(self.orders)
-        return self.orders
+        if orders is not None:
+            self.orders = [TradeOrder(**order._asdict()) for order in orders]
+            self.total_orders = len(self.orders)
+            return self.orders
+        if self.mt5.error.is_connection_error():
+            await asyncio.sleep(retries)
+            return await self.get_orders(retries=retries - 1)
+        logger.warning(f'Failed to get orders: {self.mt5.error}')
+        return []
 
     async def orders_total(self) -> int:
         """Get total number of orders within the specified period in the constructor.

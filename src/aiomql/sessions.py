@@ -1,4 +1,3 @@
-"""Sessions allow you to run code at specific times of the day."""
 import asyncio
 from datetime import time, timedelta, datetime
 from asyncio import sleep, iscoroutinefunction
@@ -10,7 +9,7 @@ from .positions import Positions
 logger = getLogger(__name__)
 
 
-def delta(obj: time):
+def delta(obj: time) -> timedelta:
     """Get the timedelta of a datetime.time object.
 
     Args:
@@ -29,14 +28,7 @@ class Session:
         on_end (str): The action to take when the session ends. Default is None.
         custom_start (Callable): A custom function to call when the session starts. Default is None.
         custom_end (Callable): A custom function to call when the session ends. Default is None.
-        name (str): A name for the session. Default is a combination of start and end.
-
-    Methods:
-        begin: Call the action specified in on_start or custom_start.
-        close: Call the action specified in on_end or custom_end.
-        action: Used by begin and close to call the action specified.
-        delta: Get the timedelta of a datetime.time object.
-        until: Get the seconds until the session starts from the current time.
+        name (str): A name for the session. Default is a combination of start and en
     """
     def __init__(self, *, start: int | time, end: int | time,
                  on_start: Literal['close_all', 'close_win', 'close_loss', 'custom_start'] = None,

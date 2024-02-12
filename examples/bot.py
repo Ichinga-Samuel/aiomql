@@ -32,6 +32,7 @@ def build_bot():
 
     # add strategies to the bot
     bot.add_strategies([st1, st2, st3, st4, st5, st6])
+
     bot.execute()
 
 

@@ -90,8 +90,8 @@ class Trader(ABC):
         """
         check = await self.order.check()
         if check.retcode != 0:
-            logger.warning(f"""Invalid order for {self.symbol}
-            \r\r{dict_to_string(check.request._asdict() | check.get_dict(include={'comment', 'retcode'}))}""")
+            req = check.request._asdict() | check.get_dict(include={'comment', 'retcode'})
+            logger.warning(f"Invalid order for {self.symbol}: {dict_to_string(req)}")
             return False
         return True
 
@@ -99,11 +99,11 @@ class Trader(ABC):
         """Send the order to the broker."""
         result = await self.order.send()
         if result.retcode != 10009:
-            logger.warning(f"""Unable to place order for {self.symbol}
-            \r\r{dict_to_string(result.request._asdict() | result.get_dict(include={'comment', 'retcode'}))}\n""")
+            req = result.request._asdict() | result.get_dict(include={'comment', 'retcode'})
+            logger.warning(f"Unable to place order for {self.symbol}: {dict_to_string(req)}")
             return result
-        logger.info(f"""Placed Trade for {self.symbol}
-        \r\r{dict_to_string(result.get_dict(exclude={'request', 'retcode_external', 'retcode', 'request_id'}), multi=True)}\n""")
+        res = result.get_dict(exclude={'request', 'retcode_external', 'retcode', 'request_id'})
+        logger.info(f"Placed Trade for {self.symbol}: {dict_to_string(res)}")
         await self.record_trade(result, parameters=self.parameters.copy())
         return result
 

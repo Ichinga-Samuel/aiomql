@@ -21,7 +21,7 @@ class Terminal(TerminalInfo):
         """Establish a connection with the MetaTrader 5 terminal. There are three call options. Call without parameters.
         The terminal for connection is found automatically. Call specifying the path to the MetaTrader 5 terminal we
         want to connect to. word path as a keyword argument Call specifying the trading account path and parameters
-        i.e login, password, server, as keyword arguments, path can be omitted.
+        i.e. login, password, server, as keyword arguments, path can be omitted.
 
         Returns:
             bool: True if successful else False

@@ -1,10 +1,9 @@
-"""Order Class"""
+import asyncio
 from logging import getLogger
 
-from .core.models import TradeRequest, OrderSendResult, OrderCheckResult, TradeOrder, SymbolInfo
+from .core.models import TradeRequest, OrderSendResult, OrderCheckResult, TradeOrder
 from .core.constants import TradeAction, OrderTime, OrderFilling
-from .core.exceptions import SymbolError, OrderError
-from .symbol import Symbol
+from .core.exceptions import OrderError
 logger = getLogger(__name__)
 
 
@@ -39,20 +38,30 @@ class Order(TradeRequest):
         """
         return await self.mt5.orders_total()
 
-    async def orders(self) -> tuple[TradeOrder]:
+    async def get_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '', retries=3)\
+            -> tuple[TradeOrder, ...]:
         """Get the list of active orders for the current symbol.
-
+        Keyword Args:
+            ticket (int): Order ticket number
+            symbol (str): Symbol name
+            group (str): Group name
         Returns:
             tuple[TradeOrder]: A Tuple of active trade orders as TradeOrder objects
         """
-        orders = await self.mt5.orders_get(symbol=self.symbol)
-        if orders is None:
-            raise OrderError(f'Failed to get orders for {self.symbol} due to {self.mt5.error.description}')
-        orders = (TradeOrder(**order._asdict()) for order in orders)
-        return tuple(orders)
+        if retries < 1:
+            raise OrderError(f'Failed to get orders for {self.symbol}: {self.mt5.error}')
+        symbol = getattr(self, 'symbol', symbol)
+        orders = await self.mt5.orders_get(symbol=symbol, ticket=ticket, group=group)
+        if orders is not None:
+            orders = (TradeOrder(**order._asdict()) for order in orders)
+            return tuple(orders)
+        if self.mt5.error.is_connection_error():
+            await asyncio.sleep(retries)
+            return await self.get_orders(ticket=ticket, symbol=symbol, group=group, retries=retries-1)
+        raise OrderError(f'Failed to get orders for {self.symbol}: {self.mt5.error}')
 
     async def check(self) -> OrderCheckResult:
-        """Check funds sufficiency for performing a required trading operation and the possibility to execute it at
+        """Check funds sufficiency for performing a required trading operation and the possibility of executing it.
 
         Returns:
             OrderCheckResult: An OrderCheckResult object

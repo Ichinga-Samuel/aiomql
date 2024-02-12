@@ -1,4 +1,3 @@
-import asyncio
 import csv
 from logging import getLogger
 from threading import RLock
@@ -31,10 +30,11 @@ class Result:
         self.parameters = parameters or {}
         self.result = result
         self.name = name or parameters.get('name', 'Trades')
+        self.config.create_records_dir()
 
     def get_data(self) -> dict:
-        return (self.parameters | self.result.get_dict(exclude={'retcode', 'comment', 'retcode_external', 'request_id', 'request'})
-                | {'actual_profit': 0, 'closed': False, 'win': False})
+        res = self.result.get_dict(exclude={'retcode', 'comment', 'retcode_external', 'request_id', 'request'})
+        return self.parameters | res | {'actual_profit': 0, 'closed': False, 'win': False}
 
     async def to_csv(self):
         """Record trade results and associated parameters as a csv file
@@ -45,7 +45,8 @@ class Result:
             exists = file.exists()
             with RLock():
                 with open(file, 'a', newline='') as fh:
-                    writer = csv.DictWriter(fh, fieldnames=sorted(list(data.keys())), extrasaction='ignore', restval=None)
+                    f_names = sorted(list(data.keys()))
+                    writer = csv.DictWriter(fh, fieldnames=f_names, extrasaction='ignore', restval=None)
                     if not exists:
                         writer.writeheader()
                     writer.writerow(data)

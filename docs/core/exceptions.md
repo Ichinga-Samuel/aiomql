@@ -1,54 +1,37 @@
-# Table of Contents
-
-* [aiomql.core.exceptions](#aiomql.core.exceptions)
-  * [LoginError](#aiomql.core.exceptions.LoginError)
-  * [VolumeError](#aiomql.core.exceptions.VolumeError)
-  * [SymbolError](#aiomql.core.exceptions.SymbolError)
-  * [OrderError](#aiomql.core.exceptions.OrderError)
-
-<a id="aiomql.core.exceptions"></a>
-
-# aiomql.core.exceptions
-
+# Exceptions
 Exceptions for the aiomql package.
 
-<a id="aiomql.core.exceptions.LoginError"></a>
+## Table of Contents
+- [LoginError](#exceptions.LoginError)
+- [VolumeError](#exceptions.VolumeError)
+- [SymbolError](#exceptions.SymbolError)
+- [OrderError](#exceptions.OrderError)
 
-## LoginError Objects
-
+    
+<a id="exceptions.LoginError"></a>
+### LoginError
 ```python
 class LoginError(Exception)
 ```
-
 Raised when an error occurs when logging in.
 
-<a id="aiomql.core.exceptions.VolumeError"></a>
-
-## VolumeError Objects
-
+<a id="exceptions.VolumeError"></a>
+### VolumeError
 ```python
 class VolumeError(Exception)
 ```
-
 Raised when a volume is not valid or out of range for a symbol.
 
-<a id="aiomql.core.exceptions.SymbolError"></a>
-
-## SymbolError Objects
-
+<a id="exceptions.SymbolError"></a>
+### SymbolError
 ```python
 class SymbolError(Exception)
 ```
-
 Raised when a symbol is not provided where required or not available in the Market Watch.
 
-<a id="aiomql.core.exceptions.OrderError"></a>
-
-## OrderError Objects
-
+<a id="exceptions.OrderError"></a>
+### OrderError
 ```python
 class OrderError(Exception)
 ```
-
 Raised when an error occurs when working with the order class.
-

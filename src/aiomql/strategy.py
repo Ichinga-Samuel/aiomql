@@ -73,7 +73,7 @@ class Strategy(ABC):
         """
         mod = time() % secs
         secs = secs - mod if mod != 0 else mod
-        await asyncio.sleep(secs + 0.1)
+        await asyncio.sleep(secs + 0.2)
 
     @abstractmethod
     async def trade(self):

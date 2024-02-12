@@ -9,10 +9,8 @@ logger = getLogger(__name__)
 
 
 class Base:
-    """A base class for all data model classes in the aiomql package.
-    This class provides a set of common methods and attributes for all data model classes.
-    For the data model classes attributes are annotated on the class body and are set as object attributes when the
-    class is instantiated.
+    """A base class for all data structure classes in the aiomql package. This class provides a set of common methods
+     and attributes for handling data.
     """
     mt5: MetaTrader
     config: Config
@@ -21,7 +19,7 @@ class Base:
         """
         Initialize a new instance of the Base class
         Args:
-            **kwargs: Object attributes and values as keyword arguments. Only added if they are annotated on the class body.
+            **kwargs: Set instance attributes with keyword arguments. Only if they are annotated on the class body.
         """
         self.config = Config()
         self.mt5 = MetaTrader()

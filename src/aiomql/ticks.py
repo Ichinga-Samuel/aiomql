@@ -7,7 +7,6 @@ import pandas_ta as ta
 
 from .core.constants import TickFlag
 
-
 Self = TypeVar('Self', bound='Ticks')
 
 
@@ -36,14 +35,17 @@ class Tick:
     Index: int
 
     def __init__(self, **kwargs):
-        self.time = kwargs.pop('time', 0)
+        """Initialize the Tick class. Set attributes from keyword arguments. bid, ask, last, time and volume must be
+        present"""
+        if not all(key in kwargs for key in ['bid', 'ask', 'last', 'volume', 'time']):
+            raise ValueError("bid, ask, last and volume, time must be present in the keyword arguments")
         self.Index = kwargs.pop('Index', 0)
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        return ("%(class)s(Index=%(Index)s, time=%(time)s, bid=%(bid)s, ask=%(ask)s, last=%(last)s, volume=%(volume)s,"
-                " mid=%(mid)s)") % {"class": self.__class__.__name__, "time": self.time, "bid": self.bid,
-                                    "ask": self.ask, "last": self.last, "volume": self.volume, 'Index': self.Index}
+        return ("%(class)s(Index=%(Index)s, time=%(time)s, bid=%(bid)s, ask=%(ask)s, last=%(last)s, volume=%(volume)s)"
+                % {"class": self.__class__.__name__, "time": self.time, "bid": self.bid,
+                   "ask": self.ask, "last": self.last, "volume": self.volume, 'Index': self.Index})
 
     def set_attributes(self, **kwargs):
         """Set attributes from keyword arguments"""
@@ -55,18 +57,7 @@ _Ticks = TypeVar('_Ticks', bound='Ticks')
 
 
 class Ticks:
-    """Container data class for price ticks. Arrange in chronological order.
-    Supports iteration, slicing and assignment
-
-    Args:
-        data (DataFrame | tuple[tuple]): Dataframe of price ticks or a tuple of tuples
-
-    Keyword Args:
-        flip (bool): If flip is True reverse data chronological order.
-
-    Attributes:
-        data: Dataframe Object holding the ticks
-    """
+    """Container class for price ticks. Arrange in chronological order. Supports iteration, slicing and assignment"""
     time: Series
     bid: Series
     ask: Series
@@ -154,7 +145,7 @@ class Ticks:
         """DataFrame of price ticks arranged in chronological order."""
         return self._data
 
-    def rename(self, inplace=True, **kwargs) -> _Ticks | None :
+    def rename(self, inplace=True, **kwargs) -> _Ticks | None:
         """Rename columns of the candle class.
 
         Keyword Args:

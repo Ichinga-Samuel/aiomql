@@ -12,8 +12,8 @@ logger = getLogger(__name__)
 
 
 class Candle:
-    """A class representing bars from the MetaTrader 5 terminal as a customized class analogous to Japanese Candlesticks.
-    You can subclass this class for added customization.
+    """A class representing bars from the MetaTrader 5 terminal as a customized class analogous to Japanese
+    Candlesticks. You can subclass this class for added customization.
 
     Attributes:
         time (int): Period start time.
@@ -28,22 +28,25 @@ class Candle:
         mid (float): The median of the high and low price.
     """
     time: float
+    open: float
     high: float
     low: float
     close: float
     real_volume: float
     spread: float
-    open: float
     tick_volume: float
     Index: int
     mid: float
 
     def __init__(self, **kwargs):
-        """Create a Candle object from keyword arguments.
+        """Create a Candle object from keyword arguments. This class must always be instantiated with open, high, low
+         and close prices.
 
         Keyword Args:
             **kwargs: Candle attributes and values as keyword arguments.
         """
+        if not all(i in kwargs for i in ['open', 'high', 'low', 'close']):
+            raise ValueError("Candle must be instantiated with open, high, low and close prices")
         self.time = kwargs.pop('time', 0)
         self.Index = kwargs.pop('Index', 0)
         self.mid = kwargs.pop('mid', (kwargs['high'] + kwargs['low']) / 2)
@@ -54,6 +57,9 @@ class Candle:
                 " mid=%(mid)s)") % {"class": self.__class__.__name__, "open": self.open, "high": self.high,
                                     "low": self.low, "close": self.close, "time": self.time, "mid": self.mid,
                                     'Index': self.Index}
+
+    def __str__(self):
+        return self.dict()
 
     def __eq__(self, other: "Candle"):
         return self.time == other.time
@@ -94,6 +100,21 @@ class Candle:
         """
         return self.open > self.close
 
+    def dict(self, exclude: set = None, include: set = None) -> dict:
+        """
+        Returns a dictionary of the instance attributes.
+
+        Args:
+            exclude: A set of attributes to exclude from the dictionary. Defaults to None.
+            include: A set of attributes to include in the dictionary. Defaults to None.
+
+        Returns: dict
+        """
+        exclude = exclude or set()
+        include = include or set()
+        keys = include or set(self.__dict__.keys()).difference(exclude)
+        return {k: v for k, v in self.__dict__.items() if k in keys}
+
 
 _Candle = TypeVar("_Candle", bound=Candle)
 _Candles = TypeVar("_Candles", bound="Candles")
@@ -119,8 +140,8 @@ class Candles(Generic[_Candle]):
         data (DataFrame): A pandas DataFrame of all candles in the object.
 
     Notes:
-        The candle class can be customized by subclassing the Candle class and passing the subclass as the candle keyword argument.
-        Or defining it on the class body as a class attribute.
+        The candle class can be customized by subclassing the Candle class and passing the subclass as the candle
+         keyword argument, or defining it on the class body as a class attribute.
     """
     Index: Series
     time: Series
@@ -134,6 +155,7 @@ class Candles(Generic[_Candle]):
     mid: Series
     Candle: Type[Candle]
     timeframe: TimeFrame
+    _data: DataFrame
 
     def __init__(self, *, data: DataFrame | _Candles | Iterable, flip=False, candle_class: Type[_Candle] = None):
         """A container class of Candle objects in chronological order.
@@ -193,7 +215,7 @@ class Candles(Generic[_Candle]):
         raise TypeError(f"Expected Series got {type(value)}")
 
     def __getattr__(self, item):
-        if item in list(self._data.columns.values):
+        if item in self._data.columns:
             return self._data[item]
         if item == 'Index':
             return Series(self._data.index)
@@ -201,6 +223,10 @@ class Candles(Generic[_Candle]):
 
     def __iter__(self):
         return (self.Candle(**row._asdict()) for row in self._data.itertuples())
+
+    def __add__(self, other: _Candles | _Candle):
+        other = other.data if isinstance(other, type(self)) else other.dict()
+        return self.__class__(data=self._data.append(other.data, ignore_index=True))
 
     @property
     def timeframe(self):

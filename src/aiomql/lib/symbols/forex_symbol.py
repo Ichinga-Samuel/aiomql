@@ -1,6 +1,7 @@
 from ...symbol import Symbol
 from ...core.exceptions import VolumeError
 
+
 class ForexSymbol(Symbol):
     """Subclass of Symbol for Forex Symbols. Handles the conversion of currency and the computation of stop loss,
     take profit and volume.
@@ -32,7 +33,6 @@ class ForexSymbol(Symbol):
             if adjust:
                 points = self.compute_points(amount=amount, volume=volume)
             return volume, points
-
         if use_limits:
             vol = chk_vol[1]
             if adjust:

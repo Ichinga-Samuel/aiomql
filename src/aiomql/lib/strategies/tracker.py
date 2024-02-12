@@ -16,6 +16,8 @@ class Tracker:
     entry_time: float = 0
     new: bool = True
     order_type: OrderType = None
+    sl: float = 0
+    tp: float = 0
 
     def update(self, **kwargs):
         fields = self.__dict__

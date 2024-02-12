@@ -4,6 +4,8 @@ from aiomql import ForexSymbol, TimeFrame, Account, Config
 
 
 config = Config()
+
+
 async def main():
     async with Account():
         sym = ForexSymbol(name="EURUSD-T")
@@ -33,7 +35,6 @@ async def main():
         # ask and bid price
         ask, bid = tick.ask, tick.bid
         print(ask, bid)
-
 
 
 asyncio.run(main())

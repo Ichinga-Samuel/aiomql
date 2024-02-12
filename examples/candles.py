@@ -6,7 +6,7 @@ async def main():
     """Example of using the Candle and Candles classes.
     The candle class is a single price bar. Holding the OHLCV data for a single price bar.
     The Candles class is a container of Candle objects. It is an Iterable of Candle objects.
-    It is sliceable and indexable. It can also be accessed with keywords.
+    It can be sliced and indexed. It can also be accessed with keywords.
     It is a wrapper around a pandas DataFrame. Which is what it uses to store the data.
     """
     async with Account():

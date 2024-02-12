@@ -15,18 +15,18 @@ class Records:
 
     Attributes:
         config: Config object
-        records_dir(Path): Path to directory containing record of placed trades, If not given takes the default
-            from the config
+        records_dir(Path): Absolute path to directory containing record of placed trades, If not given takes the default
+        from the config
     """
     config: Config
     mt5: MetaTrader
 
-    def __init__(self, records_dir: Path = ''):
+    def __init__(self, records_dir: Path | str = ''):
         """Initialize the Records class. The main method of this class is update_records which you should call to update
         all the records specified in the records_dir.
 
         Keyword Args:
-            records_dir (Path): Path to directory containing record of placed trades.
+            records_dir (Path): Absolute path to directory containing record of placed trades.
         """
         self.config = Config()
         self.mt5 = MetaTrader()

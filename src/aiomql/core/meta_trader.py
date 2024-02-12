@@ -5,7 +5,7 @@ from typing import Callable
 
 import MetaTrader5
 
-from MetaTrader5 import BookInfo, SymbolInfo, AccountInfo, Tick, TerminalInfo, TradeOrder, TradeDeal,\
+from MetaTrader5 import BookInfo, SymbolInfo, AccountInfo, Tick, TerminalInfo, TradeOrder, TradeDeal, \
     TradePosition, OrderSendResult, OrderCheckResult
 
 from .constants import TimeFrame, CopyTicks, OrderType
@@ -61,6 +61,7 @@ class MetaTrader(metaclass=BaseMeta):
 
     def __init__(self):
         self.config = Config()
+        self.error = Error(1, 'Successful')
 
     async def __aenter__(self) -> 'MetaTrader':
         """
@@ -110,7 +111,7 @@ class MetaTrader(metaclass=BaseMeta):
         Returns:
             bool: True if successful, False otherwise.
         """
-        args = (path,) if path else ()
+        args = (str(path),) if path else ()
         kwargs = {key: value for key, value in (('login', login), ('password', password), ('server', server),
                                                 ('timeout', timeout), ('portable', portable)) if value}
         return await asyncio.to_thread(self._initialize, *args, **kwargs)
@@ -244,7 +245,8 @@ class MetaTrader(metaclass=BaseMeta):
             return res
         return res
 
-    async def copy_ticks_range(self, symbol: str, date_from: datetime | float, date_to: datetime | float, flags: CopyTicks):
+    async def copy_ticks_range(self, symbol: str, date_from: datetime | float, date_to: datetime | float,
+                               flags: CopyTicks):
         res = await asyncio.to_thread(self._copy_ticks_range, symbol, date_from, date_to, flags)
         if res is None:
             err = await self.last_error()
@@ -321,7 +323,8 @@ class MetaTrader(metaclass=BaseMeta):
     async def history_orders_total(self, date_from: datetime | float, date_to: datetime | float) -> int:
         return await asyncio.to_thread(self._history_orders_total, date_from, date_to)
 
-    async def history_orders_get(self, date_from: datetime | float = None, date_to: datetime | float = None, group: str = '',
+    async def history_orders_get(self, date_from: datetime | float = None, date_to: datetime | float = None,
+                                 group: str = '',
                                  ticket: int = 0, position: int = 0) -> tuple[TradeOrder] | None:
         kwargs = {key: value for key, value in (('date_from', date_from), ('date_to', date_to), ('group', group),
                                                 ('ticket', ticket), ('position', position)) if value}

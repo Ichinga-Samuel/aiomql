@@ -6,6 +6,7 @@ from aiomql import ForexSymbol, Account, Positions, History, SimpleTrader as Tra
 
 logging.basicConfig(level=logging.INFO)
 
+
 async def main():
     # Account details are in the aiomql.json file
     async with Account():
@@ -36,7 +37,7 @@ async def main():
 
         # get the number of open positions
         total = await pos.positions_total()
-        print(f'{total} Open positions') # 2
+        print(f'{total} Open positions')  # 2
 
         # close all open positions
         await pos.close_all()

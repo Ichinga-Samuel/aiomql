@@ -65,7 +65,7 @@ def build_bot():
     tokyo = Session(name='Tokyo', start=23, end=time(hour=6, minute=30))
     
     # configure the parameters and the trader for a strategy
-    params = {'trend_candles_count': 500, 'fast_period': 8, 'slow_period': 34, 'entry_timeframe': TimeFrame.M5}
+    params = {'trend_candles_count': 500, 'fast_period': 8, 'slow_period': 34, 'etf': TimeFrame.M5}
     gbpusd = ForexSymbol(name='GBPUSD')
     st1 = FingerTrap(symbol=gbpusd, params=params, trader=SimpleTrader(symbol=gbpusd, ram=RAM(risk=0.05, risk_to_reward=2)),
                      sessions=Sessions(london, new_york))
@@ -93,7 +93,7 @@ see [API Documentation](https://github.com/Ichinga-Samuel/aiomql/tree/master/doc
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## Support
-Feeling generous, like the package or want to see it become more a mature package?
+Feeling generous, like the package or want to see it become a more mature package?
 
 Consider supporting the project by buying me a coffee.\
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ichingasamuel)

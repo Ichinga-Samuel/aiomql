@@ -1,8 +1,11 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Sequence, Coroutine, Callable
+from logging import getLogger
 
 from .strategy import Strategy
+
+logger = getLogger(__name__)
 
 
 class Executor:
@@ -15,18 +18,17 @@ class Executor:
         functions (dict[Callable, dict]): A dictionary of functions to run in the executor
     """
 
-    def __init__(self, bot=None):
+    def __init__(self):
         self.executor = ThreadPoolExecutor
         self.workers: list[type(Strategy)] = []
         self.coroutines: dict[Coroutine | Callable: dict] = {}
         self.functions: dict[Callable: dict] = {}
-        self.bot: 'Bot' = bot
 
     def add_function(self, func: Callable, kwargs: dict):
-        self.functions[func] = kwargs | {'bot': self.bot}
+        self.functions[func] = kwargs
 
     def add_coroutine(self, coro: Coroutine, kwargs: dict):
-        self.coroutines[coro] = kwargs | {'bot': self.bot}
+        self.coroutines[coro] = kwargs
 
     def add_workers(self, strategies: Sequence[type(Strategy)]):
         """Add multiple strategies at once
@@ -36,9 +38,9 @@ class Executor:
         """
         self.workers.extend(strategies)
 
-    def remove_workers(self):
+    def remove_workers(self, *, symbols: set):
         """Removes any worker running on a symbol not successfully initialized."""
-        self.workers = [worker for worker in self.workers if worker.symbol in self.bot.symbols]
+        self.workers = [worker for worker in self.workers if worker.symbol in symbols]
 
     def add_worker(self, strategy: type(Strategy)):
         """Add a strategy instance to the list of workers
@@ -65,19 +67,22 @@ class Executor:
             func: The coroutine. A variadic function.
             kwargs: A dictionary of keyword arguments for the function
         """
-        asyncio.run(func(**kwargs))
+        try:
+            asyncio.run(func(**kwargs))
+        except Exception as err:
+            logger.error(f'Error: {err}. Unable to run function')
 
-    async def execute(self, workers: int = 0):
+    async def execute(self, workers: int = 5):
         """Run the strategies with a threadpool executor.
 
         Args:
-            workers: Number of workers to use in executor pool. Defaults to zero which uses all workers.
+            workers: Number of workers to use in executor pool. Defaults to 5.
 
         Notes:
             No matter the number specified, the executor will always use a minimum of 5 workers.
         """
-        workers = workers or sum([len(self.workers), len(self.functions), len(self.coroutines)])
-        workers = max(workers, 5)
+        workers_ = sum([len(self.workers), len(self.functions), len(self.coroutines)])
+        workers = max(workers, workers_)
         loop = asyncio.get_running_loop()
         with self.executor(max_workers=workers) as executor:
             [loop.run_in_executor(executor, self.trade, worker) for worker in self.workers]

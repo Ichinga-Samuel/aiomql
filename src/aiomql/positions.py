@@ -14,7 +14,7 @@ class Positions:
     Attributes:
         symbol (str): Financial instrument name.
         group (str): The filter for arranging a group of necessary symbols. Optional named parameter.
-            If the group is specified, the function returns only positions meeting a specified criteria for a symbol name.
+            If the group is specified, the function returns only positions meeting a specified criteria for a symbol.
         ticket (int): Position ticket.
         mt5 (MetaTrader): MetaTrader instance.
     """
@@ -43,7 +43,7 @@ class Positions:
         """
         return await self.mt5.positions_total()
 
-    async def positions_get(self, symbol: str = '', group: str = '', ticket: int = 0) -> list[TradePosition]:
+    async def positions_get(self, symbol: str = '', group: str = '', ticket: int = 0, retries=3) -> list[TradePosition]:
         """Get open positions with the ability to filter by symbol or ticket.
 
         Keyword Args:
@@ -55,12 +55,18 @@ class Positions:
         Returns:
             list[TradePosition]: A list of open trade positions
         """
+        if retries < 1:
+            logger.warning(f'Failed to get positions for {symbol or self.symbol}. {self.mt5.error}')
+            return []
         positions = await self.mt5.positions_get(group=group or self.group, symbol=symbol or self.symbol,
                                                  ticket=ticket or self.ticket)
-        if positions is None:
-            logger.warning(f'Failed to get positions for {symbol or self.symbol} due to {self.mt5.error.description}')
-            positions = []
-        return [TradePosition(**pos._asdict()) for pos in positions]
+        if positions is not None:
+            return [TradePosition(**pos._asdict()) for pos in positions]
+        if self.mt5.error.is_connection_error():
+            await asyncio.sleep(retries)
+            return await self.positions_get(symbol, group, ticket, retries - 1)
+        logger.warning(f'Failed to get positions for {symbol or self.symbol}. {self.mt5.error}')
+        return []
 
     async def close(self, *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType):
         """Close an open position for the trading account."""
@@ -71,7 +77,8 @@ class Positions:
 
     async def close_by(self, pos: TradePosition):
         """Close an open position for the trading account."""
-        order = Order(position=pos.ticket, symbol=pos.symbol, volume=pos.volume, type=pos.type.opposite, price=pos.price_current)
+        order = Order(position=pos.ticket, symbol=pos.symbol, volume=pos.volume, type=pos.type.opposite,
+                      price=pos.price_current)
         return await order.send()
 
     async def close_all(self, symbol: str = '', group: str = '') -> int:

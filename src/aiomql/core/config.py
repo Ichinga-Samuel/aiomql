@@ -16,7 +16,6 @@ class Config:
         record_trades (bool): Whether to keep record of trades or not.
         filename (str): Name of the config file
         records_dir (str): Path to the directory where trade records are saved
-        win_percentage (float): Percentage of achieved target profit in a trade to be considered a win
         login (int): Trading account number
         password (str): Trading account password
         server (str): Broker server
@@ -31,22 +30,21 @@ class Config:
         or the load_config method.
         By passing reload=True to the load_config method, you can reload and search again for the config file.
     """
-
     login: int = 0
     password: str = ""
     server: str = ""
-    path: str = ""
+    path: str | Path = ""
     timeout: int = 60000
     record_trades: bool = True
     filename: str = "aiomql.json"
     win_percentage: float = 0.85
-    records_dir = Path(Path.home() / "Documents" / "Aiomql" / "Trade Records").mkdir(parents=True, exist_ok=True)
+    records_dir: str | Path = 'records'
     config_dir: str = ''
     _initialize = True
     state: dict = {}
     root_dir: Path = Path('.').absolute().resolve()
     task_queue: TaskQueue = TaskQueue()
-
+    bot: 'Bot' = None
     _instance: 'Config'
 
     def __new__(cls, *args, **kwargs):
@@ -56,6 +54,8 @@ class Config:
 
     def __init__(self, **kwargs):
         reload = kwargs.pop('reload', False)
+        root_dir = kwargs.pop('root_dir', None)
+        setattr(self, 'root_dir', root_dir) if root_dir else ...
         [setattr(self, key, value) for key, value in kwargs.items()]
         self.load_config(reload=reload)
 
@@ -63,7 +63,10 @@ class Config:
         if key == 'root_dir':
             value = Path(value).absolute().resolve()
         if key == 'records_dir':
-            value = self.create_records_dir(value)
+            self.create_records_dir(records_dir=value)
+            return
+        if key == 'path':
+            value = self.root_dir / Path(value) if not Path(value).exists() else value
         super().__setattr__(key, value)
 
     @staticmethod
@@ -92,17 +95,28 @@ class Config:
         except Exception as _:
             return
 
-    def create_records_dir(self, records_dir: str | Path):
-        """Create records directory if it does not exist"""
+    def create_records_dir(self, *, records_dir: str | Path = 'records'):
+        """Create records directory if it does not exist. Relative to the root directory of the project.
+        Keyword Args:
+            records_dir (str|Path): The name of the directory to create
+        """
         try:
-            records_dir = Path(records_dir).absolute().resolve() if isinstance(records_dir, str) else records_dir
+            records_dir = Path(records_dir) if isinstance(records_dir, str) else records_dir
+            records_dir = self.root_dir / records_dir
             records_dir.mkdir(parents=True, exist_ok=True)
+            super().__setattr__('records_dir', records_dir)
             return records_dir
-        except Exception as _:
-            logger.warning("Unable to create records directory")
+        except Exception as err:
+            logger.warning(f"{err}: Unable to create records directory")
 
-    def load_config(self, file: str = None, reload: bool = True, filename: str = None, config_dir: str = ''):
-        """Load configuration settings from a file."""
+    def load_config(self, *, file: str = None, reload: bool = True, filename: str = None, config_dir: str = ''):
+        """Load configuration settings from a file.
+        Keyword Args:
+            file (str): The path to the file to load. If not provided, the file is searched for
+            reload (bool): Whether to reload the config object. Default is True
+            filename (str): The name of the file to load. If not provided, the default filename is used
+            config_dir (str): The name of the directory to search for the file. Default is the root directory
+        """
         if not (self._initialize or reload):
             return
         self._initialize = False

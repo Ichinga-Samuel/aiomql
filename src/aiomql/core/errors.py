@@ -20,12 +20,14 @@ class Error:
         -10005: 'internal timeout',
     }
 
+    conn_errors = (-10000, -10001, -10002, -10003, -10004, -10005)
+
     def __init__(self, code: int, description: str = ''):
         self.code = code
         self.description = description or self.descriptions.get(code, 'Unknown Error')
 
+    def is_connection_error(self):
+        return self.code in self.conn_errors
+
     def __repr__(self):
-        return f"""
-        Error Code: {self.code}
-        Error Description: {self.description}
-        """
+        return f"{self.code}: {self.description}"

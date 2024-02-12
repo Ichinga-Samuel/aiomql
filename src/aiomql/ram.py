@@ -11,7 +11,7 @@ class RAM:
     pips: float
     min_amount: float
     max_amount: float
-    balance_level: float = 50
+    balance_level: float = 10
     loss_limit: int = 3
 
     def __init__(self, *, risk_to_reward: float = 1, risk: float = 0.01, **kwargs):
@@ -37,12 +37,14 @@ class RAM:
         return self.account.balance * self.risk
 
     async def check_losing_positions(self) -> bool:
+        """Check if the number of losing positions is greater than or equal the loss limit."""
         positions = await Positions().positions_get()
         positions.sort(key=lambda pos: pos.time_msc)
         loosing = [trade for trade in positions if trade.profit <= 0]
-        return len(loosing) > self.loss_limit
+        return len(loosing) >= self.loss_limit
 
     async def check_balance_level(self) -> bool:
+        """Check if the balance level is greater than or equal to the balance level."""
         await self.account.refresh()
         balance_level = (self.account.margin / self.account.balance) * 100
         return balance_level >= self.balance_level

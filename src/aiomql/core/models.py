@@ -1,8 +1,10 @@
 import MetaTrader5 as mt5
 
-from .constants import BookType, TradeAction, OrderType, OrderTime, OrderFilling, PositionReason, DealType, DealEntry,\
-DealReason, SymbolChartMode, SymbolTradeMode, SymbolCalcMode, SymbolOptionMode, SymbolOrderGTCMode, SymbolOptionRight,\
-SymbolTradeExecution, SymbolSwapMode, DayOfWeek, AccountTradeMode, AccountStopOutMode, AccountMarginMode, OrderReason
+from .constants import BookType, TradeAction, OrderType, OrderTime, OrderFilling, PositionReason, DealType, DealEntry, \
+    DealReason, SymbolChartMode, SymbolTradeMode, SymbolCalcMode, SymbolOptionMode, SymbolOrderGTCMode, \
+    SymbolOptionRight, \
+    SymbolTradeExecution, SymbolSwapMode, DayOfWeek, AccountTradeMode, AccountStopOutMode, AccountMarginMode, \
+    OrderReason
 
 from .base import Base
 

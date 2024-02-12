@@ -34,7 +34,7 @@ class Bot:
         self.config = Config()
         self.account = Account()
         self.symbols = set()
-        self.executor = Executor(bot=self)
+        self.executor = Executor()
 
     @classmethod
     def run_bots(cls, bots: dict[Callable: dict] = None, num_workers: int = None):
@@ -58,8 +58,9 @@ class Bot:
                 raise SystemExit
             logger.info("Login Successful")
             await self.init_symbols()
-            self.executor.remove_workers()
+            self.executor.remove_workers(symbols=self.symbols)
             self.add_coroutine(self.config.task_queue.start)
+            self.config.bot = self
         except Exception as err:
             logger.error(f"{err}. Bot initialization failed")
             raise SystemExit
@@ -115,7 +116,7 @@ class Bot:
 
     def add_strategy_all(self, *, strategy: Type[Strategy], params: dict | None = None):
         """Use this to run a single strategy on all available instruments in the market using the default parameters
-        i.e one set of parameters for all trading symbols
+        i.e. one set of parameters for all trading symbols
 
         Keyword Args:
             strategy (Strategy): Strategy class

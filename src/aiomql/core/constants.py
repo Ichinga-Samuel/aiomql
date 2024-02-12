@@ -15,6 +15,7 @@ Examples:
 
 class Repr:
     __enum_name__ = ""
+    name: str
 
     def __repr__(self):
         return f"{self.__enum_name__}_{self.name}"
@@ -211,7 +212,7 @@ class TimeFrame(Repr, IntEnum):
         return times[self]
 
     @classmethod
-    def get(cls, time: int):
+    def get(cls, time: int) -> 'TimeFrame':
         times = {60: 1, 120: 2, 180: 3, 240: 4, 300: 5, 360: 6, 600: 10, 900: 15, 1200: 20, 1800: 30, 3600: 16385,
                  7200: 16386, 10800: 16387, 14400: 16388, 21600: 16390, 28800: 16392, 43200: 16396, 86400: 16408,
                  604800: 32769, 2592000: 49153}
@@ -340,7 +341,7 @@ class DealEntry(Repr, IntEnum):
 
 class DealReason(Repr, IntEnum):
     """DEAL_REASON Enum. The reason for deal execution is contained in the DEAL_REASON property. A deal can be executed
-    as a result of triggering of an order placed from a mobile application or an MQL5 program, as well as as a result
+    as a result of triggering of an order placed from a mobile application or an MQL5 program, as well as a result
     of the StopOut event, variation margin calculation, etc.
 
     Attributes:
@@ -423,10 +424,11 @@ class SymbolCalcMode(Repr, IntEnum):
         EXCH_OPTIONS (int): value is 34
         EXCH_OPTIONS_MARGIN (int): value is 36
         EXCH_BONDS (int): Exchange Bonds mode – calculation of margin and profit for trading bonds on a stock exchange
-        STOCKS_MOEX (int): Exchange MOEX Stocks mode –calculation of margin and profit for trading securities on MOEX
+        EXCH_STOCKS_MOEX (int): Exchange MOEX Stocks mode –calculation of margin and profit for trading securities on
+         MOEX
         EXCH_BONDS_MOEX (int): Exchange MOEX Bonds mode – calculation of margin and profit for trading bonds on MOEX
 
-        SERV_COLLATERAL (int): Collateral mode - a symbol is used as a non-tradable asset on a trading account.
+        SERV_COLLATERAL (int): Collateral mode - a symbol is used as a non-tradeable asset on a trading account.
             The market value of an open position is calculated based on the volume, current market price, contract size
             and liquidity ratio. The value is included into Assets, which are added to Equity. Open positions of such
             symbols increase the Free Margin amount and are used as additional margin (collateral) for open positions
@@ -483,7 +485,8 @@ class SymbolTradeExecution(Repr, IntEnum):
             - If the broker does not accept the requested price, a "Requote" is sent — the broker returns prices,
             at which this order can be executed.
 
-        MARKET (int): A broker makes a decision about the order execution price without any additional discussion with the trader.
+        MARKET (int): A broker makes a decision about the order execution price without any additional discussion with
+         the trader.
             Sending the order in such a mode means advance consent to its execution at this price.
 
         EXCHANGE (int): Trade operations are executed at the prices of the current market offers.
@@ -596,7 +599,8 @@ class SymbolOptionMode(Repr, IntEnum):
     """SYMBOL_OPTION_MODE Enum.
 
     Attributes:
-        EUROPEAN (int): European option may only be exercised on a specified date (expiration, execution date, delivery date)
+        EUROPEAN (int): European option may only be exercised on a specified date
+         (expiration, execution date, delivery date)
         AMERICAN (int): American option may be exercised on any trading day or before expiry. The period within which
         a buyer can exercise the option is specified for it.
     """
@@ -622,7 +626,7 @@ class AccountTradeMode(Repr, IntEnum):
 
 
 class TickFlag(Repr, IntFlag):
-    """TICK_FLAG Enum. TICK_FLAG defines possible flags for ticks. These flags are used to describe ticks obtained by the
+    """TICK_FLAG Enum. TICK_FLAG defines possible flags for ticks. The Flags are used to describe ticks obtained by the
     copy_ticks_from() and copy_ticks_range() functions.
 
     Attributes:
@@ -682,7 +686,8 @@ class TradeRetcode(Repr, IntEnum):
 
         CLOSE_ORDER_EXIST (int): A close order already exists for a specified position. This may happen when working in
             the hedging system:
-            · when attempting to close a position with an opposite one, while close orders for the position already exist
+            · when attempting to close a position with an opposite one, while close orders for the position already
+             exist
             · when attempting to fully or partially close a position if the total volume of the already present close
                 orders and the newly placed one exceeds the current position volume
 
@@ -724,7 +729,7 @@ class TradeRetcode(Repr, IntEnum):
     INVALID_STOPS = mt5.TRADE_RETCODE_INVALID_STOPS
     TRADE_DISABLED = mt5.TRADE_RETCODE_TRADE_DISABLED
     MARKET_CLOSED = mt5.TRADE_RETCODE_MARKET_CLOSED
-    NO_MONEY = mt5.TRADE_RETCODE_NO_MONEY 
+    NO_MONEY = mt5.TRADE_RETCODE_NO_MONEY
     PRICE_CHANGED = mt5.TRADE_RETCODE_PRICE_CHANGED
     PRICE_OFF = mt5.TRADE_RETCODE_PRICE_OFF
     INVALID_EXPIRATION = mt5.TRADE_RETCODE_INVALID_EXPIRATION
@@ -750,7 +755,7 @@ class TradeRetcode(Repr, IntEnum):
     SHORT_ONLY = mt5.TRADE_RETCODE_SHORT_ONLY
     CLOSE_ONLY = mt5.TRADE_RETCODE_CLOSE_ONLY
     FIFO_CLOSE = mt5.TRADE_RETCODE_FIFO_CLOSE
-    
+
 
 class AccountStopOutMode(Repr, IntEnum):
     """ACCOUNT_STOPOUT_MODE Enum.
@@ -776,7 +781,7 @@ class AccountMarginMode(Repr, IntEnum):
         EXCHANGE (int): Used for the exchange markets. Margin is calculated based on the discounts specified in
             symbol settings. Discounts are set by the broker, but not less than the values set by the exchange.
 
-        HEDGING (int): Used for the exchange markets where individual positions are possible
+        RETAIL_HEDGING (int): Used for the exchange markets where individual positions are possible
             (hedging, multiple positions can exist for one symbol). The margin is calculated based on the symbol
             type (SYMBOL_TRADE_CALC_MODE) taking into account the hedged margin (SYMBOL_MARGIN_HEDGED).
     """
