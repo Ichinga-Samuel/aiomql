@@ -15,5 +15,5 @@ from .history import History
 from .trader import Trader
 from .terminal import Terminal
 from .sessions import Session, Sessions
-from .utils import dict_to_string, round_off
+from .utils import dict_to_string, round_off, find_bearish_fractal, find_bullish_fractal
 from .lib import *

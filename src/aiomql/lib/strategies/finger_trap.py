@@ -74,13 +74,11 @@ class FingerTrap(Strategy):
             trend = self.ttf.time // self.etf.time
             bull_trend = cae.iloc[-trend:]
             bear_trend = cbe.iloc[-trend:]
-            count = 24 * 60 * 60 // self.etf.time
-            last_24 = candles[-count:]
             if self.tracker.bullish and any(bull_trend):
-                sl = getattr(find_bullish_fractal(candles), 'low', last_24.low.min())
+                sl = find_bullish_fractal(candles).low
                 self.tracker.update(snooze=self.ttf.time, order_type=OrderType.BUY, sl=sl)
             elif self.tracker.bearish and any(bear_trend):
-                sl = getattr(find_bearish_fractal(candles), 'high', last_24.high.max())
+                sl = find_bearish_fractal(candles).high
                 self.tracker.update(snooze=self.ttf.time, order_type=OrderType.SELL, sl=sl)
             else:
                 self.tracker.update(snooze=self.etf.time, order_type=None)
@@ -96,7 +94,7 @@ class FingerTrap(Strategy):
     async def trade(self):
         logger.info(f"Trading {self.symbol}")
         async with self.sessions as sess:
-            await self.sleep(self.etf.time)
+            await self.sleep(self.ttf.time)
             while True:
                 await sess.check()
                 try:

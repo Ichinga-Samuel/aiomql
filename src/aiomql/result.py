@@ -1,6 +1,7 @@
 import csv
 from logging import getLogger
 from threading import RLock
+from pathlib import Path
 
 from .core import Config
 from .core.models import OrderSendResult
@@ -30,7 +31,8 @@ class Result:
         self.parameters = parameters or {}
         self.result = result
         self.name = name or parameters.get('name', 'Trades')
-        self.config.create_records_dir()
+        if not Path(self.config.records_dir).exists():
+            Path(self.config.records_dir).mkdir(parents=True, exist_ok=True)
 
     def get_data(self) -> dict:
         res = self.result.get_dict(exclude={'retcode', 'comment', 'retcode_external', 'request_id', 'request'})
