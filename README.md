@@ -17,6 +17,7 @@ pip install aiomql
 - Helper classes for Bot Building. Easy to use and extend.
 - Compatible with pandas-ta.
 - Sample Pre-Built strategies
+- Visualization of charts using matplotlib and mplfinance
 - Manage Trading periods using Sessions
 - Risk Management
 - Run multiple bots concurrently with different accounts from the same broker or different brokers

@@ -83,7 +83,7 @@ class Account(AccountInfo):
         if ini and res:
             return True
         else:
-            await asyncio.sleep(tries)
+            await asyncio.sleep(5+tries)
             return await self._login(acc=acc, tries=tries-1)
 
     def has_symbol(self, symbol: str | SymbolInfo):

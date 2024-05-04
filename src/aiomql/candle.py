@@ -4,7 +4,9 @@ from typing import Type, TypeVar, Generic, Iterable
 from logging import getLogger
 
 from pandas import DataFrame, Series
+import pandas as pd
 import pandas_ta as ta
+import mplfinance as mplt
 
 from .core.constants import TimeFrame
 
@@ -12,7 +14,7 @@ logger = getLogger(__name__)
 
 
 class Candle:
-    """A class representing bars from the MetaTrader 5 terminal as a customized class analogous to Japanese
+    """A customized class representing rates from the MetaTrader 5 terminal analogous to Japanese
     Candlesticks. You can subclass this class for added customization.
 
     Attributes:
@@ -25,7 +27,6 @@ class Candle:
         real_volume (float): Trade volume
         spread (float): Spread
         Index (int): Custom attribute representing the position of the candle in a sequence.
-        mid (float): The median of the high and low price.
     """
     time: float
     open: float
@@ -36,7 +37,6 @@ class Candle:
     spread: float
     tick_volume: float
     Index: int
-    mid: float
 
     def __init__(self, **kwargs):
         """Create a Candle object from keyword arguments. This class must always be instantiated with open, high, low
@@ -49,17 +49,15 @@ class Candle:
             raise ValueError("Candle must be instantiated with open, high, low and close prices")
         self.time = kwargs.pop('time', 0)
         self.Index = kwargs.pop('Index', 0)
-        self.mid = kwargs.pop('mid', (kwargs['high'] + kwargs['low']) / 2)
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        return ("%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s,"
-                " mid=%(mid)s)") % {"class": self.__class__.__name__, "open": self.open, "high": self.high,
-                                    "low": self.low, "close": self.close, "time": self.time, "mid": self.mid,
-                                    'Index': self.Index}
+        return ("%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s)"
+                % {"class": self.__class__.__name__, "open": self.open, "high": self.high,
+                   "low": self.low, "close": self.close, "time": self.time, 'Index': self.Index})
 
     def __str__(self):
-        return self.dict()
+        return str(self.dict())
 
     def __eq__(self, other: "Candle"):
         return self.time == other.time
@@ -152,7 +150,6 @@ class Candles(Generic[_Candle]):
     tick_volume: Series
     real_volume: Series
     spread: Series
-    mid: Series
     Candle: Type[Candle]
     timeframe: TimeFrame
     _data: DataFrame
@@ -177,9 +174,6 @@ class Candles(Generic[_Candle]):
             raise ValueError(f"Cannot create DataFrame from object of {type(data)}")
 
         self._data = data.loc[::-1].reset_index(drop=True) if flip else data
-        if 'mid' not in self._data.columns.values:
-            mid = (self._data['high'] + self._data['low']) / 2
-            self._data.insert(0, 'mid', mid)
         self.Candle = candle_class or Candle
 
     def __repr__(self):
@@ -268,3 +262,38 @@ class Candles(Generic[_Candle]):
         """
         res = self._data.rename(columns=kwargs, inplace=inplace)
         return self if inplace else self.__class__(data=res)
+
+    def make_addplot(self, *, count: int = 50, columns: list = None, **kwargs) -> dict:
+        """
+        Make subplots for adding to the main plot
+
+        Args:
+            count (int): The numbers of candles to make the addplot for. Defaults to 50.
+            columns (list[str]): The columns to make the plot from. Defaults to None.
+            **kwargs: Valid arguments for the mplfinance make_addplot function
+        """
+        columns = columns or []
+        data = self._data[-count:]
+        data.index = pd.to_datetime(data['time'], unit='s')
+        return mplt.make_addplot(data[columns], **kwargs)
+
+    def visualize(self, *, count: int = 50, type='candle', savefig: str | dict = None, addplot: dict = None,
+                  style: str = 'charles', ylabel: str = 'Price', title: str = 'Chart', **kwargs):
+        """Visualize the candles using the mplfinance library.
+        Args:
+            count (int): The number of candles to visualize, counting from behind, i.e the most recent candles.
+             Defaults to 50.
+            type: Type of chart, defaults to candle
+            savefig (str|dict): The path to save the figure or a dictionary of parameters to pass to the savefig method.
+            addplot: Additional plots to add to the chart. Defaults to None. They should match the dimension of the
+              original data which is specified via the count parameter.
+            style (str): The style of the chart. Defaults to 'charles'.
+            ylabel (str): The label of the y-axis. Defaults to 'Price'.
+            title (str): The title of the chart. Defaults to 'Chart'.
+            kwargs: valid kwargs for the plot function.
+        """
+        kwargs |= {key: arg for key, arg in (('savefig', savefig), ('addplot', addplot), ('style', style),
+                                             ('ylabel', ylabel), ('title', title), ('type', type)) if arg}
+        data = self._data[-count:]
+        data.index = pd.to_datetime(data['time'], unit='s')
+        mplt.plot(data, **kwargs)

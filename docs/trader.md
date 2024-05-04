@@ -93,13 +93,16 @@ Checks the status of the order before placing the trade.
 <a name="record_trade"></a>
 ### record_trade
 ```python
-async def record_trade(result: OrderSendResult)
+async def record_trade(result: OrderSendResult, parameters: dict = None, name: str = '', exclude: set = None)
 ```
-Records the trade and the order details if `Config.record_trades` is true.
+Records the trade and the order details if `Config.record_trades` is true. Trades are recorded as either json or csv.
 #### Parameters
-| Name     | Type              | Description                    | Default |
-|----------|-------------------|--------------------------------|---------|
-| `result` | `OrderSendResult` | The result of the placed order | None    |
+| Name         | Type              | Description                                                  | Default |
+|--------------|-------------------|--------------------------------------------------------------|---------|
+| `result`     | `OrderSendResult` | The result of the placed order                               | None    |
+| `parameters` | `dict`            | parameters to saved instead of the ones in `self.parameters` | None    |
+| `name`       | `str`             | Name for the csv or json file                                | ''      |
+| `exclude`    | `set`             | Set of keys to exclude from the saved parameters             | None    |
 
 <a name="place_trade"></a>
 ### place\_trade

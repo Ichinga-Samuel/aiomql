@@ -9,10 +9,11 @@ class RAM:
     risk: float
     points: float
     pips: float
-    min_amount: float
-    max_amount: float
-    balance_level: float = 10
+    min_amount: float = 0
+    max_amount: float = 0
+    risk_level: float = 50
     loss_limit: int = 3
+    open_limit: int = 6
 
     def __init__(self, *, risk_to_reward: float = 1, risk: float = 0.01, **kwargs):
         """Initialize Risk Assessment and Management with the provided keyword arguments.
@@ -28,23 +29,38 @@ class RAM:
         [setattr(self, key, value) for key, value in kwargs.items()]
 
     async def get_amount(self) -> float:
-        """Calculate the amount to risk per trade as a percentage of balance.
+        """Calculate the amount to risk per trade as a percentage of equity.
 
         Returns:
             float: Amount to risk per trade
         """
         await self.account.refresh()
-        return self.account.balance * self.risk
+        amount = self.account.margin_free * self.risk
+        if self.min_amount and self.max_amount:
+            return max(self.min_amount, min(self.max_amount, amount))
+        return amount
 
-    async def check_losing_positions(self) -> bool:
-        """Check if the number of losing positions is greater than or equal the loss limit."""
-        positions = await Positions().positions_get()
-        positions.sort(key=lambda pos: pos.time_msc)
+    async def check_losing_positions(self, *, symbol: str = '') -> bool:
+        """Check if the number of losing positions is greater than or equal the loss limit.
+
+        Args:
+            symbol (str): Symbol to check. Defaults to ''.
+        """
+        positions = await Positions().positions_get(symbol=symbol)
         loosing = [trade for trade in positions if trade.profit <= 0]
         return len(loosing) >= self.loss_limit
 
-    async def check_balance_level(self) -> bool:
-        """Check if the balance level is greater than or equal to the balance level."""
+    async def check_open_positions(self, *, symbol: str = '') -> bool:
+        """Check if the number of open positions is greater than or equal the loss limit.
+
+        Args:
+            symbol (str): Symbol to check. Defaults to ''.
+        """
+        positions = await Positions().positions_get(symbol=symbol)
+        return len(positions) >= self.open_limit
+
+    async def check_risk_level(self) -> bool:
+        """Check the risk level."""
         await self.account.refresh()
-        balance_level = (self.account.margin / self.account.balance) * 100
-        return balance_level >= self.balance_level
+        risk_level = (1 - (self.account.margin_free / self.account.equity)) * 100
+        return risk_level >= self.risk_level

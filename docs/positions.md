@@ -5,9 +5,11 @@
 - [Attributes](#attributes)
 - [\_\_init\_\_](#__init__)
 - [positions_total](#positions_total)
+- [position_get](#position_get)
 - [positions_get](#positions_get)
 - [close](#close)
 - [close_by](#close_by)
+- [close_position](#close_position)
 - [close_all](#close_all)
 
 <a id="positions"></a>
@@ -67,6 +69,21 @@ Get open positions with the ability to filter by symbol or ticket.
 |-----------------------|--------------------------------|
 | `list[TradePosition]` | A list of open trade positions |
 
+<a id="position_get"></a>
+### position_get
+```python
+async def position_get(self, *, ticket: int) -> TradePosition
+```
+Get a position by ticket number.
+#### Arguments
+| Name     | Type  | Description     |
+|----------|-------|-----------------|
+| `ticket` | `int` | Position ticket |
+
+#### Returns
+| Type            | Description    |
+|-----------------|----------------|
+| `TradePosition` | Trade position |
 
 <a id="close"></a>
 ### close
@@ -88,11 +105,23 @@ Close a position by ticket number.
 ```python
 async def close_by(self, pos: TradePosition):
 ```
+
 Close a position by position object.
 #### Arguments
 | Name  | Type            | Description     |
 |-------|-----------------|-----------------|
 | `pos` | `TradePosition` | Position object |
+
+<a id='close_position'></a>
+### close_position
+```python
+async def close_position(self, *, position: TradePosition):
+```
+Close a position by position object.
+#### Arguments
+| Name       | Type            | Description     |
+|------------|-----------------|-----------------|
+| `position` | `TradePosition` | Position object |
 
 <a id="close_all"></a>
 ### close_all

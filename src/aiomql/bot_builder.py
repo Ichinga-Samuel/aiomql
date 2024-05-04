@@ -37,11 +37,16 @@ class Bot:
         self.executor = Executor()
 
     @classmethod
-    def run_bots(cls, bots: dict[Callable: dict] = None, num_workers: int = None):
-        """Run multiple bots at the same time."""
-        num_workers = num_workers or len(bots) * 2
+    def run_bots(cls, funcs: dict[Callable: dict] = None, num_workers: int = None):
+        """Run multiple scripts or bots in parallel with different accounts.
+
+        Args:
+            funcs (dict): A dictionary of functions to run with their respective keyword arguments as a dictionary
+            num_workers (int): Number of workers to run the functions
+        """
+        num_workers = num_workers or len(funcs) * 2
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            for bot, kwargs in bots.items():
+            for bot, kwargs in funcs.items():
                 executor.submit(bot, **kwargs)
 
     async def initialize(self):

@@ -5,7 +5,7 @@
 - [\_\_init\_\_](#__init__)
 - [get\_amount](#get_amount)
 - [check_losing_positions](#check_losing_positions)
-- [check_balance_level](#check_balance_level)
+- [check_risk_level](#check_balance_level)
 
 <a id="RAM"></a>
 ### RAM
@@ -14,16 +14,17 @@ class RAM
 ```
 Risk Assessment and Management. You can customize this class based on how you want to manage risk.
 #### Attributes
-| Name             | Type    | Description                                          | Default |
-|------------------|---------|------------------------------------------------------|---------|
-| `risk_to_reward` | `float` | Risk to reward ratio                                 | 1       |
-| `risk`           | `float` | Percentage of account balance to risk per trade      |         |
-| `points`         | `float` | A fixed number of points per trade can be fixed here |         |
-| `pips`           | `float` | A fixed number of pips per trade can be fixed here   |         |
-| `min_amount`     | `float` | Minimum amount to risk per trade                     |         |
-| `max_amount`     | `float` | Maximum amount to risk per trade                     |         |
-| `balance_level`  | `float` | Ratio of margin to available balance as a percentage | 10      |
-| `loss_limit`     | `int`   | Number of open losing trades to allow at any time    | 3       |
+| Name             | Type    | Description                                            | Default |
+|------------------|---------|--------------------------------------------------------|---------|
+| `risk_to_reward` | `float` | Risk to reward ratio                                   | 1       |
+| `risk`           | `float` | Percentage of account balance to risk per trade        |         |
+| `points`         | `float` | A fixed number of points per trade can be fixed here   |         |
+| `pips`           | `float` | A fixed number of pips per trade can be fixed here     |         |
+| `min_amount`     | `float` | Minimum amount to risk per trade                       |         |
+| `max_amount`     | `float` | Maximum amount to risk per trade                       |         |
+| `risk_level`     | `float` | Ratio of free margin to current equity as a percentage | 50      |
+| `loss_limit`     | `int`   | Number of open losing trades to allow at any time      | 3       |
+
 
 <a id="__init__"></a>
 ### \_\_init\_\_

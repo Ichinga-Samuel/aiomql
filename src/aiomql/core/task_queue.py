@@ -18,7 +18,8 @@ class QueueItem:
             else:
                 return self.task(*self.args, **self.kwargs)
         except Exception as err:
-            logger.error(f'Error in running {self.task.__name__} with {str(self.args)}, {self.kwargs}: {err}')
+            logger.error(f"Error in running {getattr(self.task, '__name__', str(self.task))}"
+                         f" with {str(self.args)}, {self.kwargs}: {err}")
 
 
 class TaskQueue:

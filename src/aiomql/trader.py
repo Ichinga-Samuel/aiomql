@@ -107,17 +107,18 @@ class Trader(ABC):
         await self.record_trade(result, parameters=self.parameters.copy())
         return result
 
-    async def record_trade(self, result: OrderSendResult, parameters: dict = None, name: str = ''):
-        """Record the trade in a csv file.
-
+    async def record_trade(self, result: OrderSendResult, parameters: dict = None, name: str = '', exclude: set = None):
+        """Record the trade in csv or json.
         Args:
             result (OrderSendResult): Result of the order send
             parameters: parameters of the trading strategy used to place the trade
             name: Name of the trading strategy
+            exclude: Exclude these fields from the recorded trade
         """
         if result.retcode != 10009 or not self.config.record_trades:
             return
         params = parameters or self.parameters.copy()
+        params = {k: v for k, v in params.items() if k not in (exclude or set())}
         profit = await self.order.calc_profit()
         params["expected_profit"] = profit
         date = datetime.utcnow()
@@ -125,7 +126,7 @@ class Trader(ABC):
         params["date"] = str(date.date())
         params["time"] = str(date.time())
         res = Result(result=result, parameters=params, name=name)
-        self.config.task_queue.add_task(res.to_csv)
+        self.config.task_queue.add_task(res.save)
 
     @abstractmethod
     async def place_trade(self, *args, **kwargs):

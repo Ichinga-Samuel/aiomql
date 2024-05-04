@@ -5,6 +5,7 @@
 - [__init__](#__init__)
 - [get_data](#get_data)
 - [to_csv](#to_csv)
+- [to_json](#to_json)
 
 <a id="result"></a>
 ```python
@@ -33,6 +34,7 @@ Prepare result data for record keeping and analysis.
 | `name`       | `str`             | The name of the result object     |
 
 <a id="get_data"></a>
+### get\_data
 ```python
 def get_data(self) -> dict:
 ```
@@ -48,3 +50,11 @@ Get the result data as a dictionary
 async def to_csv()
 ```
 Record trade results and associated parameters as a csv file
+
+<a id="to_json"></a>
+### to\_json
+```python
+async def to_json()
+```
+Record trade results and associated parameters as a json file
+```

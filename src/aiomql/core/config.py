@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Literal, TypeVar
 import json
 from logging import getLogger
 
 from .task_queue import TaskQueue
 
 logger = getLogger(__name__)
+Bot = TypeVar("Bot")
 
 
 class Config:
@@ -14,6 +15,7 @@ class Config:
 
     Attributes:
         record_trades (bool): Whether to keep record of trades or not.
+        trade_record_mode: How to save trade, json or csv. Defaults to json
         filename (str): Name of the config file
         records_dir (str): Path to the directory where trade records are saved
         login (int): Trading account number
@@ -31,20 +33,21 @@ class Config:
         By passing reload=True to the load_config method, you can reload and search again for the config file.
     """
     login: int = 0
+    trade_record_mode: Literal['csv', 'json'] = 'csv'
     password: str = ""
     server: str = ""
     path: str | Path = ""
     timeout: int = 60000
     record_trades: bool = True
     filename: str = "aiomql.json"
-    win_percentage: float = 0.85
-    records_dir: str | Path = 'records'
-    config_dir: str = ''
     _initialize = True
     state: dict = {}
-    root_dir: Path = Path('.').absolute().resolve()
+    root: Path
+    root_dir: Path
+    records_dir: Path
+    config_dir: str = ''
     task_queue: TaskQueue = TaskQueue()
-    bot: 'Bot' = None
+    bot: Bot = None
     _instance: 'Config'
 
     def __new__(cls, *args, **kwargs):
@@ -54,19 +57,16 @@ class Config:
 
     def __init__(self, **kwargs):
         reload = kwargs.pop('reload', False)
-        root_dir = kwargs.pop('root_dir', None)
-        setattr(self, 'root_dir', root_dir) if root_dir else ...
-        [setattr(self, key, value) for key, value in kwargs.items()]
-        self.load_config(reload=reload)
+        self.load_config(reload=reload, **kwargs)
+
+    def set_root(self, *, root: str | Path):
+        root = Path(root) if str else root
+        self.root = root.absolute().resolve()
+        self.root_dir = self.root
 
     def __setattr__(self, key, value):
-        if key == 'root_dir':
-            value = Path(value).absolute().resolve()
-        if key == 'records_dir':
-            self.create_records_dir(records_dir=value)
-            return
         if key == 'path':
-            value = self.root_dir / Path(value) if not Path(value).exists() else value
+            value = str(self.root_dir / Path(value).absolute().resolve())
         super().__setattr__(key, value)
 
     @staticmethod
@@ -96,40 +96,53 @@ class Config:
             return
 
     def create_records_dir(self, *, records_dir: str | Path = 'records'):
-        """Create records directory if it does not exist. Relative to the root directory of the project.
+        """Create records directory if it does not exist. By default, it is relative to the root directory of the
+         project unless an absolute path is provided.
+
         Keyword Args:
-            records_dir (str|Path): The name of the directory to create
+            records_dir (str|Path): The directory to save trade records. Default is 'records'
         """
         try:
-            records_dir = Path(records_dir) if isinstance(records_dir, str) else records_dir
-            records_dir = self.root_dir / records_dir
+            if isinstance(records_dir, str):
+                records_dir = self.root_dir / records_dir
+            elif isinstance(records_dir, Path):
+                records_dir = records_dir.absolute().resolve()
             records_dir.mkdir(parents=True, exist_ok=True)
-            super().__setattr__('records_dir', records_dir)
-            return records_dir
+            self.records_dir = records_dir
         except Exception as err:
             logger.warning(f"{err}: Unable to create records directory")
 
-    def load_config(self, *, file: str = None, reload: bool = True, filename: str = None, config_dir: str = ''):
+    def load_config(self, *, file: str = None, reload: bool = True, filename: str = None,
+                    config_dir: str = '', **kwargs):
         """Load configuration settings from a file.
         Keyword Args:
             file (str): The path to the file to load. If not provided, the file is searched for
             reload (bool): Whether to reload the config object. Default is True
             filename (str): The name of the file to load. If not provided, the default filename is used
             config_dir (str): The name of the directory to search for the file. Default is the root directory
+            root_dir (str): The root directory of the project
+            kwargs: Additional keyword arguments
         """
         if not (self._initialize or reload):
             return
-        self._initialize = False
         data = {}
         self.filename = filename or self.filename
         self.config_dir = config_dir or self.config_dir
+        root_dir = kwargs.pop('root_dir', None)
+        records_dir = kwargs.pop('records_dir', 'records')
+        if self._initialize or (root_dir is not None):
+            self.set_root(root=(root_dir or '.'))
+            self.create_records_dir(records_dir=records_dir)
+
         if (file := (file or self.find_config())) is None:
             logger.warning("No Config File Found")
         else:
             fh = open(file, mode="r")
             data = json.load(fh)
             fh.close()
+        data |= kwargs
         [setattr(self, key, value) for key, value in data.items()]
+        self._initialize = False
 
     def account_info(self) -> dict[str, int | str]:
         """Returns Account login details as found in the config object if available

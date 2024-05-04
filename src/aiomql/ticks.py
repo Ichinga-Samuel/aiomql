@@ -4,6 +4,8 @@ from typing import TypeVar, Iterable
 
 from pandas import DataFrame, Series
 import pandas_ta as ta
+import mplfinance as mplt
+import pandas as pd
 
 from .core.constants import TickFlag
 
@@ -46,6 +48,21 @@ class Tick:
         return ("%(class)s(Index=%(Index)s, time=%(time)s, bid=%(bid)s, ask=%(ask)s, last=%(last)s, volume=%(volume)s)"
                 % {"class": self.__class__.__name__, "time": self.time, "bid": self.bid,
                    "ask": self.ask, "last": self.last, "volume": self.volume, 'Index': self.Index})
+
+    def dict(self, exclude: set = None, include: set = None) -> dict:
+        """
+        Returns a dictionary of the instance attributes.
+
+        Args:
+            exclude: A set of attributes to exclude from the dictionary. Defaults to None.
+            include: A set of attributes to include in the dictionary. Defaults to None.
+
+        Returns: dict
+        """
+        exclude = exclude or set()
+        include = include or set()
+        keys = include or set(self.__dict__.keys()).difference(exclude)
+        return {k: v for k, v in self.__dict__.items() if k in keys}
 
     def set_attributes(self, **kwargs):
         """Set attributes from keyword arguments"""
@@ -158,3 +175,38 @@ class Ticks:
         """
         res = self._data.rename(columns=kwargs, inplace=inplace)
         return res if inplace else self.__class__(data=res)
+
+    def make_addplot(self, *, count: int = 50, columns: list = None, **kwargs) -> dict:
+        """
+        Make subplots for adding to the main plot
+
+        Args:
+            count (int): The numbers of candles to make the addplot for. Defaults to 50.
+            columns (list[str]): The columns to make the plot from. Defaults to None.
+            **kwargs: Valid arguments for the mplfinance make_addplot function
+        """
+        columns = columns or []
+        data = self._data[-count:]
+        data.index = pd.to_datetime(data['time'], unit='s')
+        return mplt.make_addplot(data[columns], **kwargs)
+
+    def visualize(self, *, count: int = 50, type='candle', savefig: str | dict = None, addplot: dict = None,
+                  style: str = 'charles', ylabel: str = 'Price', title: str = 'Chart', **kwargs):
+        """Visualize the candles using the mplfinance library.
+        Args:
+            count (int): The number of candles to visualize, counting from behind, i.e the most recent candles.
+             Defaults to 50.
+            type: Type of chart, defaults to candle
+            savefig (str|dict): The path to save the figure or a dictionary of parameters to pass to the savefig method.
+            addplot: Additional plots to add to the chart. Defaults to None. They should match the dimension of the
+              original data which is specified via the count parameter.
+            style (str): The style of the chart. Defaults to 'charles'.
+            ylabel (str): The label of the y-axis. Defaults to 'Price'.
+            title (str): The title of the chart. Defaults to 'Chart'.
+            kwargs: valid kwargs for the plot function.
+        """
+        kwargs |= {key: arg for key, arg in (('savefig', savefig), ('addplot', addplot), ('style', style),
+                                             ('ylabel', ylabel), ('title', title), ('type', type)) if arg}
+        data = self._data[-count:]
+        data.index = pd.to_datetime(data['time'], unit='s')
+        mplt.plot(data, **kwargs)

@@ -1,22 +1,29 @@
-# Records
+# Trade Records
 
 ## Table of contents
-- [Records](#records)
+- [Trade Records](#trade_records)
 - [\_\_init\_\_](#__init__)
-- [get\_records](#get_records)
-- [read\_update](#read_update)
-- [update\_rows](#update_rows)
-- [update\_records](#update_records)
-- [update\_record](#update_record)
-  
-<a id="records"></a>
-### Records
+- [get_csv_records](#get_csv_records)
+- [get_json_records](#get_json_records)
+- [read_update_csv](#read_update_csv)
+- [read_update_json](#read_update_json)
+- [update_rows](#update_rows)
+- [update_row](#update_row)
+- [update_csv_records](#update_csv_records)
+- [update_json_records](#update_json_records)
+- [update_csv_record](#update_csv_record)
+- [update_json_record](#update_json_record)
+
+<a id="trade_records"></a>
+### Trade Records
 ```python
-class Records()
+class TradeRecords()
 ```
-This utility class read trade records from csv files, and update them based on their closing positions. To use this default
-implementation the csv files should at least have the following columns `['order', 'symbol', 'actual_profit', 'win', 'closed']`
+This utility class read trade records from csv and json files, and update them based on their closing positions.
+To use this default implementation the csv or json file should be able to provide the following data.
+`['order', 'symbol', 'actual_profit', 'win', 'closed']`
 Once a trade have been closed, the actual profit and win status will be updated in the csv file.
+
 #### Default Headers
 | column        | type  | description                                           |
 |---------------|-------|-------------------------------------------------------|
@@ -25,6 +32,7 @@ Once a trade have been closed, the actual profit and win status will be updated 
 | actual_profit | float | The actual profit of the trade, this zero by default  |
 | win           | bool  | The win status of the trade, this is False by default |
 | closed        | bool  | The status of the trade, this is False by default     |
+
 #### Attributes
 | name        | type   | description                                                  |
 |-------------|--------|--------------------------------------------------------------|
@@ -36,40 +44,62 @@ Once a trade have been closed, the actual profit and win status will be updated 
 ```python
 def __init__(records_dir: Path | str = '')
 ```
-Initialize an instance of the class
+Initialize an instance of the class.
 #### Parameters
 | name         | type | description                                                    |
 |--------------|------|----------------------------------------------------------------|
 | records_dir  | Path | Absolute path to directory containing record of placed trades. |
 
-<a id="get_records"></a>
-### get\_records
+<a id="get_csv_records"></a>
+### get_csv_records
 ```python
-async def get_records()
+async def get_csv_records()
 ```
-Get trade records from records_dir folder
+Get trade records from records_dir folder.
 #### Yields
 | type | description        |
 |------|--------------------|
 | Path | Trade record files |
 
-<a id="read_update"></a>
-### read\_update
+<a id="get_json_records"></a>
+### get_json_records
 ```python
-async def read_update(file: Path)
+async def get_json_records()
 ```
-Read and update trade records
+Get trade records from records_dir folder.
+#### Yields
+| type | description        |
+|------|--------------------|
+| Path | Trade record files |
+
+<a id="read_update_csv"></a>
+### read_update_csv
+```python
+async def read_update_csv(file: Path)
+```
+Read and update trade records from a csv file.
+#### Parameters
+| name | type | description       |
+|------|------|-------------------|
+| file | Path | Trade record file |
+
+<a id="read_update_json"></a>
+### read_update_json
+```python
+async def read_update_json(file: Path)
+```
+Read and update trade records from a json file.
 #### Parameters
 | name | type | description       |
 |------|------|-------------------|
 | file | Path | Trade record file |
 
 <a id="update_rows"></a>
-### update\_rows
+### update_rows
 ```python
 async def update_rows(rows: list[dict]) -> list[dict]
 ```
-Update the rows of entered trades in the csv file with the actual profit.
+Update the rows of entered trades with the actual profit.
 #### Parameters
 | name | type       | description                                                               |
 |------|------------|---------------------------------------------------------------------------|
@@ -80,17 +110,18 @@ Update the rows of entered trades in the csv file with the actual profit.
 |------------|---------------------------------------------------------------|
 | list[dict] | A list of dictionaries with the actual profit and win status. |
 
-
-<a id="update_records"></a>
-### update\_records
+<a id="update_row"></a>
+### update_row
 ```python
-async def update_records()
+async def update_row(row: dict) -> dict
 ```
-Update trade records in the records_dir folder.
+Update the row of an entered trade with the actual profit.
+#### Parameters
+| name | type | description                               |
+|------|------|-------------------------------------------|
+| row  | dict | A dictionary from the csv file row object |
 
-<a id="update_record"></a>
-### update\_record
-```python
-async def update_record(file: Path | str)
-```
-Update a single trade record file.
+#### Returns
+| type | description                        |
+|------|------------------------------------|
+| dict | A dictionary with the actual profit |

@@ -84,6 +84,23 @@ A simple check to see if the candle is bearish.
 |------|---------------|
 | bool | True or False |
 
+<a id="candle.dict"></a>
+### dict
+```python
+def dict(self, exclude: set = None, include: set = None) -> Dict[str, Any]
+```
+Return a dictionary representation of the Candle object.
+#### Parameters:
+| Name      | Type       | Description                                                                 |
+|-----------|------------|-----------------------------------------------------------------------------|
+| `exclude` | `set[str]` | A set of attributes to exclude from the dictionary.                        |
+| `include` | `set[str]` | A set of attributes to include in the dictionary.                          |
+
+#### Returns:
+| Type          | Description                                      |
+|---------------|--------------------------------------------------|
+| `Dict[str, Any]` | A dictionary representation of the Candle object.|
+
 
 ### <a id="candles"></a> Candles
 ```python
@@ -186,3 +203,40 @@ Rename columns of the data object.
 | Type      | Description                                                               |
 |-----------|---------------------------------------------------------------------------|
 | `Candles` | A new instance of the class with the renamed columns if inplace is False. |
+
+
+<id="candles.visualize"></a>
+### visualize
+```python
+async def visualize(self, *, count: int = 50, type='candle', savefig: str | dict = None, addplot: dict = None,
+                  style: str = 'charles', ylabel: str = 'Price', title: str = 'Chart', **kwargs)
+```
+Visualize the candles using the mplfinance library.
+#### Parameters:
+| Name     | Type             | Description                                                                                   | Default |   
+|----------|------------------|-----------------------------------------------------------------------------------------------|---------|
+| `count`  | `int`            | The number of candles to visualize.                                                          | 50      |
+| `type`   | `str`            | The type of chart to plot.                                                                   | 'candle'|
+| `savefig`| `str` or `dict`  | The path to save the figure or a dictionary of keyword arguments to pass to the savefig method.| None   |
+| `addplot`| `dict`           | A dictionary of keyword arguments to pass to the addplot method.                             | None   |
+| `style`  | `str`            | The style of the chart.                                                                      | 'charles'|
+| `ylabel` | `str`            | The label of the y-axis.                                                                     | 'Price' |
+| `title`  | `str`            | The title of the chart.                                                                      | 'Chart' |
+| `kwargs` | `Any`            | Additional keyword arguments to pass to the plot method.                                      |         |
+
+<id="candles.make_addplot"></a>
+```python
+def make_addplot(self, *, count: int = 50, columns: list = None, **kwargs) -> dict
+```
+Make subplots for adding to the main plot.
+#### Parameters:
+| Name      | Type   | Description                                                                                   | Default |
+|-----------|--------|-----------------------------------------------------------------------------------------------|---------|
+| `count`   | `int`  | The number of candles to visualize.                                                          | 50      |
+| `columns` | `list` | The columns to plot.                                                                          | None    |
+| `kwargs`  | `Any`  | Additional keyword arguments to pass to the addplot method.                                   |         |
+
+#### Returns:
+| Type | Description     |
+|------|-----------------|
+| dict | A makeplot dict |

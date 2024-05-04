@@ -69,15 +69,13 @@ class FingerTrap(Strategy):
             self.tracker.update(new=True, entry_time=current)
             candles.ta.ema(length=self.entry_ema, append=True)
             candles.rename(**{f"EMA_{self.entry_ema}": "ema"})
-            cae = candles.ta_lib.cross(candles.close, candles.ema)
-            cbe = candles.ta_lib.cross(candles.close, candles.ema, above=False)
-            trend = self.ttf.time // self.etf.time
-            bull_trend = cae.iloc[-trend:]
-            bear_trend = cbe.iloc[-trend:]
-            if self.tracker.bullish and any(bull_trend):
+            candles['cae'] = candles.ta_lib.cross(candles.close, candles.ema)
+            candles['cbe'] = candles.ta_lib.cross(candles.close, candles.ema, above=False)
+            current = candles[-1]
+            if self.tracker.bullish and current.cae:
                 sl = find_bullish_fractal(candles).low
                 self.tracker.update(snooze=self.ttf.time, order_type=OrderType.BUY, sl=sl)
-            elif self.tracker.bearish and any(bear_trend):
+            elif self.tracker.bearish and current.cbe:
                 sl = find_bearish_fractal(candles).high
                 self.tracker.update(snooze=self.ttf.time, order_type=OrderType.SELL, sl=sl)
             else:

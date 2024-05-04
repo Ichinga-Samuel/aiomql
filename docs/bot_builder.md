@@ -146,16 +146,17 @@ Removes it from the list of symbols if it was not successfully initialized or no
 <a id='bb.run_bots'></a>
 ```python
 @classmethod
-def run_bots(cls, bots: dict[Callable: dict] = None, num_workers: int = None):
+def run_bots(cls, funcs: dict[Callable: dict] = None, num_workers: int = None):
 ```
-Run multiple bots at the same time. They will run in parallel. Using multiple bots is useful when you want to run
-different strategies on different accounts. The callable should be a function that runs a bot instance and defines its
-own Config instance within the function scope. The dictionary should contain the callable as the key and the dictionary
-of keyword arguments to pass to the callable as the value. Use the path attribute of the config instance to specify the
-terminal path of each account. The num_workers parameter specifies the number of workers to use. If not specified, the
-number of workers will be the number of bots.
+Run multiple functions (scripts, bots) at the same time in parallel with different accounts. 
+Running multiple functions is useful when you want to run different strategies on different accounts.
+The callable can for example be a bot instance that defines its own Config instance within the function scope.
+The dictionary should contain the callable as the key and the dictionary of keyword arguments to pass to the callable as
+the value. Use the path attribute of the config instance to specify the terminal path of each account.
+The num_workers parameter specifies the number of workers to use. If not specified, the number of workers will be the
+number of bots.
 #### Parameters
 | Name          | Type                   | Description                                                                     |
 |---------------|------------------------|---------------------------------------------------------------------------------|
-| `bots`        | `dict[Callable: dict]` | A dictionary of callables and their keyword arguments to run as bots            |
+| `funcs`       | `dict[Callable: dict]` | A dictionary of callables and their keyword arguments to run as bots            |
 | `num_workers` | `int`                  | The number of workers to use. If not specified, the number of bots will be used |

@@ -4,6 +4,7 @@
 - [Order](#Order)
 - [\_\_init\_\_](#__init__)
 - [orders_total](#orders_total)
+- [get_order](#get_order)
 - [get_orders](#get_orders)
 - [check](#check)
 - [send](#send)
@@ -41,6 +42,13 @@ Get the total number of active orders.
 | Type  | Description                   |
 |-------|-------------------------------|
 | `int` | total number of active orders |
+
+<a id="get_order"></a>
+### get_order
+```python
+async def get_order(self, ticket: int) -> TradeOrder
+```
+Get an active trade order by ticket.
 
 <a id="get_orders"></a>
 ### get_orders

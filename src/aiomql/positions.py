@@ -68,9 +68,30 @@ class Positions:
         logger.warning(f'Failed to get positions for {symbol or self.symbol}. {self.mt5.error}')
         return []
 
-    async def close(self, *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType):
-        """Close an open position for the trading account."""
+    async def position_get(self, *, ticket: int) -> TradePosition:
+        """Get an open position by ticket.
+        Args:
+            ticket (int): Position ticket.
 
+        Returns:
+            TradePosition: Return an open position
+        """
+        positions = await self.positions_get(ticket=ticket)
+        position = positions[0] if positions else None
+        if position is None:
+            raise ValueError(f'Position with ticket {ticket} not found')
+        assert position.ticket == ticket, f'Position with ticket {ticket} not found'
+        return position
+
+    async def close(self, *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType):
+        """Close an open position for the trading account using the ticket and other parameters.
+        Args:
+            ticket (int): Position ticket.
+            symbol (str): Financial instrument name.
+            price (float): Closing price.
+            volume (float): Volume to close.
+            order_type (OrderType): Order type.
+        """
         order = Order(action=TradeAction.DEAL, price=price, position=ticket, symbol=symbol, volume=volume,
                       type=order_type.opposite)
         return await order.send()
@@ -79,6 +100,12 @@ class Positions:
         """Close an open position for the trading account."""
         order = Order(position=pos.ticket, symbol=pos.symbol, volume=pos.volume, type=pos.type.opposite,
                       price=pos.price_current)
+        return await order.send()
+
+    async def close_position(self, *, position: TradePosition):
+        """Close an open position for the trading account. Using a position object."""
+        order = Order(position=position.ticket, symbol=position.symbol, volume=position.volume,
+                      type=position.type.opposite, price=position.price_current)
         return await order.send()
 
     async def close_all(self, symbol: str = '', group: str = '') -> int:
@@ -94,6 +121,6 @@ class Positions:
         symbol = symbol or self.symbol
         group = group or self.group
         positions = [pos for pos in await self.positions_get(symbol=symbol, group=group)]
-        orders = [self.close_by(pos) for pos in positions]
+        orders = [self.close_position(position=pos) for pos in positions]
         results = await asyncio.gather(*[order for order in orders], return_exceptions=True)
         return len([res for res in results if (res and res.retcode) == 10009])

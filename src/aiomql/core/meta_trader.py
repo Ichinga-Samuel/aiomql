@@ -310,7 +310,7 @@ class MetaTrader(metaclass=BaseMeta):
     async def positions_total(self) -> int:
         return await asyncio.to_thread(self._positions_total)
 
-    async def positions_get(self, group: str = "", ticket: int = 0, symbol: str = "") -> tuple[TradePosition] | None:
+    async def positions_get(self, group: str = "", ticket: int = None, symbol: str = "") -> tuple[TradePosition] | None:
         kwargs = {key: value for key, value in (('group', group), ('ticket', ticket), ('symbol', symbol)) if value}
         res = await asyncio.to_thread(self._positions_get, **kwargs)
         if res is None:
@@ -324,11 +324,10 @@ class MetaTrader(metaclass=BaseMeta):
         return await asyncio.to_thread(self._history_orders_total, date_from, date_to)
 
     async def history_orders_get(self, date_from: datetime | float = None, date_to: datetime | float = None,
-                                 group: str = '',
-                                 ticket: int = 0, position: int = 0) -> tuple[TradeOrder] | None:
-        kwargs = {key: value for key, value in (('date_from', date_from), ('date_to', date_to), ('group', group),
-                                                ('ticket', ticket), ('position', position)) if value}
-        res = await asyncio.to_thread(self._history_orders_get, **kwargs)
+                                 group: str = '', ticket: int = None, position: int = None) -> tuple[TradeOrder] | None:
+        kwargs = {key: value for key, value in (('group', group), ('ticket', ticket), ('position', position)) if value}
+        args = tuple(arg for arg in (date_from, date_to) if arg)
+        res = await asyncio.to_thread(self._history_orders_get, *args, **kwargs)
         if res is None:
             err = await self.last_error()
             self.error = Error(*err)
@@ -340,10 +339,10 @@ class MetaTrader(metaclass=BaseMeta):
         return await asyncio.to_thread(self._history_deals_total, date_from, date_to)
 
     async def history_deals_get(self, date_from: datetime | float = None, date_to: datetime | float = None,
-                                group: str = '', ticket: int = 0, position: int = 0) -> tuple[TradeDeal] | None:
-        kwargs = {key: value for key, value in (('date_from', date_from), ('date_to', date_to), ('group', group),
-                                                ('ticket', ticket), ('position', position)) if value}
-        res = await asyncio.to_thread(self._history_deals_get, **kwargs)
+                                group: str = '', ticket: int = None, position: int = None) -> tuple[TradeDeal] | None:
+        kwargs = {key: value for key, value in (('group', group), ('ticket', ticket), ('position', position)) if value}
+        args = tuple(arg for arg in (date_from, date_to) if arg)
+        res = await asyncio.to_thread(self._history_deals_get, *args, **kwargs)
         if res is None:
             err = await self.last_error()
             self.error = Error(*err)

@@ -38,6 +38,26 @@ class Order(TradeRequest):
         """
         return await self.mt5.orders_total()
 
+    async def get_order(self, *, ticket: int, retries: int = 3) -> TradeOrder:
+        """
+        Get the order by ticket number.
+        Args:
+            ticket (int): Order ticket number
+            retries (int): Number of retries
+        Returns:
+        """
+        if retries < 1:
+            raise OrderError(f'Failed to get orders for {self.symbol}: {self.mt5.error}')
+        orders = await self.mt5.orders_get(ticket=ticket)
+        if orders is not None:
+            order = TradeOrder(**orders[0]._asdict())
+            assert order.ticket == ticket, f'Order ticket mismatch {order.ticket} != {ticket}'
+            return order
+        if self.mt5.error.is_connection_error():
+            await asyncio.sleep(retries)
+            return await self.get_order(ticket=ticket, retries=retries-1)
+        raise OrderError(f'Failed to get orders for {self.symbol}: {self.mt5.error}')
+
     async def get_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '', retries=3)\
             -> tuple[TradeOrder, ...]:
         """Get the list of active orders for the current symbol.

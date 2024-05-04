@@ -5,8 +5,12 @@
 - [\_\_init\_\_](#__init__)
 - [init](#init)
 - [get_deals](#get_deals)
+- [get_deals_ticket](#get_deals_ticket)
+- [get_deals_position](#get_deals_position)
 - [deals_total](#deals_total)
 - [get_orders](#get_orders)
+- [get_orders_position](#get_orders_position)
+- [get_order_ticket](#get_order_ticket)
 - [orders_total](#orders_total)
 
 <a id='history'></a>
@@ -68,13 +72,54 @@ Get history deals and orders
 <a id='get_deals'></a>
 ### get_deals
 ```python
-async def get_deals() -> list[TradeDeal]
+async def get_deals(self, *, date_from: datetime | int = None, date_to: datetime | int = None, group: str = '',
+                        retries=3) -> list[TradeDeal]
 ```
-Get deals from trading history using the parameters set in the constructor.
-#### Returns
-| Name    | Type              | Description           | Default |
-|---------|-------------------|-----------------------|---------|
-| `deals` | `list[TradeDeal]` | A list of trade deals | []      |
+#### Parameters:
+| Name        | Type              | Description                                                                                                                                                                      | Default |
+|-------------|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| `date_from` | `datetime\|float` | Date the deals are requested from. Set by the 'datetime' object or as a number of seconds elapsed since 1970.01.01. Defaults to twenty-four hours from the current time in 'utc' | None    |
+| `date_to`   | `datetime\|float` | Date up to which the deals are requested. Set by the 'datetime' object or as a number of seconds elapsed since 1970.01.01. Defaults to the current time in "utc"                 | None    |
+| `group`     | `str`             | Filter for selecting history by symbols.                                                                                                                                         | ""      |
+| `retries`   | `int`             | Number of retries if the request fails.                                                                                                                                          | 3       |
+
+#### Returns:
+| Name    | Type               | Description           | Default |
+|---------|--------------------|-----------------------|---------|
+| `deals` | `tuple[TradeDeal]` | A list of trade deals | []      |
+
+<a id='get_deals_ticket'></a>
+### get_deals_ticket
+```python
+async def get_deals_ticket(self, *, ticket: int) -> tuple[TradeDeal]
+```
+Get deals by ticket number
+#### Parameters:
+| Name     | Type | Description           | Default |
+|----------|------|-----------------------|---------|
+| `ticket` | `int`| Ticket number to get  | 0       |
+
+#### Returns:
+| Name    | Type               | Description           | Default |
+|---------|--------------------|-----------------------|---------|
+| `deals` | `tuple[TradeDeal]` | A list of trade deals | []      |
+
+<a id='get_deals_position'></a>
+### get_deals_position
+```python
+async def get_deals_position(self, *, position: int) -> list[TradeDeal]
+```
+Get deals by position
+#### Parameters:
+| Name       | Type | Description           | Default |
+|------------|------|-----------------------|---------|
+| `position` | `int`| Position number to get | 0       |
+
+#### Returns:
+| Name    | Type               | Description           | Default |
+|---------|--------------------|-----------------------|---------|
+| `deals` | `tuple[TradeDeal]` | A list of trade deals | []      |
+
 
 <a id='deals_total'></a>
 ### deals_total
@@ -90,13 +135,54 @@ Get total number of deals within the specified period in the constructor.
 <a id='get_orders'></a>
 ### get_orders
 ```python
-async def get_orders() -> list[TradeOrder]
+async def get_orders(self, *, date_from: datetime | int = None, date_to: datetime | int = None, group: str = '',
+                         retries=3) -> tuple[TradeOrder]
 ```
 Get orders from trading history using the parameters set in the constructor.
+
+#### Parameters
+| Name        | Type              | Description                                                                                                                                                                      | Default |
+|-------------|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| `date_from` | `datetime\|float` | Date the deals are requested from. Set by the 'datetime' object or as a number of seconds elapsed since 1970.01.01. Defaults to twenty-four hours from the current time in 'utc' | None    |
+| `date_to`   | `datetime\|float` | Date up to which the deals are requested. Set by the 'datetime' object or as a number of seconds elapsed since 1970.01.01. Defaults to the current time in "utc"                 | None    |
+| `group`     | `str`             | Filter for selecting history by symbols.                                                                                                                                         | ""      |
+
 #### Returns
-| Name     | Type               | Description            | Default |
-|----------|--------------------|------------------------|---------|
-| `orders` | `list[TradeOrder]` | A list of trade orders | []      |
+| Name     | Type                | Description            | Default |
+|----------|---------------------|------------------------|---------|
+| `orders` | `tuple[TradeOrder]` | A list of trade orders | []      |
+
+<a id='get_orders_position'></a>
+### get_orders_position
+```python
+async def get_orders_position(self, *, position: int) -> tuple[TradeOrder]
+```
+Get orders by position.
+#### Parameters
+| Name       | Type | Description           | Default |
+|------------|------|-----------------------|---------|
+| `position` | `int`| Position number to get | 0       |
+
+#### Returns
+| Name     | Type                | Description            | Default |
+|----------|---------------------|------------------------|---------|
+| `orders` | `tuple[TradeOrder]` | A list of trade orders | []      |
+
+<a id='get_order_ticket'></a>
+### get_order_ticket
+```python
+async def get_order_ticket(self, ticket: int | None = None) -> TradeOrder
+```
+Get a single order by ticket number.
+#### Parameters
+| Name     | Type  | Description          | Default |
+|----------|-------|----------------------|---------|
+| `ticket` | `int` | Ticket number to get | 0       |
+
+#### Returns
+| Name     | Type                | Description            | Default |
+|----------|---------------------|------------------------|---------|
+| `order`  | `TradeOrder`        | A single trade order   | None    |
 
 <a id='orders_total'></a>
 ### orders_total
