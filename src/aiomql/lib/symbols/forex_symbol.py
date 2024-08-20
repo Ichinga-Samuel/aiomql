@@ -15,7 +15,7 @@ class ForexSymbol(Symbol):
         points = amount / (volume * self.point * self.trade_contract_size)
         return points
     
-    async def compute_volume_points(self, *, amount: float, points: float, use_limits=False, round_down: bool = True,
+    async def compute_volume_points(self, *, amount: float, points: float, use_limits=False, round_down: bool = False,
                                     adjust: float = False) -> tuple[float, float]:
         """Compute the volume and points required for a trade. Given the amount and the number of points.
 
@@ -40,8 +40,8 @@ class ForexSymbol(Symbol):
             return vol, points
         raise VolumeError(f"Incorrect Volume. Computed Volume outside the range of permitted volumes")
 
-    async def compute_volume_sl(self, *, amount: float, price: float, sl: float,
-                                use_limits=False, adjust: bool = False, round_down: bool = True) -> tuple[float, float]:
+    async def compute_volume_sl(self, *, amount: float, price: float, sl: float, use_limits=False, adjust: bool = False,
+                                round_down: bool = False) -> tuple[float, float]:
         amount = await self.check_amount(amount)
         volume = amount / ((price - sl) * self.trade_contract_size)
         volume = self.round_off_volume(volume, round_down=round_down)

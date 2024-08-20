@@ -130,7 +130,4 @@ Return profit in the account currency for a specified trading operation.
 | Type    | Description                       |
 |---------|-----------------------------------|
 | `float` | Returns float value if successful |
-#### Raises:
-| Exception    | Description       |
-|--------------|-------------------|
-| `OrderError` | If not successful |
+| `None`  | If not successful                 |

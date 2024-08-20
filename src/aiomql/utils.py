@@ -1,6 +1,10 @@
 """Utility functions for aiomql."""
 
 import decimal
+import random
+from functools import wraps, partial
+import asyncio
+
 from .candle import Candles, Candle
 
 
@@ -18,7 +22,7 @@ def dict_to_string(data: dict, multi=False) -> str:
     return f"{sep}".join(f"{key}: {value}" for key, value in data.items())
 
 
-def round_off(value: float, step: float, round_down: bool = True) -> float:
+def round_off(value: float, step: float, round_down: bool = False) -> float:
     """Round off a number to the nearest step."""
     with decimal.localcontext() as ctx:
         ctx.rounding = decimal.ROUND_DOWN if round_down else decimal.ROUND_UP
@@ -35,3 +39,25 @@ def find_bullish_fractal(candles: Candles) -> Candle | None:
     for i in range(len(candles) - 3, 1, -1):
         if candles[i].low < min(candles[i - 1].low, candles[i + 1].low, candles[i - 2].low, candles[i + 2].low):
             return candles[i]
+
+
+def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0, delay: int = 1, error=None) -> callable:
+    if func is None:
+        return partial(backoff_decorator, max_retries=max_retries, retries=retries, delay=delay, error=error)
+
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        nonlocal delay, retries
+
+        try:
+            res = await func(*args, **kwargs)
+            if res == error:
+                raise Exception('Invalid return type')
+            return res
+
+        except Exception as _:
+            await asyncio.sleep(delay * 2 ** retries + random.uniform(0, 1))
+            delay += 1
+            retries += 1
+            return await wrapper(*args, **kwargs)
+    return wrapper

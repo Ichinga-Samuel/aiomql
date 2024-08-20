@@ -60,7 +60,8 @@ class Candle:
         return str(self.dict())
 
     def __eq__(self, other: "Candle"):
-        return self.time == other.time
+        eq = self.open == other.open and self.high == other.high and self.low == other.low and self.close == other.close
+        return eq
 
     def __hash__(self):
         return hash(self.time)
@@ -217,10 +218,6 @@ class Candles(Generic[_Candle]):
 
     def __iter__(self):
         return (self.Candle(**row._asdict()) for row in self._data.itertuples())
-
-    def __add__(self, other: _Candles | _Candle):
-        other = other.data if isinstance(other, type(self)) else other.dict()
-        return self.__class__(data=self._data.append(other.data, ignore_index=True))
 
     @property
     def timeframe(self):

@@ -1,143 +1,135 @@
+import pickle
 from datetime import datetime
-import asyncio
 from logging import getLogger
-from typing import Callable
+import asyncio
 
-import MetaTrader5
-from MetaTrader5 import BookInfo, SymbolInfo, AccountInfo, Tick, TerminalInfo, TradeOrder, TradeDeal, \
-    TradePosition, OrderSendResult, OrderCheckResult
+import pytz
+from MetaTrader5 import Tick, SymbolInfo
+import pandas as pd
 
-from .constants import TimeFrame, CopyTicks, OrderType
-from .errors import Error
-from .config import Config
+from ...core.meta_trader import MetaTrader
+from ...core.config import Config
+from ...core.errors import Error
+from ...core.constants import TimeFrame, CopyTicks, OrderType
+from ...core.models import (AccountInfo, SymbolInfo, BookInfo, TradeOrder, OrderCheckResult, OrderSendResult,
+                            TradePosition, TradeDeal)
 
-logger = getLogger()
-
-
-class BaseMeta(type):
-    def __new__(mcs, cls_name, bases, cls_dict):
-        defaults = MetaTrader5.__dict__
-        defaults = {f'_{key}': value for key, value in defaults.items() if not key.startswith('_')}
-        cls_dict |= defaults
-        return super().__new__(mcs, cls_name, bases, cls_dict)
+logger = getLogger(__name__)
 
 
-class MetaTrader(metaclass=BaseMeta):
-    _account_info: Callable
-    _copy_rates_from: Callable
-    _copy_rates_from_pos: Callable
-    _copy_rates_range: Callable
-    _copy_ticks_from: Callable
-    _copy_ticks_range: Callable
-    _history_deals_get: Callable
-    _history_deals_total: Callable
-    _history_orders_get: Callable
-    _history_orders_total: Callable
-    _initialize: Callable
-    _last_error: Callable
-    _login: Callable
-    _market_book_add: Callable
-    _market_book_get: Callable
-    _market_book_release: Callable
-    _order_calc_margin: Callable
-    _order_calc_profit: Callable
-    _order_check: Callable
-    _order_send: Callable
-    _orders_get: Callable
-    _orders_total: Callable
-    _positions_get: Callable
-    _positions_total: Callable
-    _shutdown: Callable
-    _symbol_info: Callable
-    _symbol_info_tick: Callable
-    _symbol_select: Callable
-    _symbols_get: Callable
-    _symbols_total: Callable
-    _terminal_info: Callable
-    _version: Callable
-    config: Config
+class MetaTester(MetaTrader):
 
-    def __init__(self):
-        self.config = Config()
-        self.error: Error = Error(-4, description='no history')
-
-    async def __aenter__(self) -> 'MetaTrader':
-        """
-        Async context manager entry point.
-        Initializes the connection to the MetaTrader terminal.
-
-        Returns:
-            MetaTrader: An instance of the MetaTrader class.
-        """
-        await self.initialize(**Config().account_info())
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """
-        Async context manager exit point. Closes the connection to the MetaTrader terminal.
-        """
-        await self.shutdown()
-
-    async def login(self, login: int, password: str, server: str, timeout: int = 60000) -> bool:
-        """
-        Connects to the MetaTrader terminal using the specified login, password and server.
-
-        Args:
-            login (int): The trading account number.
-            password (str): The trading account password.
-            server (str): The trading server name.
-            timeout (int): The timeout for the connection in seconds.
-
-        Returns:
-            bool: True if successful, False otherwise.
-        """
-        return await asyncio.to_thread(self._login, login, password=password, server=server, timeout=timeout)
-
-    async def initialize(self, path: str = "", login: int = 0, password: str = "", server: str = "",
-                         timeout: int | None = None, portable=False) -> bool:
-        """
-        Initializes the connection to the MetaTrader terminal. All parameters are optional.
-
-        Keyword Args:
-            path (str): The path to the MetaTrader terminal executable.
-            login (int): The trading account number.
-            password (str): The trading account password.
-            server (str): The trading server name.
-            timeout (int): The timeout for the connection in seconds.
-            portable (bool): If True, the terminal will be launched in portable mode.
-
-        Returns:
-            bool: True if successful, False otherwise.
-        """
-        args = (str(path),) if path else ()
-        kwargs = {key: value for key, value in (('login', login), ('password', password), ('server', server),
-                                                ('timeout', timeout), ('portable', portable)) if value}
-        return await asyncio.to_thread(self._initialize, *args, **kwargs)
-
-    async def shutdown(self) -> None:
-        """
-        Closes the connection to the MetaTrader terminal.
-
-        Returns:
-            None: None
-        """
-        return await asyncio.to_thread(self._shutdown)
-
-    async def last_error(self) -> tuple[int, str]:
-        try:
-            return await asyncio.to_thread(self._last_error)
-        except Exception as err:
-            logger.warning(f'Error in obtaining last error.')
-            return -1, str(err)
-
-    async def version(self) -> tuple[int, int, str] | None:
+    def __init__(self, start: datetime, end: datetime, timeframes: set[TimeFrame], symbols: set[str],
+                 interval: int = 60, name: str = '', tz: str = 'Etc/UTC'):
         """"""
-        res = await asyncio.to_thread(self._version)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining version information.{self.error.description}')
-        return res
+        super().__init__()
+        self.tz = pytz.timezone(tz)
+        self.start = start.replace(tzinfo=self.tz)
+        self.end = end.replace(tzinfo=self.tz)
+        self.interval = interval
+        self.symbols = symbols
+        self.timeframes = timeframes
+        self.counter = 0
+        self.name = name or f"{start:%d-%m-%y}_{end:%d-%m-%y}"
+        diff = int((self.end - self.start).total_seconds())
+        self.span = range(start := int(self.start.timestamp()), diff + start)
+
+    def __iter__(self):
+        yield
+
+    async def get_test_data(self) -> dict:
+        """"""
+        data = {}
+        rates, ticks, prices = await asyncio.gather(self.get_symbols_rates(), self.get_symbols_ticks(),
+                                                                self.get_symbols_prices())
+
+        data['rates'] = rates
+        data['ticks'] = ticks
+        data['prices'] = prices
+        data['symbols'] = await self.get_symbols_info()
+        data['account'] = self.get_account_info()
+
+        return data
+
+    async def get_and_save_data(self) -> None:
+        """"""
+        data = await self.get_test_data()
+        fh = open(f'{self.config.root}/data/{self.name}', 'wb')
+        data_file = pickle.dump(data, fh)
+        # data_file.update(data)
+        # data_file.sync()
+        # data_file.close()
+        fh.close()
+
+    def load_data(self, name: str = '') -> dict:
+        """"""
+        name = name or self.name
+        data_file = shelve.open(f'{self.config.root}/data/{name}', writeback=True)
+        data = dict(data_file)
+        data_file.close()
+        return data
+
+    async def get_symbols_info(self):
+        """"""
+        tasks = [self.get_symbol_info(symbol) for symbol in self.symbols]
+        res = await asyncio.gather(*tasks)
+        return {symbol: info for symbol, info in res}
+
+    async def get_symbols_ticks(self):
+        """"""
+        tasks = [self.get_symbol_ticks(symbol) for symbol in self.symbols]
+        res = await asyncio.gather(*tasks)
+        return {symbol: ticks for symbol, ticks in res}
+
+    async def get_account_info(self):
+        """"""
+        res = await super().account_info()
+        return res._asdict()
+
+    async def get_symbols_prices(self):
+        """"""
+        tasks = [self.get_symbol_prices(symbol) for symbol in self.symbols]
+        res = await asyncio.gather(*tasks)
+        return {symbol: prices for symbol, prices in res}
+
+    async def get_symbols_rates(self):
+        """"""
+        tasks = [self.get_symbol_rates(symbol, timeframe) for symbol in self.symbols for timeframe in self.timeframes]
+        res = await asyncio.gather(*tasks)
+        data = {}
+        for symbol, timeframe, rates in res:
+            data.setdefault(symbol, {}).setdefault(timeframe.name, rates)
+        return data
+
+    async def get_symbol_info(self, symbol: str):
+        """"""
+        res = await super().symbol_info(symbol)
+        return symbol, res._asdict()
+
+    async def get_symbol_ticks(self, symbol: str):
+        """"""
+        res = await super().copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
+        # res = pd.DataFrame(res)
+        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+        # res.set_index('time', inplace=True, drop=False)
+        return symbol, res
+
+    async def get_symbol_prices(self, symbol: str):
+        """"""
+        res = await super().copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
+        # res = pd.DataFrame(res)
+        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+        # res.set_index('time', inplace=True, drop=False)
+        # res = res.reindex(self.span, method='nearest')
+        return symbol, res
+
+    async def get_symbol_rates(self, symbol: str, timeframe: TimeFrame):
+        """"""
+        res = await super().copy_rates_range(symbol, timeframe, self.start, self.end)
+        # res = pd.DataFrame(res)
+        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+        # res.set_index('time', inplace=True, drop=False)
+        return symbol, timeframe, res
 
     async def account_info(self) -> AccountInfo | None:
         """"""
@@ -146,15 +138,6 @@ class MetaTrader(metaclass=BaseMeta):
             err = await self.last_error()
             self.error = Error(*err)
             logger.warning(f'Error in obtaining account information.{self.error.description}')
-        return res
-
-    async def terminal_info(self) -> TerminalInfo | None:
-        res = await asyncio.to_thread(self._terminal_info)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining terminal information.{self.error.description}')
-            return res
         return res
 
     async def symbols_total(self) -> int:
@@ -190,21 +173,6 @@ class MetaTrader(metaclass=BaseMeta):
 
     async def symbol_select(self, symbol: str, enable: bool) -> bool:
         return await asyncio.to_thread(self._symbol_select, symbol, enable)
-
-    async def market_book_add(self, symbol: str) -> bool:
-        return await asyncio.to_thread(self._market_book_add, symbol)
-
-    async def market_book_get(self, symbol: str) -> tuple[BookInfo] | None:
-        res = await asyncio.to_thread(self._market_book_get, symbol)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining market depth content for {symbol}.{self.error.description}')
-            return res
-        return res
-
-    async def market_book_release(self, symbol: str) -> bool:
-        return await asyncio.to_thread(self._market_book_release, symbol)
 
     async def copy_rates_from(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int):
         res = await asyncio.to_thread(self._copy_rates_from, symbol, timeframe, date_from, count)

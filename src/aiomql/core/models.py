@@ -503,11 +503,12 @@ class OrderSendResult(Base):
         price: float
         bid: float
         ask: float
+        profit: float
+        loss: float
         comment: str
         request: TradeRequest
         request_id: int
         retcode_external: int
-        profit: float
     """
     retcode: int
     deal: int
@@ -520,7 +521,8 @@ class OrderSendResult(Base):
     request: mt5.TradeRequest
     request_id: int
     retcode_external: int
-    profit: float
+    profit: float = None
+    loss: float = None
 
 
 class TradePosition(Base):

@@ -23,7 +23,6 @@ class History:
         group (str): Filter for selecting history by symbols.
         ticket (int): Filter for selecting history by ticket number
         position (int): Filter for selecting history deals by position
-        initialized (bool): check if initial request has been sent to the terminal to get history.
         mt5 (MetaTrader): MetaTrader instance
         config (Config): Config instance
     """
@@ -55,24 +54,18 @@ class History:
         self.orders: list[TradeOrder] = []
         self.total_deals: int = 0
         self.total_orders: int = 0
-        self.initialized = False
 
-    async def init(self, deals=True, orders=True) -> bool:
+    async def init(self, deals=True, orders=True):
         """Get history deals and orders
 
         Keyword Args:
             deals (bool): If true get history deals during initial request to terminal
             orders (bool): If true get history orders during initial request to terminal
-
-        Returns:
-            bool: True if all requests were successful else False
         """
-        tasks = []
-        tasks.append(self.get_deals()) if deals else ...
-        tasks.append(self.get_orders()) if orders else ...
-        res = await asyncio.gather(*tasks)
-        self.initialized = all(res)
-        return self.initialized
+        self.deals = await self.get_deals() if deals else tuple()
+        self.orders = await self.get_orders() if orders else tuple()
+        self.total_deals = len(self.deals)
+        self.total_orders = len(self.orders)
 
     async def get_deals(self, *, date_from: datetime | int = None, date_to: datetime | int = None, group: str = '',
                         retries: int = 3) -> tuple[TradeDeal, ...]:
@@ -89,9 +82,7 @@ class History:
         deals = await self.mt5.history_deals_get(date_from=date_from, date_to=date_to, group=group)
 
         if deals is not None:
-            self.deals = tuple(TradeDeal(**deal._asdict()) for deal in deals)
-            self.total_deals = len(self.deals)
-            return self.deals
+            return tuple(TradeDeal(**deal._asdict()) for deal in deals)
 
         if self.mt5.error.is_connection_error():
             await asyncio.sleep(retries)
@@ -113,7 +104,7 @@ class History:
         ticket = ticket or self.ticket
         assert ticket is not None, 'ticket not provided'
         deals = await self.mt5.history_deals_get(ticket=ticket)
-        return tuple(sorted([TradeDeal(**deal._asdict()) for deal in deals], key=lambda x: x.time_msc))
+        return tuple(sorted([TradeDeal(**deal._asdict()) for deal in deals or []], key=lambda x: x.time_msc))
 
     async def get_deals_position(self, *, position: int = None) -> tuple[TradeDeal, ...]:
         """
@@ -127,7 +118,7 @@ class History:
         position = position or self.position
         assert position is not None, 'position not provided'
         deals = await self.mt5.history_deals_get(position=position)
-        return tuple(sorted([TradeDeal(**deal._asdict()) for deal in deals], key=lambda x: x.time_msc))
+        return tuple(sorted([TradeDeal(**deal._asdict()) for deal in deals or []], key=lambda x: x.time_msc))
 
     async def deals_total(self, *, date_from: int | datetime = None, date_to: int | datetime = None) -> int:
         """Get total number of deals within the specified period in the constructor.
@@ -167,13 +158,13 @@ class History:
         logger.warning(f'Failed to get orders: {self.mt5.error}')
         return tuple()
 
-    async def get_order_ticket(self, ticket: int | None = None) -> TradeOrder:
+    async def get_order_ticket(self, ticket: int | None = None) -> TradeOrder | None:
         ticket = ticket or self.ticket
         assert isinstance(ticket, int), 'ticket not provided'
         orders = await self.mt5.history_orders_get(ticket=ticket)
-        order = orders[0]
-        assert order.ticket == ticket
-        return TradeOrder(**order._asdict())
+        if orders and (order := orders[0]).ticket == ticket:
+            return TradeOrder(**order._asdict())
+        return None
 
     async def get_orders_position(self, position: int = None) -> tuple[TradeOrder, ...]:
         """
@@ -189,7 +180,7 @@ class History:
         position = position or self.position
         assert isinstance(position, int), 'position not provided'
         orders = await self.mt5.history_orders_get(position=position)
-        return tuple(sorted([TradeOrder(**order._asdict()) for order in orders], key=lambda x: x.time_done_msc))
+        return tuple(sorted([TradeOrder(**order._asdict()) for order in orders or []], key=lambda x: x.time_done_msc))
 
     async def orders_total(self, date_from: int | datetime = None, date_to: int | datetime = None) -> int:
         """Get total number of orders within the specified period in the constructor.

@@ -68,7 +68,7 @@ class Positions:
         logger.warning(f'Failed to get positions for {symbol or self.symbol}. {self.mt5.error}')
         return []
 
-    async def position_get(self, *, ticket: int) -> TradePosition:
+    async def position_get(self, *, ticket: int) -> TradePosition | None:
         """Get an open position by ticket.
         Args:
             ticket (int): Position ticket.
@@ -78,9 +78,8 @@ class Positions:
         """
         positions = await self.positions_get(ticket=ticket)
         position = positions[0] if positions else None
-        if position is None:
-            raise ValueError(f'Position with ticket {ticket} not found')
-        assert position.ticket == ticket, f'Position with ticket {ticket} not found'
+        if position is None or position.ticket != ticket:
+            return None
         return position
 
     async def close(self, *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType):

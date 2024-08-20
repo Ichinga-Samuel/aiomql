@@ -165,7 +165,7 @@ This is a dummy method that returns the minimum volume of the symbol. It is mean
 async def currency_conversion(*, amount: float, base: str,
                               quote: str) -> float
 ```
-Convert from one currency to the other.
+Convert from one currency to the other. Returns the amount in terms of the base currency.
 #### Parameters
 | Name     | Type    | Description                                            | Default |
 |----------|---------|--------------------------------------------------------|---------|

@@ -29,9 +29,11 @@ class Account(AccountInfo):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        if not self.login:
-            acc = self.config.account_info()
-            self.set_attributes(**acc)
+        acc = self.config.account_info()
+        acc_details = {k: v for k, v in self.get_dict(include={'login', 'server', 'password'}).items() if v}
+        acc |= acc_details
+        self.config.set_attributes(**acc)
+        self.set_attributes(**acc)
 
     async def refresh(self):
         """Refreshes the account instance with the latest account details from the MetaTrader 5 terminal"""

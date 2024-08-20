@@ -174,15 +174,12 @@ class Symbol(SymbolInfo):
         within the limits of the symbol. The float is the volume to use if the volume is not within the limits of the
         symbol.
         """
-        check = self.volume_min <= volume <= self.volume_max
-        if check:
+        if check := self.volume_min <= volume <= self.volume_max:
             return check, volume
-        if not check and volume < self.volume_min:
-            return check, self.volume_min
         else:
-            return check, self.volume_max
+            return check, self.volume_min if volume <= self.volume_min else self.volume_max
 
-    def round_off_volume(self, volume: float, round_down: bool = True) -> float:
+    def round_off_volume(self, volume: float, round_down: bool = False) -> float:
         """Round off the volume to the nearest volume step.
 
         Args:
@@ -226,7 +223,7 @@ class Symbol(SymbolInfo):
             quote: The quote currency of the pair
 
         Returns:
-            float: Amount in terms of the base currency
+            float: Amount in terms of the quote currency
 
         Raises:
             ValueError: If conversion is impossible

@@ -11,7 +11,6 @@ from .ticks import Tick
 from .ram import RAM
 from .core.models import OrderType, OrderSendResult
 from .core.config import Config
-from .utils import dict_to_string
 from .result import Result
 
 logger = getLogger(__name__)
@@ -90,8 +89,7 @@ class Trader(ABC):
         """
         check = await self.order.check()
         if check.retcode != 0:
-            req = check.request._asdict() | check.get_dict(include={'comment', 'retcode'})
-            logger.warning(f"Invalid order for {self.symbol}: {dict_to_string(req)}")
+            logger.warning(f"Invalid order for {self.symbol} due to {check.comment}")
             return False
         return True
 
@@ -99,12 +97,9 @@ class Trader(ABC):
         """Send the order to the broker."""
         result = await self.order.send()
         if result.retcode != 10009:
-            req = result.request._asdict() | result.get_dict(include={'comment', 'retcode'})
-            logger.warning(f"Unable to place order for {self.symbol}: {dict_to_string(req)}")
+            logger.warning(f"Unable to place order for {self.symbol} due to {result.comment}")
             return result
-        res = result.get_dict(exclude={'request', 'retcode_external', 'retcode', 'request_id'})
-        logger.info(f"Placed Trade for {self.symbol}: {dict_to_string(res)}")
-        await self.record_trade(result, parameters=self.parameters.copy())
+        logger.info(f"Placed Trade for {self.symbol}")
         return result
 
     async def record_trade(self, result: OrderSendResult, parameters: dict = None, name: str = '', exclude: set = None):
@@ -117,9 +112,9 @@ class Trader(ABC):
         """
         if result.retcode != 10009 or not self.config.record_trades:
             return
-        params = parameters or self.parameters.copy()
+        params = parameters or self.parameters
         params = {k: v for k, v in params.items() if k not in (exclude or set())}
-        profit = await self.order.calc_profit()
+        profit = result.profit or await self.order.calc_profit()
         params["expected_profit"] = profit
         date = datetime.utcnow()
         date = date.replace(tzinfo=ZoneInfo("UTC"))

@@ -69,6 +69,14 @@ class Config:
             value = str(self.root_dir / Path(value).absolute().resolve())
         super().__setattr__(key, value)
 
+    def set_attributes(self, **kwargs):
+        """Set keyword arguments as object attributes
+
+        Keyword Args:
+            **kwargs: Object attributes and values as keyword arguments
+        """
+        [setattr(self, key, value) for key, value in kwargs.items()]
+
     @staticmethod
     def walk_to_root(path: str | Path) -> Iterator[str]:
         if not os.path.exists(path):
@@ -141,7 +149,7 @@ class Config:
             data = json.load(fh)
             fh.close()
         data |= kwargs
-        [setattr(self, key, value) for key, value in data.items()]
+        self.set_attributes(**data)
         self._initialize = False
 
     def account_info(self) -> dict[str, int | str]:

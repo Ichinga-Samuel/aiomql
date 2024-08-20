@@ -38,7 +38,7 @@ class Order(TradeRequest):
         """
         return await self.mt5.orders_total()
 
-    async def get_order(self, *, ticket: int, retries: int = 3) -> TradeOrder:
+    async def get_order(self, *, ticket: int, retries: int = 3) -> TradeOrder | None:
         """
         Get the order by ticket number.
         Args:
@@ -47,16 +47,14 @@ class Order(TradeRequest):
         Returns:
         """
         if retries < 1:
-            raise OrderError(f'Failed to get orders for {self.symbol}: {self.mt5.error}')
+            return None
         orders = await self.mt5.orders_get(ticket=ticket)
-        if orders is not None:
-            order = TradeOrder(**orders[0]._asdict())
-            assert order.ticket == ticket, f'Order ticket mismatch {order.ticket} != {ticket}'
-            return order
+        if orders and (order := orders[0]).ticket == ticket:
+            return TradeOrder(**order._asdict())
         if self.mt5.error.is_connection_error():
             await asyncio.sleep(retries)
             return await self.get_order(ticket=ticket, retries=retries-1)
-        raise OrderError(f'Failed to get orders for {self.symbol}: {self.mt5.error}')
+        return None
 
     async def get_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '', retries=3)\
             -> tuple[TradeOrder, ...]:
@@ -69,7 +67,7 @@ class Order(TradeRequest):
             tuple[TradeOrder]: A Tuple of active trade orders as TradeOrder objects
         """
         if retries < 1:
-            raise OrderError(f'Failed to get orders for {self.symbol}: {self.mt5.error}')
+            return tuple()
         symbol = getattr(self, 'symbol', symbol)
         orders = await self.mt5.orders_get(symbol=symbol, ticket=ticket, group=group)
         if orders is not None:
@@ -78,9 +76,9 @@ class Order(TradeRequest):
         if self.mt5.error.is_connection_error():
             await asyncio.sleep(retries)
             return await self.get_orders(ticket=ticket, symbol=symbol, group=group, retries=retries-1)
-        raise OrderError(f'Failed to get orders for {self.symbol}: {self.mt5.error}')
+        return tuple()
 
-    async def check(self) -> OrderCheckResult:
+    async def check(self, **kwargs) -> OrderCheckResult:
         """Check funds sufficiency for performing a required trading operation and the possibility of executing it.
 
         Returns:
@@ -89,7 +87,8 @@ class Order(TradeRequest):
         Raises:
             OrderError: If not successful
         """
-        res = await self.mt5.order_check(self.dict)
+        req = self.dict | kwargs
+        res = await self.mt5.order_check(req)
         if res is None:
             raise OrderError(f'Failed to check order due to {self.mt5.error.description}')
         return OrderCheckResult(**res._asdict())
@@ -106,7 +105,15 @@ class Order(TradeRequest):
         res = await self.mt5.order_send(self.dict)
         if res is None:
             raise OrderError(f'Failed to send order {self.symbol} due to {self.mt5.error.description}')
-        return OrderSendResult(**res._asdict())
+        res = OrderSendResult(**res._asdict())
+        try:
+            profit = await self.calc_profit()
+            loss = await self.calc_profit(tp=self.sl)
+            res.loss = loss
+            res.profit = profit
+        except Exception as _:
+            pass
+        return res
 
     async def calc_margin(self) -> float:
         """Return the required margin in the account currency to perform a specified trading operation.
@@ -122,16 +129,17 @@ class Order(TradeRequest):
             raise OrderError(f'Failed to calculate margin for {self.symbol} due to {self.mt5.error.description}')
         return res
 
-    async def calc_profit(self) -> float:
+    async def calc_profit(self, **kwargs) -> float | None:
         """Return profit in the account currency for a specified trading operation.
 
         Returns:
             float: Returns float value if successful
-
-        Raises:
-            OrderError: If not successful
+            None: If not successful
         """
-        res = await self.mt5.order_calc_profit(self.type, self.symbol, self.volume, self.price, self.tp)
-        if res is None:
-            raise OrderError(f'Failed to calculate profit for {self.symbol} due to {self.mt5.error.description}')
+        include = {'tp', 'price', 'symbol', 'volume', 'type'}
+        args = self.get_dict(include=include)
+        args |= kwargs
+        if len(include.intersection(args.keys())) < len(include):
+            return None
+        res = await self.mt5.order_calc_profit(args['type'], args['symbol'], args['volume'], args['price'], args['tp'])
         return res
