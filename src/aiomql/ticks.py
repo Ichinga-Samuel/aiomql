@@ -32,7 +32,7 @@ class Tick:
     last: float
     volume: float
     time_msc: float
-    flags: float
+    flags: TickFlag
     volume_real: float
     Index: int
 

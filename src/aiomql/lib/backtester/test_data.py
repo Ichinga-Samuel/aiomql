@@ -1,14 +1,15 @@
-from typing import Literal
-from ...core.models import AccountInfo, SymbolInfo
+from typing import Literal, TypedDict
+from ...core.models import AccountInfo, SymbolInfo, Tick
 from ...core.constants import TimeFrame
 from ...core.meta_trader import MetaTrader
-# from ...account import Account
+from .get_data import Data, GetData
 
 
 class TestData:
 
-    def __init__(self, data):
-        self._data = data
+    def __init__(self, data: Data):
+        self.data = data
+        self.cursor = 0
 
     def __getitem__(self, item: tuple[Literal['ticks', 'rates'], SymbolInfo, TimeFrame]):
         type_, symbol, time_frame = item
