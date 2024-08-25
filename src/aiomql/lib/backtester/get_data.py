@@ -19,7 +19,8 @@ from ...utils import backoff_decorator
 logger = getLogger(__name__)
 
 
-class GetData(MetaTrader):
+class GetData:
+    config = Config()
 
     def __init__(self, start: datetime, end: datetime, timeframes: set[TimeFrame], symbols: set[str],
                  interval: int = 60, name: str = '', tz: str = 'Etc/UTC'):
@@ -37,17 +38,26 @@ class GetData(MetaTrader):
         self.span = range(start := int(self.start.timestamp()), diff + start)
         self.mt5 = MetaTrader()
 
+    @classmethod
+    def load_data(cls, name: str = '') -> dict:
+        """"""
+        name = name
+        file = open(f'{cls.config.root}/data/{name}', 'rb')
+        data = pickle.load(file)
+        file.close()
+        return data
+
     async def get_test_data(self) -> dict:
         """"""
         data = {}
-        rates, ticks, prices = await asyncio.gather(self.get_symbols_rates(), self.get_symbols_ticks(),
-                                                                self.get_symbols_prices())
-
+        rates, ticks, prices, symbols, account = await asyncio.gather(self.get_symbols_rates(), self.get_symbols_ticks(),
+                                                                self.get_symbols_prices(), self.get_symbols_info(),
+                                                                      self.get_account_info())
         data['rates'] = rates
         data['ticks'] = ticks
         data['prices'] = prices
-        data['symbols'] = await self.get_symbols_info()
-        data['account'] = self.get_account_info()
+        data['symbols'] = symbols
+        data['account'] = account
 
         return data
 
@@ -57,14 +67,6 @@ class GetData(MetaTrader):
         fh = open(f'{self.config.root}/data/{self.name}', 'wb')
         pickle.dump(data, fh)
         fh.close()
-
-    def load_data(self, name: str = '') -> dict:
-        """"""
-        name = name or self.name
-        file = open(f'{self.config.root}/data/{name}', 'rb')
-        data = pickle.load(file)
-        file.close()
-        return data
 
     async def get_symbols_info(self):
         """"""
