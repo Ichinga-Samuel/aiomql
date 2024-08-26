@@ -15,19 +15,27 @@ from ...core.errors import Error
 from ...core.constants import TimeFrame, CopyTicks, OrderType
 from ...core.models import (AccountInfo, SymbolInfo, BookInfo, TradeOrder, OrderCheckResult, OrderSendResult,
                             TradePosition, TradeDeal)
+
 from ...utils import backoff_decorator
 from .test_data import TestData
+from .get_data import GetData
+
 logger = getLogger(__name__)
 
 
 class MetaTester(MetaTrader):
     """A class for testing trading strategies in the MetaTrader 5 terminal. A subclass of MetaTrader."""
+    data: TestData
 
-    def __init__(self, data: TestData):
+    def __init__(self, data: TestData = None):
         super().__init__()
-        self.error = None
         self.data = data
-
+    
+    async def initialize(self, path: str = "", login: int = 0, password: str = "", server: str = "", 
+                   timeout: int | None = None, portable=False, compressed: bool = False) -> bool:
+        self.data = await GetData.load_data(name=path, compressed=compressed)
+        return True
+    
     async def account_info(self) -> AccountInfo:
         """"""
         res = self.data.account

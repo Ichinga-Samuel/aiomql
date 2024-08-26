@@ -26,26 +26,24 @@ class Data(TypedDict):
     prices: DataFrame
     ticks: DataFrame
     rates: DataFrame
-    span: range
+    interval: range
 
 
 class GetData:
     config: Config = Config()
 
     def __init__(self, *, start: datetime, end: datetime, timeframes: set[TimeFrame], symbols: set[str],
-                 interval: int = 60, name: str = '', tz: str = 'Etc/UTC'):
+                 name: str = '', tz: str = 'Etc/UTC'):
         """"""
         super().__init__()
         self.tz = pytz.timezone(tz)
         self.start = start.replace(tzinfo=self.tz)
         self.end = end.replace(tzinfo=self.tz)
-        self.interval = interval
         self.symbols = symbols
         self.timeframes = timeframes
-        self.counter = 0
         self.name = name or f"{start:%d-%m-%y}_{end:%d-%m-%y}"
         diff = int((self.end - self.start).total_seconds())
-        self.span = range(start := int(self.start.timestamp()), diff + start)
+        self.interval = range(start := int(self.start.timestamp()), diff + start)
         self.mt5 = MetaTrader()
 
     async def get_data(self) -> Data:
@@ -60,7 +58,7 @@ class GetData:
         data['prices'] = prices
         data['symbols'] = symbols
         data['account'] = account
-        data['range'] = self.span
+        data['range'] = self.interval
 
         return Data(**data)
 
@@ -149,7 +147,7 @@ class GetData:
         res = pd.DataFrame(res)
         res.drop_duplicates(subset=['time'], keep='last', inplace=True)
         res.set_index('time', inplace=True, drop=False)
-        res = res.reindex(self.span, method='nearest')
+        res = res.reindex(self.interval, method='nearest')
         return symbol, res
 
     @backoff_decorator(max_retries=5)
