@@ -4,7 +4,7 @@ from .constants import BookType, TradeAction, OrderType, OrderTime, OrderFilling
     DealReason, SymbolChartMode, SymbolTradeMode, SymbolCalcMode, SymbolOptionMode, SymbolOrderGTCMode, \
     SymbolOptionRight, \
     SymbolTradeExecution, SymbolSwapMode, DayOfWeek, AccountTradeMode, AccountStopOutMode, AccountMarginMode, \
-    OrderReason
+    OrderReason, TickFlag
 
 from .base import Base
 
@@ -334,9 +334,9 @@ class SymbolInfo(Base):
     path: str
 
     def __init__(self, **kwargs):
-        if 'name' not in kwargs:
+        if name := kwargs.pop('name', None):
             raise AttributeError('Symbol Object Must be initialized with a name')
-        self.name = kwargs.pop('name')
+        self.name = name
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -351,6 +351,28 @@ class SymbolInfo(Base):
     def __hash__(self):
         return hash(self.name)
 
+class TickInfo(Base):
+    """Price Tick of a Financial Instrument.
+
+    Attributes:
+        time (int): Time of the last prices update for the symbol
+        bid (float): Current Bid price
+        ask (float): Current Ask price
+        last (float): Price of the last deal (Last)
+        volume (float): Volume for the current Last price
+        time_msc (int): Time of the last prices update for the symbol in milliseconds
+        flags (TickFlag): Tick flags
+        volume_real (float): Volume for the current Last price
+        Index (int): Custom attribute representing the position of the tick in a sequence.
+    """
+    time: float
+    bid: float
+    ask: float
+    last: float
+    volume: float
+    time_msc: float
+    flags: TickFlag
+    volume_real: float
 
 class BookInfo(Base):
     """Book Information Class.
