@@ -58,6 +58,7 @@ class TestData:
         rates = self.rates[symbol][timeframe.name]
         start = int(datetime.timestamp(date_from)) if isinstance(date_from, datetime) else int(date_from)
         start = round_down(start, timeframe.time)
+        start = rates[rates.index <= start].index
         start = rates.index.get_loc(start)
         end = start + count
         return rates.iloc[start:end].to_numpy()
@@ -65,13 +66,15 @@ class TestData:
     def get_rates_from_pos(self, symbol: str, timeframe: TimeFrame, start_pos: int, count: int) -> np.ndarray:
         rates = self.rates[symbol][timeframe.name]
         end = -start_pos + count
+        end = end or None
         return rates.iloc[-start_pos:end].to_numpy()
 
     def get_rates_range(self, symbol: str, timeframe: TimeFrame, date_from: datetime, date_to: datetime) -> np.ndarray:
         rates = self.rates[symbol][timeframe.name]
-        start = int(datetime.timestamp(date_from))
-        start = round_down(start, timeframe.time)
+        start = round_down(int(datetime.timestamp(date_from)), timeframe.time)
+        start = rates[rates.index <= start].iloc[-1].index
         end = round_up(int(datetime.timestamp(date_to)), timeframe.time)
+        end = rates[rates.index >= end].index
         return rates.loc[start:end].to_numpy()
 
     def get_ticks_from(self, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks) -> DataFrame:
