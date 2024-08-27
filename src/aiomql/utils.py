@@ -62,3 +62,10 @@ def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0, dela
             return await wrapper(*args, **kwargs)
         
     return wrapper
+
+
+def round_down(value: int, base: int) -> int:
+    return value if value % base == 0 else value  - (value % base)
+
+def round_up(value: int, base: int) -> int:
+    return value if value % base == 0 else value + base - (value % base)

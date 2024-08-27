@@ -20,12 +20,13 @@ from ...utils import backoff_decorator
 
 logger = getLogger(__name__)
 
+
 class Data(TypedDict):
     account: AccountInfo
     symbols: dict[str, SymbolInfo]
-    prices: DataFrame
-    ticks: DataFrame
-    rates: DataFrame
+    prices: dict[str, DataFrame]
+    ticks: dict[str, DataFrame]
+    rates: dict[str, dict[str, DataFrame]]
     interval: range
 
 
