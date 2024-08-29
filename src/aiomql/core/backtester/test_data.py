@@ -7,6 +7,7 @@ import pandas as pd
 from pandas import DataFrame
 from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TradeOrder, TradePosition, TradeDeal,
                          ORDER_TYPE_BUY, ORDER_TYPE_SELL)
+from ..meta_trader import MetaTrader
 
 from ..constants import TimeFrame, CopyTicks
 from .get_data import Data, GetData
@@ -33,6 +34,8 @@ class TestData:
         self.open_orders: dict[int, TradeOrder] = {}
         self.positions: dict[str, dict[int, TradePosition]] = {}
         self.open_positions: dict[int, TradePosition] = {}
+        self.mt = MetaTrader()
+        self.mt5 = MetaTrader5
 
     def __next__(self):
         self.cursor = next(self.iter)
@@ -104,10 +107,10 @@ class TestData:
         end = ticks[ticks.index >= end].iloc[-1].index
         return ticks.loc[start:end].to_numpy()
 
-    def order_calc_margin(self, action: Literal[0, 1], symbol: str, volume: float, price: float):
-        symbol_info = self.get_symbol_info(symbol)
-        margin_rate = symbol_info.margin_rate
-        margin = volume * price / margin_rate
+    async def order_calc_margin(self, action: Literal[0, 1], symbol: str, volume: float, price: float, use_terminal=False):
+        if use_terminal
+        sym = self.symbols[symbol]
+        margin = (volume * sym.trade_contract_size * price) / (self.account.leverage / (sym.margin_initial or 1))
         return margin
 
     def order_send(self, request: dict) -> dict:
