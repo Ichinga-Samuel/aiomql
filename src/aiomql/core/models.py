@@ -334,9 +334,9 @@ class SymbolInfo(Base):
     path: str
 
     def __init__(self, **kwargs):
-        if name := kwargs.pop('name', None) is None:
+        if (name := kwargs.pop('name', None)) is None:
             raise AttributeError('Symbol Object Must be initialized with a name')
-        self.name = name
+        self.name = name # type: str
         super().__init__(**kwargs)
 
     def __repr__(self):

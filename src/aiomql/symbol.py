@@ -48,7 +48,7 @@ class Symbol(SymbolInfo):
         """
         return self.point * 10
 
-    async def info_tick(self, *, name: str = "", retries=3) -> Tick:
+    async def info_tick(self, *, name: str = "") -> Tick:
         """Get the current price tick of a financial instrument.
 
         Args:
@@ -60,16 +60,11 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        if retries < 1:
-            raise ValueError(f'Could not get tick for {name or self.name}. {self.mt5.error}')
         tick = await self.mt5.symbol_info_tick(name or self.name)
         if tick is not None:
             tick = Tick(**tick._asdict())
             setattr(self, 'tick', tick) if not name else ...
             return tick
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.info_tick(name=name, retries=retries - 1)
         raise ValueError(f'Could not get tick for {name or self.name}. {self.mt5.error}')
 
     async def symbol_select(self, *, enable: bool = True) -> bool:

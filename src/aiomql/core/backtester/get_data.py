@@ -6,24 +6,21 @@ from logging import getLogger
 import asyncio
 
 import pytz
-from MetaTrader5 import Tick, SymbolInfo
 import pandas as pd
 from pandas import DataFrame
 
 from ...core.meta_trader import MetaTrader
 from ...core.config import Config
-from ...core.errors import Error
-from ...core.constants import TimeFrame, CopyTicks, OrderType
-from ...core.models import (AccountInfo, SymbolInfo, BookInfo, TradeOrder, OrderCheckResult, OrderSendResult,
-                            TradePosition, TradeDeal, TickInfo)
+from ...core.constants import TimeFrame, CopyTicks
+
 from ...utils import backoff_decorator
 
 logger = getLogger(__name__)
 
 
 class Data(TypedDict):
-    account: AccountInfo
-    symbols: dict[str, SymbolInfo]
+    account: dict
+    symbols: dict[str, dict]
     prices: dict[str, DataFrame]
     ticks: dict[str, DataFrame]
     rates: dict[str, dict[str, DataFrame]]
@@ -93,11 +90,11 @@ class GetData:
 
         return data
 
-    async def get_symbols_info(self) -> dict[str, SymbolInfo]:
+    async def get_symbols_info(self) -> dict[str, dict]:
         """"""
         tasks = [self.get_symbol_info(symbol) for symbol in self.symbols]
         res = await asyncio.gather(*tasks)
-        return {symbol: SymbolInfo(**info) for symbol, info in res}
+        return {symbol: info for symbol, info in res}
 
     async def get_symbols_ticks(self) -> dict[str, DataFrame]:
         """"""
