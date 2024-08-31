@@ -59,7 +59,7 @@ class MetaTrader(metaclass=BaseMeta):
 
     def __init__(self):
         self.config = Config()
-        self.error: Error = Error(-4, description='no history')
+        self.error: Error = Error(1)
 
     async def __aenter__(self) -> 'MetaTrader':
         """

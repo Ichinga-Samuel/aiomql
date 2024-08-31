@@ -49,6 +49,9 @@ class Config:
     task_queue: TaskQueue = TaskQueue()
     bot: Bot = None
     _instance: 'Config'
+    mode: Literal['backtest', 'live'] = 'live'
+    test_data_dir: str = 'test_data'
+    use_terminal: bool = False
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
@@ -108,7 +111,7 @@ class Config:
          project unless an absolute path is provided.
 
         Keyword Args:
-            records_dir (str|Path): The directory to save trade records. Default is 'records'
+            records_dir (str|Path): The directory to save trade records. Default is 'trade_records'
         """
         try:
             if isinstance(records_dir, str):

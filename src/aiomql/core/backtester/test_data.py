@@ -6,10 +6,10 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TradeOrder, TradePosition, TradeDeal,
-                         ORDER_TYPE_BUY, ORDER_TYPE_SELL)
+                         ORDER_TYPE_BUY, ORDER_TYPE_SELL, TradeRequest)
+import MetaTrader5 as mt5
 from ..meta_trader import MetaTrader
-
-from ..constants import TimeFrame, CopyTicks
+from ..constants import TimeFrame, CopyTicks, OrderType
 from .get_data import Data, GetData
 from ...utils import round_down, round_up
 
@@ -35,7 +35,6 @@ class TestData:
         self.positions: dict[str, dict[int, TradePosition]] = {}
         self.open_positions: dict[int, TradePosition] = {}
         self.mt = MetaTrader()
-        self.mt5 = MetaTrader5
 
     def __next__(self):
         self.cursor = next(self.iter)
@@ -107,11 +106,21 @@ class TestData:
         end = ticks[ticks.index >= end].iloc[-1].index
         return ticks.loc[start:end].to_numpy()
 
-    async def order_calc_margin(self, action: Literal[0, 1], symbol: str, volume: float, price: float, use_terminal=False):
-        if use_terminal
+    async def order_calc_margin(self, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float,
+                                price: float, use_terminal=False):
+        if use_terminal or self.mt.config.use_terminal:
+            return await self.mt.order_calc_margin(OrderType(action), symbol, volume, price)
         sym = self.symbols[symbol]
         margin = (volume * sym.trade_contract_size * price) / (self.account.leverage / (sym.margin_initial or 1))
         return margin
+
+    async def order_calc_profit(self, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float,
+                                price_open: float, price_close: float, use_terminal=False):
+        if use_terminal or self.mt.config.use_terminal:
+            return await self.mt.order_calc_profit(action, symbol, volume, price_open, price_close)
+        sym = self.symbols[symbol]
+        profit = volume * sym.trade_contract_size * (price_close - price_open)
+        return profit
 
     def order_send(self, request: dict) -> dict:
         ...
