@@ -29,10 +29,8 @@ class Account(AccountInfo):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        acc = self.config.account_info()
-        acc_details = {k: v for k, v in self.get_dict(include={'login', 'server', 'password'}).items() if v}
-        acc |= acc_details
-        self.config.set_attributes(**acc)
+        self.exclude = self.exclude | {'_instance', 'symbols'}
+        acc = {k: (self.dict[k] or v) for k, v in self.config.account_info().items()}
         self.set_attributes(**acc)
 
     async def refresh(self):

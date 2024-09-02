@@ -1,21 +1,23 @@
-from collections import namedtuple
-class ITR:
+import socket
 
-    def __init__(self) -> None:
-        self.span = iter(range(0, 10))
-        self.start = 0
-    
-    def __next__(self):
-        self.start = next(self.span)
-        return self.start
-    
 
-Gender = namedtuple('Gender', ['man', 'woman'])
-gen = Gender(man='Manny', woman='Babe')
-gend = gen._asdict()
-genz = Gender(gend)
-print(gen, genz)
-# b = ITR()
-# print(next(b))
-# print(next(b))
-# print(next(b))
+class socketserver:
+    def __init__(self, address = '192.168.1.15', port = 9090):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.address = address
+        self.port = port
+        self.sock.bind((self.address, self.port))
+        self.cummdata = ''
+
+
+    def recvmsg(self):
+        g=self.sock.listen(1)
+        print(g)
+        self.conn, self.addr = self.sock.accept()
+        print('connected to', self.addr)
+        data = self.conn.recv(10)
+        self.cummdata += data.decode("utf-8")
+
+
+so = socketserver()
+so.recvmsg()

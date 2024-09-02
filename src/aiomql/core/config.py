@@ -23,54 +23,49 @@ class Config:
         server (str): Broker server
         path (str): Path to terminal file
         timeout (int): Timeout for terminal connection
-        _initialize (bool): First time initialization flag
         state (dict): A global state dictionary for storing data across the framework
-        root_dir (str): The root directory of the project
+        root (str): Root directory of the project
+
     Notes:
         By default, the config class looks for a file named aiomql.json.
         You can change this by passing the filename and/or the config_dir keyword argument(s) to the constructor
         or the load_config method.
         By passing reload=True to the load_config method, you can reload and search again for the config file.
     """
-    login: int = 0
-    trade_record_mode: Literal['csv', 'json'] = 'csv'
-    password: str = ""
-    server: str = ""
-    path: str | Path = ""
-    timeout: int = 60000
-    record_trades: bool = True
-    filename: str = "aiomql.json"
-    _initialize = True
-    state: dict = {}
+    login: int
+    trade_record_mode: Literal['csv', 'json']
+    password: str
+    server: str
+    path: str | Path
+    timeout: int
+    filename: str
+    state: dict
     root: Path
-    root_dir: Path
+    record_trades: bool
     records_dir: Path
-    config_dir: str = ''
-    task_queue: TaskQueue = TaskQueue()
-    bot: Bot = None
+    records_dir_name: str
+    test_data_dir: Path
+    test_data_dir_name: str
+    task_queue: TaskQueue
+    bot: Bot
     _instance: 'Config'
-    mode: Literal['backtest', 'live'] = 'live'
-    test_data_dir: str = 'test_data'
-    use_terminal: bool = False
+    mode: Literal['backtest', 'live']
+    use_terminal_for_backtesting: bool
+    _defaults = {"timeout": 60000, "record_trades": True, "trade_record_mode": "csv", "mode": "live",
+                'filename': "aiomql.json", "records_dir_name": "trade_records", "test_data_dir_name": "test_data",
+                "use_terminal_for_backtesting": True, 'path': '', 'login': 0, 'password': '', 'server': ''}
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
             cls._instance = super().__new__(cls)
+            cls._instance.state = {}
+            cls._instance.task_queue = TaskQueue()
+            cls._instance.set_attributes(**cls._defaults)
+            cls._instance.load_config(**kwargs)
         return cls._instance
 
     def __init__(self, **kwargs):
-        reload = kwargs.pop('reload', False)
-        self.load_config(reload=reload, **kwargs)
-
-    def set_root(self, *, root: str | Path):
-        root = Path(root) if str else root
-        self.root = root.absolute().resolve()
-        self.root_dir = self.root
-
-    def __setattr__(self, key, value):
-        if key == 'path':
-            value = str(self.root_dir / Path(value).absolute().resolve())
-        super().__setattr__(key, value)
+        self.set_attributes(**kwargs)
 
     def set_attributes(self, **kwargs):
         """Set keyword arguments as object attributes
@@ -95,10 +90,9 @@ class Config:
             parent_dir = os.path.abspath(os.path.join(current_dir, os.path.pardir))
             last_dir, current_dir = current_dir, parent_dir
 
-    def find_config(self):
+    def find_config_file(self):
         try:
-            path = self.root_dir / self.config_dir
-            for dirname in self.walk_to_root(path):
+            for dirname in self.walk_to_root(self.root):
                 check_path = os.path.join(dirname, self.filename)
                 if os.path.isfile(check_path):
                     return check_path
@@ -106,54 +100,51 @@ class Config:
         except Exception as _:
             return
 
-    def create_records_dir(self, *, records_dir: str | Path = 'records'):
-        """Create records directory if it does not exist. By default, it is relative to the root directory of the
-         project unless an absolute path is provided.
-
-        Keyword Args:
-            records_dir (str|Path): The directory to save trade records. Default is 'trade_records'
-        """
-        try:
-            if isinstance(records_dir, str):
-                records_dir = self.root_dir / records_dir
-            elif isinstance(records_dir, Path):
-                records_dir = records_dir.absolute().resolve()
-            records_dir.mkdir(parents=True, exist_ok=True)
-            self.records_dir = records_dir
-        except Exception as err:
-            logger.warning(f"{err}: Unable to create records directory")
-
-    def load_config(self, *, file: str = None, reload: bool = True, filename: str = None,
-                    config_dir: str = '', **kwargs):
+    def load_config(self, *, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs):
         """Load configuration settings from a file.
-        Keyword Args:
-            file (str): The path to the file to load. If not provided, the file is searched for
-            reload (bool): Whether to reload the config object. Default is True
-            filename (str): The name of the file to load. If not provided, the default filename is used
-            config_dir (str): The name of the directory to search for the file. Default is the root directory
-            root_dir (str): The root directory of the project
-            kwargs: Additional keyword arguments
-        """
-        if not (self._initialize or reload):
-            return
-        data = {}
-        self.filename = filename or self.filename
-        self.config_dir = config_dir or self.config_dir
-        root_dir = kwargs.pop('root_dir', None)
-        records_dir = kwargs.pop('records_dir', 'records')
-        if self._initialize or (root_dir is not None):
-            self.set_root(root=(root_dir or '.'))
-            self.create_records_dir(records_dir=records_dir)
 
-        if (file := (file or self.find_config())) is None:
+        Keyword Args:
+            file (str | Path): The absolute path to the config file.
+            filename (str): The name of the file to load if file path is not specified. If not provided aiomql.json is used
+            root (str): The root directory of the project.
+            kwargs: Additional keyword arguments to set as object attributes.
+        """
+        if root is not None:
+            root = Path(root).resolve()
+            root.mkdir(parents=True, exist_ok=True) if not root.exists() else ...
+            self.root = root
+        else:
+            self.root = self.root if hasattr(self, 'root') else Path.cwd()
+
+        if file is not None:
+            file = Path(file).resolve()
+            if not file.exists():
+                self.filename = filename or self.filename
+                file = self.find_config_file()
+            else:
+                self.filename = file.name
+        else:
+            self.filename = filename or self.filename
+            file = self.find_config_file()
+
+        if file is None:
             logger.warning("No Config File Found")
+            file_config = {}
         else:
             fh = open(file, mode="r")
-            data = json.load(fh)
+            file_config = json.load(fh)
             fh.close()
-        data |= kwargs
+
+        data = file_config | kwargs
         self.set_attributes(**data)
-        self._initialize = False
+
+        if self.record_trades and not hasattr(self, "records_dir"):
+            self.records_dir = self.root / self.records_dir_name
+            self.records_dir.mkdir(parents=True, exist_ok=True)
+
+        if self.mode == "backtest" and not hasattr(self, "test_data_dir"):
+            self.test_data_dir = self.root / self.test_data_dir_name
+            self.test_data_dir.mkdir(parents=True, exist_ok=True)
 
     def account_info(self) -> dict[str, int | str]:
         """Returns Account login details as found in the config object if available
@@ -161,4 +152,4 @@ class Config:
         Returns:
             dict: A dictionary of login details
         """
-        return {"login": self.login, "password": self.password, "server": self.server}
+        return {'login': self.login, 'password': self.password, 'server': self.server}

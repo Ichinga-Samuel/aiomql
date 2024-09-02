@@ -1,4 +1,4 @@
-from typing import TypedDict
+from dataclasses import dataclass
 import pickle
 import lzma
 from datetime import datetime
@@ -16,24 +16,36 @@ from ...core.constants import TimeFrame, CopyTicks
 from ...utils import backoff_decorator
 
 logger = getLogger(__name__)
+from MetaTrader5 import TradePosition, TradeOrder, TradeDeal
+
+tof = list(TradeOrder._fields)
+tof.append('symbol')
+tpf = list(TradePosition._fields)
+tpf.append('symbol')
+tdf = list(TradeDeal._fields)
+tdf.append('symbol')
 
 
-class Data(TypedDict):
+@dataclass
+class Data:
     account: dict
     symbols: dict[str, dict]
     prices: dict[str, DataFrame]
     ticks: dict[str, DataFrame]
     rates: dict[str, dict[str, DataFrame]]
-    interval: range
+    span: range
+    range: range
+    history_orders: DataFrame = DataFrame([], columns=tof)
+    history_deals: DataFrame = DataFrame([], columns=tdf)
+    positions: DataFrame = DataFrame([], columns=tpf)
 
 
 class GetData:
-    config: Config = Config()
 
     def __init__(self, *, start: datetime, end: datetime, timeframes: set[TimeFrame], symbols: set[str],
                  name: str = '', tz: str = 'Etc/UTC'):
         """"""
-        super().__init__()
+        self.config = Config()
         self.tz = pytz.timezone(tz)
         self.start = start.replace(tzinfo=self.tz)
         self.end = end.replace(tzinfo=self.tz)
@@ -41,24 +53,18 @@ class GetData:
         self.timeframes = timeframes
         self.name = name or f"{start:%d-%m-%y}_{end:%d-%m-%y}"
         diff = int((self.end - self.start).total_seconds())
-        self.interval = range(start := int(self.start.timestamp()), diff + start)
+        self.range = range(diff)
+        self.span = range(start := int(self.start.timestamp()), diff + start)
         self.mt5 = MetaTrader()
 
     async def get_data(self) -> Data:
         """"""
-        data = {}
+
         rates, ticks, prices, symbols, account = await asyncio.gather(self.get_symbols_rates(), self.get_symbols_ticks(),
                                                                 self.get_symbols_prices(), self.get_symbols_info(),
                                                     self.get_account_info())
-
-        data['rates'] = rates
-        data['ticks'] = ticks
-        data['prices'] = prices
-        data['symbols'] = symbols
-        data['account'] = account
-        data['range'] = self.interval
-
-        return Data(**data)
+        return Data(account=account, symbols=symbols, prices=prices, ticks=ticks, rates=rates,
+                    span=self.span, range=self.range)
 
     async def pickle_data(self) -> None:
         """"""
@@ -145,7 +151,7 @@ class GetData:
         res = pd.DataFrame(res)
         res.drop_duplicates(subset=['time'], keep='last', inplace=True)
         res.set_index('time', inplace=True, drop=False)
-        res = res.reindex(self.interval, method='nearest')
+        res = res.reindex(self.span, method='nearest')
         return symbol, res
 
     @backoff_decorator(max_retries=5)
