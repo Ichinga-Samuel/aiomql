@@ -13,6 +13,7 @@ from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TradeOrder, TradePositio
 from ..meta_trader import MetaTrader
 from ..constants import TimeFrame, CopyTicks, OrderType, TradeAction
 from .get_data import Data
+from ...account import Account
 from ...utils import round_down, round_up
 
 tz = pytz.timezone('Etc/UTC')
@@ -25,7 +26,7 @@ class TestData:
     
     def __init__(self, data: Data):
         self._data = data
-        self.account = AccountInfo(**data.account)
+        self.account = Account(**data.account)
         self.symbols = {symbol: SymbolInfo(**info) for symbol, info in data.symbols.items()}
         self.prices = data.prices
         self.ticks = data.ticks
@@ -131,28 +132,49 @@ class TestData:
         profit = volume * sym.trade_contract_size * (price_close - price_open)
         return profit
 
-    def check_order(self, order: TradeOrder) -> bool:
+    def check_order(self, ticket: int) -> bool:
+        order = self.open_orders[ticket]
+        order_type, symbol = order.type, order.symbol
+        tick = self.prices[symbol].loc[self.cursor.time]
+        tp, sl = order.tp, order.sl
+
+        match order_type:
+            case self.mt5._ORDER_TYPE_BUY:
+                if tp >= tick.bid or sl <= tick.bid:
+                    self.close_position(ticket)
+            
+            case self.mt5.ORDER_TYPE_SELL:
+                if tp <= tick.ask or sl >= tick.ask:
+                    self.close_position(ticket)
+            
+            case _:
+                ...
+
+    def check_position(self, ticket: int) -> bool:
         ...
 
-    def check_position(self, position: TradePosition) -> bool:
-        ...
-
-    def close_position(self, position: TradePosition):
-        profit = position.profit
-        self.open_orders.pop(position.ticket)
-        self.open_positions.pop(position.ticket)
+    def close_position(self, ticket: int):        
+        position = self.open_positions.pop(ticket)
         margin = self.margins.pop(position.ticket)
+        profit = position.profit
         self.update_account(profit, margin=margin)
 
-    def modify_stops(self, ticket: int, sl: int = None, tp: int = None):
-        ...
+    async def modify_stops(self, ticket: int, sl: int = None, tp: int = None):
+        pos = self.open_positions.pop(ticket)
+        sl = sl or pos.sl
+        tp = tp or pos.tp
+        order_type, symbol, volume, price_open = pos.order_type, pos.symbol, pos.volume
+        pos = pos._asdict()
+        pos.update(tp=tp, sl=sl, time_update=self.cursor.time)
+        profit = await self.mt5.order_calc_profit(order_type, symbol, volume, price_open, sl)
+        self.open_positions[ticket] = TradePosition(**pos)
 
     def update_account(self, profit: float, margin: float = 0):
         self.account.balance += profit
         self.account.equity += profit
         self.account.margin -= margin
         self.account.margin_free = self.account.equity - self.account.margin
-        self.account.margin_level = (self.account.equity / self.account.margin) * 100
+        self.account.margin_level = (self.account.equity / self.account.margin) * 100 if self.account.margin_mode 
 
     async def order_send(self, request: dict, use_terminal: bool = True) -> OrderSendResult:
         osr = {'retcode': 10009, 'comment': 'Request completed', 'request': TradeRequest(**request)}
@@ -218,7 +240,7 @@ class TestData:
         equity = acc.equity
         used_margin = acc.margin + margin
         free_margin = acc.margin_free - margin
-        margin_level = (equity / used_margin) * 100
+        margin_level = (equity / used_margin) * 100 if (acc.margin_mode == ACCOUNT_STOPOUT_MODE_PERCENT and used_margin > 0) else free_margin
 
         if use_terminal and self.mt5.config.use_terminal_for_backtesting:
             ocr_t = await self.mt5.order_check(request)
@@ -237,9 +259,8 @@ class TestData:
                     ocr['retcode'] = 10016
                     ocr['comment'] = 'Invalid stops'
                     return OrderCheckResult(**ocr)
-
-        level = margin_level if acc.margin_mode == ACCOUNT_STOPOUT_MODE_PERCENT else free_margin
-        if level < acc.margin_so_call or free_margin <= 0:
+                
+        if margin_level < acc.margin_so_call:
             ocr['retcode'] = 10019
             ocr['comment'] = 'No money'
 
