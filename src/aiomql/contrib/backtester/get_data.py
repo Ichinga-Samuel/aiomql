@@ -13,7 +13,8 @@ from pandas import DataFrame
 
 from ...core.meta_trader import MetaTrader
 from ...core.config import Config
-from ...core.constants import TimeFrame, CopyTicks
+from ...core.constants import TimeFrame, 
+from ...core.task_queue import TaskQueue, QueueItem
 
 from ...utils import backoff_decorator
 
@@ -73,16 +74,19 @@ class GetData:
         self.span = range(start := int(self.start.timestamp()), diff + start)
         self.data = Data(name=name)
         self.mt5 = MetaTrader()
+        self.task_queue = TaskQueue()
 
     async def get_data(self):
         """"""
-        rates, ticks, prices, symbols, account = await asyncio.gather(self.get_symbols_rates(), self.get_symbols_ticks(),
-                                                                self.get_symbols_prices(), self.get_symbols_info(),
-                                                    self.get_account_info())
-        terminal, version = await asyncio.gather(self.get_terminal_info(), self.get_version())
+        qitems = [QueueItem(self.get_symbol_rates), QueueItem(self.get_symbol_ticks),
+                  QueueItem(self.get_symbol_prices), QueueItem(self.get_symbol_info),
+                    QueueItem(self.get_account_info), QueueItem(self.get_symbols_info), QueueItem(self.get_version)]
+        [self.task_queue.add(item=item, priority=0) for item in qitems]
+        await self.task_queue.run()
+        # terminal, version = await asyncio.gather(self.get_terminal_info(), self.get_version())
 
-        self.data.setattrs(account=account, symbols=symbols, prices=prices, ticks=ticks, rates=rates,
-                           span=self.span, range=self.range, terminal=terminal, version=version, name=self.name)
+        # self.data.setattrs(account=account, symbols=symbols, prices=prices, ticks=ticks, rates=rates,
+        #                    span=self.span, range=self.range, terminal=terminal, version=version, name=self.name)
 
     def pickle_data(self):
         """"""
@@ -98,7 +102,7 @@ class GetData:
             fh.write(bdata)
 
     @classmethod
-    def dump_data(cls, data: Data, name: str | Path, compress: bool = False) -> None:
+    def dump_data(cls, data: Data, name: str | Path, compress: bool = False):
         """"""
         try:
             fo = open(name, 'wb')
@@ -114,7 +118,7 @@ class GetData:
 
 
     @classmethod
-    def load_data(cls, *, name: str | Path, compressed=False) -> Data | None:
+    def load_data(cls, *, name: str | Path, compressed=False):
         """"""
         try:
             fo = open(name, 'rb')
@@ -132,79 +136,71 @@ class GetData:
             logger.error(f"Error: {err}")
             return None
 
-    async def get_terminal_info(self) -> dict[str, [str | int | bool | float]]:
+    async def get_terminal_info(self):
         """"""
         terminal = await self.mt5.terminal_info()
-        return terminal._asdict()
+        terminal = terminal._asdict()
+        self.data.setattrs(terminal=terminal)
 
-    async def get_version(self) -> tuple[int, int, str]:
+    async def get_version(self):
         """"""
         version = await self.mt5.version()
-        return version
+        self.data.setattrs(version=version)
 
-    async def get_symbols_info(self) -> dict[str, dict]:
+    async def get_symbols_info(self):
         """"""
-        tasks = [self.get_symbol_info(symbol) for symbol in self.symbols]
-        res = await asyncio.gather(*tasks)
-        return {symbol: info for symbol, info in res}
+        [self.task_queue.add(QueueItem(self.get_symbol_info, symbol, must_complete=True), priority=4) for symbol in self.symbols]
 
-    async def get_symbols_ticks(self) -> dict[str, DataFrame]:
+    async def get_symbols_ticks(self):
         """"""
-        tasks = [self.get_symbol_ticks(symbol) for symbol in self.symbols]
-        res = await asyncio.gather(*tasks)
-        return {symbol: tick for symbol, tick in res}
+        [self.task_queue.add(QueueItem(self.get_symbol_ticks, symbol)) for symbol in self.symbols]
 
-    async def get_symbols_prices(self) -> dict[str, DataFrame]:
+    async def get_symbols_prices(self):
         """"""
-        tasks = [self.get_symbol_prices(symbol) for symbol in self.symbols]
-        res = await asyncio.gather(*tasks)
-        return {symbol: prices for symbol, prices in res}
+        [self.task_queue.add(QueueItem(self.get_symbol_prices, symbol)) for symbol in self.symbols]
 
-    async def get_symbols_rates(self) -> dict[str: dict[TimeFrame: DataFrame]]:
+    async def get_symbols_rates(self):
         """"""
-        tasks = [self.get_symbol_rates(symbol, timeframe) for symbol in self.symbols for timeframe in self.timeframes]
-        res = await asyncio.gather(*tasks)
-        data = {}
-        for symbol, timeframe, rates in res:
-            data.setdefault(symbol, {}).setdefault(timeframe.name, rates)
-        return data
-
+        [self.task_queue.add(QueueItem(self.get_symbol_rates, symbol, timeframe, must_complete=True), priority=4)
+                  for symbol in self.symbols for timeframe in self.timeframes]
+        
     @backoff_decorator(max_retries=5)
-    async def get_account_info(self) -> dict:
+    async def get_account_info(self):
         """"""
         res = await self.mt5.account_info()
-        return res._asdict()
+        res = res._asdict()
+        self.data.setattrs(account=res)
 
     @backoff_decorator(max_retries=5)
-    async def get_symbol_info(self, symbol: str) -> tuple[str, dict]:
+    async def get_symbol_info(self, symbol: str):
         """"""
         res = await self.mt5.symbol_info(symbol)
-        return symbol, res._asdict()
+        self.data.symbols[symbol] = res._asdict()
 
     @backoff_decorator(max_retries=5)
-    async def get_symbol_ticks(self, symbol: str) -> tuple[str, DataFrame]:
+    async def get_symbol_ticks(self, symbol: str):
         """"""
         res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
         res = pd.DataFrame(res)
         res.drop_duplicates(subset=['time'], keep='last', inplace=True)
         res.set_index('time', inplace=True, drop=False)
-        return symbol, res
+        self.data.ticks[symbol] = res
 
     @backoff_decorator(max_retries=5)
-    async def get_symbol_prices(self, symbol: str) -> tuple[str, DataFrame]:
+    async def get_symbol_prices(self, symbol: str):
         """"""
         res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
         res = pd.DataFrame(res)
         res.drop_duplicates(subset=['time'], keep='last', inplace=True)
         res.set_index('time', inplace=True, drop=False)
         res = res.reindex(self.span, method='nearest')
-        return symbol, res
+        self.data.prices[symbol] = res
 
     @backoff_decorator(max_retries=5)
-    async def get_symbol_rates(self, symbol: str, timeframe: TimeFrame) -> tuple[str, TimeFrame, DataFrame]:
+    async def get_symbol_rates(self, symbol: str, timeframe: TimeFrame):
         """"""
         res = await self.mt5.copy_rates_range(symbol, timeframe, self.start, self.end)
         res = pd.DataFrame(res)
         res.drop_duplicates(subset=['time'], keep='last', inplace=True)
         res.set_index('time', inplace=True, drop=False)
-        return symbol, timeframe, res
+        self.data.rates[symbol].setdefault(timeframe, res)
