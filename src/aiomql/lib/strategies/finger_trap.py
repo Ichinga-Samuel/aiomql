@@ -9,7 +9,7 @@ from ...candle import Candles
 from ...strategy import Strategy
 from ...core import TimeFrame, OrderType
 from ...sessions import Sessions
-from ...utils import find_bearish_fractal, find_bullish_fractal
+from ..candle_patterns import find_bearish_fractal, find_bullish_fractal
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ class FingerTrap(Strategy):
 
     async def check_trend(self):
         try:
+
             candles: Candles = await self.symbol.copy_rates_from_pos(timeframe=self.ttf, count=self.tcc)
             if not ((current := candles[-1].time) >= self.tracker.trend_time):
                 self.tracker.update(new=False, order_type=None)
@@ -106,6 +107,7 @@ class FingerTrap(Strategy):
                     await self.trader.place_trade(order_type=self.tracker.order_type, parameters=self.parameters,
                                                   sl=self.tracker.sl)
                     await self.sleep(self.tracker.snooze)
+
                 except Exception as err:
                     logger.error(f"{err} For {self.symbol} in {self.__class__.__name__}.trade")
                     await self.sleep(self.ttf.time)

@@ -1,9 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field, fields
 import pickle
+from pathlib import Path
 import lzma
 from datetime import datetime
 from logging import getLogger
 import asyncio
+from typing import Sequence, ClassVar
 
 import pytz
 import pandas as pd
@@ -18,83 +20,127 @@ from ...utils import backoff_decorator
 logger = getLogger(__name__)
 from MetaTrader5 import TradePosition, TradeOrder, TradeDeal
 
-tof = list(TradeOrder._fields)
+tof = list(TradeOrder.__match_args__)
 tof.append('symbol')
-tpf = list(TradePosition._fields)
+tpf = list(TradePosition.__match_args__)
 tpf.append('symbol')
-tdf = list(TradeDeal._fields)
+tdf = list(TradeDeal.__match_args__)
 tdf.append('symbol')
 
 
 @dataclass
 class Data:
-    account: dict
-    symbols: dict[str, dict]
-    prices: dict[str, DataFrame]
-    ticks: dict[str, DataFrame]
-    rates: dict[str, dict[str, DataFrame]]
-    span: range
-    range: range
-    history_orders: DataFrame = DataFrame([], columns=tof)
-    history_deals: DataFrame = DataFrame([], columns=tdf)
-    positions: DataFrame = DataFrame([], columns=tpf)
+    name: str = ''
+    terminal: dict[str, [str | int | bool | float]] = field(default_factory=dict)
+    version: tuple[int, int, str] = (0, 0, '')
+    account: dict = field(default_factory=dict)
+    symbols: dict[str, dict] = field(default_factory=dict)
+    prices: dict[str, DataFrame] = field(default_factory=dict)
+    ticks: dict[str, DataFrame] = field(default_factory=dict)
+    rates: dict[str, dict[str, DataFrame]] = field(default_factory=dict)
+    span: range = range(0)
+    range: range = range(0)
+    history_orders: DataFrame = field(default_factory=lambda: DataFrame([], columns=tof))
+    history_deals: DataFrame = field(default_factory=lambda: DataFrame([], columns=tdf))
+    positions: dict[str, DataFrame] = field(default_factory=dict)
+    orders: dict[str, DataFrame] = field(default_factory=dict)
+
+    _fields: list[ClassVar[str]] = field(default_factory=list)
+
+    def setattrs(self, **kwargs):
+        [setattr(self, k, v) for k, v in kwargs.items() if k in self.fields]
+
+    @property
+    def fields(self):
+        return self._fields or [name for f in fields(self) if (name := f.name) != '_fields']
 
 
 class GetData:
+    data: Data | None
 
-    def __init__(self, *, start: datetime, end: datetime, timeframes: set[TimeFrame], symbols: set[str],
-                 name: str = '', tz: str = 'Etc/UTC'):
+    def __init__(self, *, start: datetime, end: datetime, symbols: Sequence[str],
+                 timeframes: Sequence[TimeFrame], name: str = '', tz: str = 'Etc/UTC'):
         """"""
         self.config = Config()
         self.tz = pytz.timezone(tz)
         self.start = start.replace(tzinfo=self.tz)
         self.end = end.replace(tzinfo=self.tz)
-        self.symbols = symbols
-        self.timeframes = timeframes
+        self.symbols = set(symbols)
+        self.timeframes = set(timeframes)
         self.name = name or f"{start:%d-%m-%y}_{end:%d-%m-%y}"
         diff = int((self.end - self.start).total_seconds())
         self.range = range(diff)
         self.span = range(start := int(self.start.timestamp()), diff + start)
+        self.data = Data(name=name)
         self.mt5 = MetaTrader()
 
-    async def get_data(self) -> Data:
+    async def get_data(self):
         """"""
-
         rates, ticks, prices, symbols, account = await asyncio.gather(self.get_symbols_rates(), self.get_symbols_ticks(),
                                                                 self.get_symbols_prices(), self.get_symbols_info(),
                                                     self.get_account_info())
-        return Data(account=account, symbols=symbols, prices=prices, ticks=ticks, rates=rates,
-                    span=self.span, range=self.range)
+        terminal, version = await asyncio.gather(self.get_terminal_info(), self.get_version())
 
-    async def pickle_data(self) -> None:
+        self.data.setattrs(account=account, symbols=symbols, prices=prices, ticks=ticks, rates=rates,
+                           span=self.span, range=self.range, terminal=terminal, version=version, name=self.name)
+
+    def pickle_data(self):
         """"""
-        data = await self.get_data()
-        fh = open(f'{self.config.root}/data/{self.name}', 'wb')
-        pickle.dump(data, fh)
+        fh = open(f'{self.config.test_data_dir}/{self.name}', 'wb')
+        pickle.dump(self.data, fh)
         fh.close()
     
     async def compress_data(self):
         """"""
-        data = await self.get_data()
-        bdata = pickle.dumps(data)
+        bdata = pickle.dumps(self.data)
         name = self.name + 'xz' 
-        with lzma.open(name, 'w') as fh:
+        with lzma.open(f'{self.config.test_data_dir}/{name}', 'w') as fh:
             fh.write(bdata)
 
     @classmethod
-    def load_data(cls, name: str, compressed=False) -> dict:
+    def dump_data(cls, data: Data, name: str | Path, compress: bool = False) -> None:
         """"""
-        fo = open(f'{cls.config.root}/data/{name}', 'rb')
-        data = fo.read()
+        try:
+            fo = open(name, 'wb')
+            if compress:
+                data = lzma.compress(pickle.dumps(data))
+            else:
+                data = pickle.dumps(data)
 
-        if compressed:
-            data = lzma.decompress(data)
-        else:
-            data = pickle.loads(data)
+            fo.write(data)
+            fo.close()
+        except Exception as err:
+            logger.error(f"Error in dump_data: {err}")
 
-        fo.close()
 
-        return data
+    @classmethod
+    def load_data(cls, *, name: str | Path, compressed=False) -> Data | None:
+        """"""
+        try:
+            fo = open(name, 'rb')
+            data = fo.read()
+
+            if compressed:
+                data = lzma.decompress(data)
+            else:
+                data = pickle.loads(data)
+
+            fo.close()
+
+            return data
+        except Exception as err:
+            logger.error(f"Error: {err}")
+            return None
+
+    async def get_terminal_info(self) -> dict[str, [str | int | bool | float]]:
+        """"""
+        terminal = await self.mt5.terminal_info()
+        return terminal._asdict()
+
+    async def get_version(self) -> tuple[int, int, str]:
+        """"""
+        version = await self.mt5.version()
+        return version
 
     async def get_symbols_info(self) -> dict[str, dict]:
         """"""

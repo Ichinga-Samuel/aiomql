@@ -24,7 +24,7 @@ class Error:
 
     def __init__(self, code: int, description: str = ''):
         self.code = code
-        self.description = description or self.descriptions.get(code, 'Unknown Error')
+        self.description = description or self.descriptions.get(code, 'unknown error')
 
     def is_connection_error(self):
         return self.code in self.conn_errors

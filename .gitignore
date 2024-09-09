@@ -75,3 +75,4 @@ target/
 config.json
 aiomql.json
 config/
+test_data/

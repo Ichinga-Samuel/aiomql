@@ -1,11 +1,11 @@
 """Utility functions for aiomql."""
-
 import decimal
 import random
 from functools import wraps, partial
 import asyncio
+from logging import getLogger
 
-from .candle import Candles, Candle
+logger = getLogger(__name__)
 
 
 def dict_to_string(data: dict, multi=False) -> str:
@@ -20,25 +20,6 @@ def dict_to_string(data: dict, multi=False) -> str:
     """
     sep = '\n' if multi else ', '
     return f"{sep}".join(f"{key}: {value}" for key, value in data.items())
-
-
-def round_off(value: float, step: float, round_down: bool = False) -> float:
-    """Round off a number to the nearest step."""
-    with decimal.localcontext() as ctx:
-        ctx.rounding = decimal.ROUND_DOWN if round_down else decimal.ROUND_UP
-        return float(decimal.Decimal(str(value)).quantize(decimal.Decimal(str(step))))
-
-
-def find_bearish_fractal(candles: Candles) -> Candle | None:
-    for i in range(len(candles) - 3, 1, -1):
-        if candles[i].high > max(candles[i - 1].high, candles[i + 1].high, candles[i - 2].high, candles[i + 2].high):
-            return candles[i]
-
-
-def find_bullish_fractal(candles: Candles) -> Candle | None:
-    for i in range(len(candles) - 3, 1, -1):
-        if candles[i].low < min(candles[i - 1].low, candles[i + 1].low, candles[i - 2].low, candles[i + 2].low):
-            return candles[i]
 
 
 def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0, delay: int = 1, error=None) -> callable:
@@ -64,8 +45,44 @@ def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0, dela
     return wrapper
 
 
+def error_handler(func=None, *, msg='', exe = Exception):
+    if func is None:
+        return partial(error_handler, msg=msg, exe=exe)
+
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            res = await func(*args, **kwargs)
+            return res
+        except exe as err:
+            logger.error(f'Error in {func.__name__}: {msg or err}')
+
+    return wrapper
+
+def error_handler_sync(func=None, *, msg='', exe=Exception):
+    if func is None:
+        return partial(error_handler, msg=msg, exe=exe)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            res = func(*args, **kwargs)
+            return res
+        except exe as err:
+            logger.error(f'Error in {func.__name__}: {msg or err}')
+
+    return wrapper
+
 def round_down(value: int, base: int) -> int:
     return value if value % base == 0 else value  - (value % base)
 
+
 def round_up(value: int, base: int) -> int:
     return value if value % base == 0 else value + base - (value % base)
+
+
+def round_off(value: float, step: float, round_down: bool = False) -> float:
+    """Round off a number to the nearest step."""
+    with decimal.localcontext() as ctx:
+        ctx.rounding = decimal.ROUND_DOWN if round_down else decimal.ROUND_UP
+        return float(decimal.Decimal(str(value)).quantize(decimal.Decimal(str(step))))
