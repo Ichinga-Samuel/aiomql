@@ -29,8 +29,7 @@ class EventManager:
         self.tasks.extend(task)
 
     def sigint_handler(self, sig, frame):
-        for task in self.tasks:
-            task.cancel() if not task.done() else ...
+        print(self.config.test_data)
 
     async def acquire(self):
         await self.condition.acquire()
@@ -45,7 +44,6 @@ class EventManager:
                     self.task_tracker = 0
                     await self.config.test_data.tracker()
                     self.config.test_data.next()
-                    print(self.config.test_data.cursor.time)
                     self.condition.notify_all()
                     await asyncio.sleep(0)
 

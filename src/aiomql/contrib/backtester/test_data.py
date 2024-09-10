@@ -84,8 +84,6 @@ class TestData:
         await asyncio.gather(*order_tasks)
 
     def save(self):
-        self._data.history_deals = self.history_deals
-        self._data.history_orders = self.history_orders
         for symbol in self.orders:
             self.history_orders = pd.concat([DataFrame(self.orders[symbol].values()), self.history_orders])
         self._data.history_orders = self.history_orders
@@ -131,7 +129,6 @@ class TestData:
         order = self.open_orders.pop(ticket)
         order = order._asdict()
         order.update(time_done=self.cursor.time)
-        self.orders[order['symbol']][ticket] = TradeOrder(order)
         self.update_account(profit=position.profit, margin=-margin)
 
     def modify_stops(self, ticket: int, sl: int = None, tp: int = None):
