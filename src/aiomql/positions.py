@@ -2,8 +2,15 @@
 import asyncio
 from logging import getLogger
 
-from .core import MetaTrader, TradePosition, TradeAction, OrderType
+from .core.meta_trader import MetaTrader
+from .core.models import TradePosition, TradeAction
+from .core.constants import  OrderType
+from .core.config import Config
+
+from .contrib.backtester.meta_tester import MetaTester
+
 from .order import Order
+from .utils import backoff_decorator
 
 logger = getLogger(__name__)
 
@@ -18,7 +25,7 @@ class Positions:
         ticket (int): Position ticket.
         mt5 (MetaTrader): MetaTrader instance.
     """
-    mt5: MetaTrader
+    mt5: MetaTrader | MetaTester
 
     def __init__(self, *, symbol: str = "", group: str = "", ticket: int = 0):
         """Get Open Positions.
@@ -30,7 +37,8 @@ class Positions:
             ticket (int): Position ticket
 
         """
-        self.mt5 = MetaTrader()
+        self.config = Config()
+        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
         self.symbol = symbol
         self.group = group
         self.ticket = ticket
@@ -43,7 +51,8 @@ class Positions:
         """
         return await self.mt5.positions_total()
 
-    async def positions_get(self, symbol: str = '', group: str = '', ticket: int = 0, retries=3) -> list[TradePosition]:
+    @backoff_decorator
+    async def positions_get(self, symbol: str = '', group: str = '', ticket: int = 0) -> list[TradePosition]:
         """Get open positions with the ability to filter by symbol or ticket.
 
         Keyword Args:
@@ -55,17 +64,12 @@ class Positions:
         Returns:
             list[TradePosition]: A list of open trade positions
         """
-        if retries < 1:
-            logger.warning(f'Failed to get positions for {symbol or self.symbol}. {self.mt5.error}')
-            return []
         positions = await self.mt5.positions_get(group=group or self.group, symbol=symbol or self.symbol,
                                                  ticket=ticket or self.ticket)
         if positions is not None:
             return [TradePosition(**pos._asdict()) for pos in positions]
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.positions_get(symbol, group, ticket, retries - 1)
-        logger.warning(f'Failed to get positions for {symbol or self.symbol}. {self.mt5.error}')
+
+        logger.warning(f'Failed to get positions for {symbol or self.symbol}')
         return []
 
     async def position_get(self, *, ticket: int) -> TradePosition | None:
@@ -78,8 +82,10 @@ class Positions:
         """
         positions = await self.positions_get(ticket=ticket)
         position = positions[0] if positions else None
+
         if position is None or position.ticket != ticket:
             return None
+
         return position
 
     async def close(self, *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType):

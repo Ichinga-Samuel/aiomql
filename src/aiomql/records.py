@@ -6,7 +6,9 @@ import csv
 import logging
 from typing import Iterable
 
-from .core import Config, MetaTrader
+from .contrib.backtester.meta_tester import MetaTester
+from .core.config import Config
+from .core.meta_trader import MetaTrader
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class Records:
             records_dir (Path): Absolute path to directory containing record of placed trades.
         """
         self.config = Config()
-        self.mt5 = MetaTrader()
+        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
         self.records_dir = records_dir or self.config.records_dir
 
     async def get_records(self):

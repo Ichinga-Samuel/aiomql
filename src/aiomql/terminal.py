@@ -1,7 +1,7 @@
 """Terminal related functions and properties"""
-
 from typing import NamedTuple
 from logging import getLogger
+
 from .core.models import TerminalInfo
 
 logger = getLogger(__name__)
@@ -59,7 +59,6 @@ class Terminal(TerminalInfo):
         """
         info = await self.mt5.terminal_info()
         self.set_attributes(**info._asdict())
-        return self
 
     async def symbols_total(self) -> int:
         """Get the number of all financial instruments in the MetaTrader 5 terminal.

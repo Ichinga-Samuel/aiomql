@@ -16,5 +16,6 @@ class TestStrategy:
         mod = time % secs
         secs = secs - mod if mod != 0 else mod
         time = self.config.test_data.cursor.time + secs
+        print(f"Sleeping for {secs} seconds")
         while time > self.config.test_data.cursor.time:
           await self.event_manager.wait()

@@ -1,9 +1,10 @@
-import asyncio
 from logging import getLogger
 
 from .core.models import TradeRequest, OrderSendResult, OrderCheckResult, TradeOrder
 from .core.constants import TradeAction, OrderTime, OrderFilling
 from .core.exceptions import OrderError
+from .utils import backoff_decorator
+
 logger = getLogger(__name__)
 
 
@@ -38,26 +39,25 @@ class Order(TradeRequest):
         """
         return await self.mt5.orders_total()
 
-    async def get_order(self, *, ticket: int, retries: int = 3) -> TradeOrder | None:
+    @backoff_decorator
+    async def get_order(self, *, ticket: int) -> TradeOrder | None:
         """
         Get the order by ticket number.
+
         Args:
             ticket (int): Order ticket number
-            retries (int): Number of retries
+
         Returns:
         """
-        if retries < 1:
-            return None
         orders = await self.mt5.orders_get(ticket=ticket)
+
         if orders and (order := orders[0]).ticket == ticket:
             return TradeOrder(**order._asdict())
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.get_order(ticket=ticket, retries=retries-1)
+
         return None
 
-    async def get_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '', retries=3)\
-            -> tuple[TradeOrder, ...]:
+    @backoff_decorator
+    async def get_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '') -> tuple[TradeOrder, ...]:
         """Get the list of active orders for the current symbol.
         Keyword Args:
             ticket (int): Order ticket number
@@ -66,16 +66,13 @@ class Order(TradeRequest):
         Returns:
             tuple[TradeOrder]: A Tuple of active trade orders as TradeOrder objects
         """
-        if retries < 1:
-            return tuple()
         symbol = getattr(self, 'symbol', symbol)
         orders = await self.mt5.orders_get(symbol=symbol, ticket=ticket, group=group)
+
         if orders is not None:
             orders = (TradeOrder(**order._asdict()) for order in orders)
             return tuple(orders)
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.get_orders(ticket=ticket, symbol=symbol, group=group, retries=retries-1)
+
         return tuple()
 
     async def check(self, **kwargs) -> OrderCheckResult:
@@ -90,7 +87,7 @@ class Order(TradeRequest):
         req = self.dict | kwargs
         res = await self.mt5.order_check(req)
         if res is None:
-            raise OrderError(f'Failed to check order due to {self.mt5.error.description}')
+            raise OrderError(f'Order check failed for {self.symbol}')
         return OrderCheckResult(**res._asdict())
 
     async def send(self) -> OrderSendResult:
@@ -104,7 +101,7 @@ class Order(TradeRequest):
         """
         res = await self.mt5.order_send(self.dict)
         if res is None:
-            raise OrderError(f'Failed to send order {self.symbol} due to {self.mt5.error.description}')
+            raise OrderError(f'Failed to send order {self.symbol}')
         res = OrderSendResult(**res._asdict())
         try:
             profit = await self.calc_profit()
@@ -126,7 +123,7 @@ class Order(TradeRequest):
         """
         res = await self.mt5.order_calc_margin(self.type, self.symbol, self.volume, self.price)
         if res is None:
-            raise OrderError(f'Failed to calculate margin for {self.symbol} due to {self.mt5.error.description}')
+            raise OrderError(f'Failed to calculate margin for {self.symbol}')
         return res
 
     async def calc_profit(self, **kwargs) -> float | None:

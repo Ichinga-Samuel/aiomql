@@ -12,6 +12,7 @@ from .ram import RAM
 from .core.models import OrderType, OrderSendResult
 from .core.config import Config
 from .result import Result
+from .core.task_queue import QueueItem
 
 logger = getLogger(__name__)
 Symbol = TypeVar("Symbol", bound=_Symbol)
@@ -121,7 +122,7 @@ class Trader(ABC):
         params["date"] = str(date.date())
         params["time"] = str(date.time())
         res = Result(result=result, parameters=params, name=name)
-        self.config.task_queue.add_task(res.save)
+        self.config.task_queue.add(item=QueueItem(res.save, must_complete=True))
 
     @abstractmethod
     async def place_trade(self, *args, **kwargs):

@@ -75,12 +75,18 @@ class Account(AccountInfo):
 
     async def _login(self, *, acc: dict, tries=3, **kwargs) -> bool:
         res = False
+
         if tries == 0:
             return False
+
         init_args = {**acc} | {'path': self.config.path} | {**kwargs}
         ini = await self.mt5.initialize(**init_args)
+
         if ini:
             res = await self.mt5.login(**acc)
+            if not res:
+                await self.mt5.shutdown()
+
         if ini and res:
             return True
         else:

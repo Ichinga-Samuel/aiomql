@@ -9,7 +9,7 @@ from .ticks import Tick
 from .account import Account
 from .candle import Candles
 from .ticks import Ticks
-from .utils import round_off
+from .utils import round_off, backoff_decorator
 
 
 logger = getLogger(__name__)
@@ -48,6 +48,7 @@ class Symbol(SymbolInfo):
         """
         return self.point * 10
 
+    @backoff_decorator
     async def info_tick(self, *, name: str = "") -> Tick:
         """Get the current price tick of a financial instrument.
 
@@ -65,7 +66,7 @@ class Symbol(SymbolInfo):
             tick = Tick(**tick._asdict())
             setattr(self, 'tick', tick) if not name else ...
             return tick
-        raise ValueError(f'Could not get tick for {name or self.name}. {self.mt5.error}')
+        raise ValueError(f'Could not get tick for {name or self.name}.')
 
     async def symbol_select(self, *, enable: bool = True) -> bool:
         """Select a symbol in the MarketWatch window or remove a symbol from the window.
@@ -81,7 +82,8 @@ class Symbol(SymbolInfo):
         self.select = await self.mt5.symbol_select(self.name, enable)
         return self.select
 
-    async def info(self, retries=3) -> SymbolInfo:
+    @backoff_decorator
+    async def info(self) -> SymbolInfo:
         """Get data on the specified financial instrument and update the symbol object properties
 
         Returns:
@@ -90,18 +92,13 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        if retries < 1:
-            raise ValueError(f'Could not get info for {self.name}. {self.mt5.error}')
         info = await self.mt5.symbol_info(self.name)
         if info:
             info = info._asdict()
             info['swap_rollover3days'] = info.get('swap_rollover3days', 0) % 7
             self.set_attributes(**info)
             return SymbolInfo(**info)
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.info(retries=retries - 1)
-        raise ValueError(f'Could not get info for {self.name}. {self.mt5.error}')
+        raise ValueError(f'Could not get info for {self.name}')
 
     async def init(self) -> bool:
         """Initialized the symbol by pulling properties from the terminal
@@ -131,7 +128,8 @@ class Symbol(SymbolInfo):
         """
         return await self.mt5.market_book_add(self.name)
 
-    async def book_get(self, retries=3) -> tuple[BookInfo, ...]:
+    @backoff_decorator
+    async def book_get(self) -> tuple[BookInfo, ...]:
         """Returns a tuple of BookInfo featuring Market Depth entries for the specified symbol.
 
         Returns:
@@ -140,16 +138,13 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        if retries < 1:
-            raise ValueError(f'Could not get book info for {self.name}. {self.mt5.error}')
         infos = await self.mt5.market_book_get(self.name)
+
         if infos is not None:
             book_infos = (BookInfo(**info._asdict()) for info in infos)
             return tuple(book_infos)
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.book_get(retries=retries - 1)
-        raise ValueError(f'Could not get book info for {self.name}. {self.mt5.error}')
+
+        raise ValueError(f'Could not get book info for {self.name}')
 
     async def book_release(self) -> bool:
         """Cancels subscription of the MetaTrader 5 terminal to the Market Depth change events for a specified symbol.
@@ -241,8 +236,9 @@ class Symbol(SymbolInfo):
         else:
             logger.warning(f'Currency conversion failed: Unable to convert {amount} in {quote} to {base}')
 
+    @backoff_decorator
     async def copy_rates_from(self, *, timeframe: TimeFrame,
-                              date_from: datetime | int, count: int = 500, retries=3) -> Candles:
+                              date_from: datetime | int, count: int = 500) -> Candles:
         """
         Get bars from the MetaTrader 5 terminal starting from the specified date.
 
@@ -260,19 +256,14 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        if retries < 1:
-            raise ValueError(f'Could not get rates for {self.name}. {self.mt5.error}')
         rates = await self.mt5.copy_rates_from(self.name, timeframe, date_from, count)
         if rates is not None:
             return Candles(data=rates)
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.copy_rates_from(timeframe=timeframe, date_from=date_from,
-                                              count=count, retries=retries - 1)
-        raise ValueError(f'Could not get rates for {self.name}. {self.mt5.error}')
+        raise ValueError(f'Could not get rates for {self.name}.')
 
+    @backoff_decorator
     async def copy_rates_from_pos(self, *, timeframe: TimeFrame, count: int = 500,
-                                  start_position: int = 0, retries=3) -> Candles:
+                                  start_position: int = 0) -> Candles:
         """Get bars from the MetaTrader 5 terminal starting from the specified index.
 
         Args:
@@ -289,19 +280,14 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        if retries < 1:
-            raise ValueError(f'Could not get rates for {self.name}. {self.mt5.error}')
         rates = await self.mt5.copy_rates_from_pos(self.name, timeframe, start_position, count)
         if rates is not None:
             return Candles(data=rates)
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.copy_rates_from_pos(timeframe=timeframe, count=count,
-                                                  start_position=start_position, retries=retries - 1)
-        raise ValueError(f'Could not get rates for {self.name}. {self.mt5.error}')
+        raise ValueError(f'Could not get rates for {self.name}.')
 
+    @backoff_decorator
     async def copy_rates_range(self, *, timeframe: TimeFrame, date_from: datetime | int,
-                               date_to: datetime | int, retries=3) -> Candles:
+                               date_to: datetime | int) -> Candles:
         """Get bars in the specified date range from the MetaTrader 5 terminal.
 
         Args:
@@ -321,21 +307,15 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        if retries < 1:
-            raise ValueError(f'Could not get rates for {self.name}. {self.mt5.error}')
-
         rates = await self.mt5.copy_rates_range(symbol=self.name, timeframe=timeframe, date_from=date_from,
                                                 date_to=date_to)
         if rates is not None:
             return Candles(data=rates)
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.copy_rates_range(timeframe=timeframe, date_from=date_from,
-                                               date_to=date_to, retries=retries - 1)
-        raise ValueError(f'Could not get rates for {self.name}. {self.mt5.error}')
+        raise ValueError(f'Could not get rates for {self.name}.')
 
+    @backoff_decorator
     async def copy_ticks_from(self, *, date_from: datetime | int, count: int = 100,
-                              flags: CopyTicks = CopyTicks.ALL, retries=3) -> Ticks:
+                              flags: CopyTicks = CopyTicks.ALL) -> Ticks:
         """
         Get ticks from the MetaTrader 5 terminal starting from the specified date.
 
@@ -352,19 +332,14 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        if retries < 1:
-            raise ValueError(f'Could not get ticks for {self.name}. {self.mt5.error}')
-
         ticks = await self.mt5.copy_ticks_from(self.name, date_from, count, flags)
         if ticks is not None:
             return Ticks(data=ticks)
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.copy_ticks_from(date_from=date_from, count=count, flags=flags, retries=retries - 1)
-        raise ValueError(f'Could not get ticks for {self.name}. {self.mt5.error}')
+        raise ValueError(f'Could not get ticks for {self.name}.')
 
+    @backoff_decorator
     async def copy_ticks_range(self, *, date_from: datetime | int, date_to: datetime | int,
-                               flags: CopyTicks = CopyTicks.ALL, retries=3) -> Ticks:
+                               flags: CopyTicks = CopyTicks.ALL) -> Ticks:
         """Get ticks for the specified date range from the MetaTrader 5 terminal.
 
         Args:
@@ -383,12 +358,7 @@ class Symbol(SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned.
         """
-        if retries < 1:
-            raise ValueError(f'Could not get ticks for {self.name}. {self.mt5.error}')
         ticks = await self.mt5.copy_ticks_range(self.name, date_from, date_to, flags)
         if ticks is not None:
             return Ticks(data=ticks)
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.copy_ticks_range(date_from=date_from, date_to=date_to, flags=flags, retries=retries - 1)
-        raise ValueError(f'Could not get ticks for {self.name}. {self.mt5.error}')
+        raise ValueError(f'Could not get ticks for {self.name}.')

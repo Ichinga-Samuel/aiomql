@@ -62,13 +62,13 @@ class MetaTester(MetaTrader):
 
     async def shutdown(self) -> None:
         await super().shutdown() if self.config.use_terminal_for_backtesting else ...
-        self.test_data.save()
-        name = self.test_data.data.name
 
-        if self.config.compress_test_data:
-            name += '.xz'
-        name = self.config.test_data_dir/name
-        GetData.dump_data(data=self.test_data.data, name=name, compress=self.config.compress_test_data)
+        # self.test_data.save()
+        # name = self.test_data.data.name
+        # if self.config.compress_test_data:
+        #     name += '.xz'
+        # name = self.config.test_data_dir/name
+        # GetData.dump_data(data=self.test_data.data, name=name, compress=self.config.compress_test_data)
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def terminal_info(self) -> TerminalInfo:

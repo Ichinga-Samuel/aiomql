@@ -1,4 +1,5 @@
 import asyncio
+import signal
 
 from .event_manager import EventManager
 from .get_data import GetData
@@ -15,6 +16,7 @@ class StrategyTester:
         self.test_data = test_data or self.get_test_data(name=test_data_file)
         self.config.test_data = self.test_data
         self.event_manager = EventManager(num_tasks=len(self.strategies))
+        signal.signal(signal.SIGINT, self.event_manager.sigint_handler)
 
     def get_test_data(self, name: str) -> TestData | None:
         name = f"{self.config.test_data_dir_name}/{name or self.config.test_data_file}"
@@ -27,9 +29,14 @@ class StrategyTester:
         await self.mt5.login(**acc)
 
     async def run(self):
-        await self.start()
-        tasks = [*[asyncio.create_task(strategy.test()) for strategy in self.strategies],
-                 asyncio.create_task(self.event_manager.event_monitor())]
-        self.event_manager.add_task(*tasks)
-        await asyncio.gather(*tasks)
-        await self.mt5.shutdown()
+        try:
+            await self.start()
+            tasks = [*[asyncio.create_task(strategy.test()) for strategy in self.strategies],
+                     asyncio.create_task(self.event_manager.event_monitor())]
+            self.event_manager.add_task(*tasks)
+            await asyncio.gather(*tasks, return_exceptions=True)
+            # self.mt = asyncio.create_task(asyncio.gather(*tasks))
+        except Exception as err:
+            print(f"Error {err} occurred in StrategyTester")
+        finally:
+            await self.mt5.shutdown()

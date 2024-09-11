@@ -2,8 +2,9 @@ import csv
 import json
 from logging import getLogger
 from typing import Iterable, Literal
+from asyncio import Lock
 
-from .core import Config
+from .core.config import Config
 from .core.models import OrderSendResult
 
 logger = getLogger(__name__)
@@ -31,6 +32,7 @@ class Result:
         self.parameters = parameters or {}
         self.result = result
         self.name = name or parameters.get('name', 'Trades')
+        self.lock = Lock()
 
     def get_data(self) -> dict:
         res = self.result.get_dict(exclude={'retcode', 'comment', 'retcode_external', 'request_id', 'request'})
@@ -50,6 +52,7 @@ class Result:
     async def to_csv(self):
         """Record trade results and associated parameters as a csv file
         """
+        await self.lock.acquire()
         try:
             data = self.get_data()
             file = self.config.records_dir / f"{self.name}.csv"
@@ -67,6 +70,9 @@ class Result:
         except Exception as err:
             logger.error(f'Unable to save to csv: {err}')
 
+        finally:
+            self.lock.release()
+
     @staticmethod
     def serialize(value) -> str:
         """Serialize the trade records and strategy parameters
@@ -79,6 +85,7 @@ class Result:
     async def to_json(self):
         """Save trades and strategy parameters in a json file
         """
+        await self.lock.acquire()
         try:
             file = self.config.records_dir / f"{self.name}.json"
             data = self.get_data()
@@ -92,3 +99,6 @@ class Result:
                 json.dump(rows, fh, indent=2, skipkeys=True, default=self.serialize)
         except Exception as err:
             logger.error(f"Unable to save as json file: {err}")
+
+        finally:
+            self.lock.release()

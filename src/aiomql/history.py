@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime
 from logging import getLogger
 
@@ -8,6 +7,10 @@ import pandas as pd
 from .core.config import Config
 from .core.meta_trader import MetaTrader, CopyTicks, OrderType
 from .core.models import TradeDeal, TradeOrder
+
+from .contrib.backtester.meta_tester import MetaTester
+
+from .utils import backoff_decorator
 
 logger = getLogger(__name__)
 
@@ -26,7 +29,7 @@ class History:
         mt5 (MetaTrader): MetaTrader instance
         config (Config): Config instance
     """
-    mt5: MetaTrader
+    mt5: MetaTrader | MetaTester
     config: Config
 
     def __init__(self, *, date_from: datetime | int = None, date_to: datetime | int = None,
@@ -44,7 +47,7 @@ class History:
             position (int): Filter for selecting history deals by position
         """
         self.config = Config()
-        self.mt5 = MetaTrader()
+        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
         self.date_from = date_from
         self.date_to = date_to
         self.group = group
@@ -67,30 +70,24 @@ class History:
         self.total_deals = len(self.deals)
         self.total_orders = len(self.orders)
 
-    async def get_deals(self, *, date_from: datetime | int = None, date_to: datetime | int = None, group: str = '',
-                        retries: int = 3) -> tuple[TradeDeal, ...]:
+    @backoff_decorator
+    async def get_deals(self, *, date_from: datetime | int = None, date_to: datetime | int = None, group: str = '')\
+            -> tuple[TradeDeal, ...]:
         """Get deals from trading history using the parameters set in the constructor.
 
         Returns:
             tuple[TradeDeal]: A list of trade deals
         """
-        if retries < 1:
-            logger.warning(f'Failed to get deals: {self.mt5.error}')
-            return tuple()
-
         date_from, date_to, group = date_from or self.date_from, date_to or self.date_to, group or self.group
         deals = await self.mt5.history_deals_get(date_from=date_from, date_to=date_to, group=group)
 
         if deals is not None:
             return tuple(TradeDeal(**deal._asdict()) for deal in deals)
 
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.get_deals(date_from=date_from, date_to=date_to, group=group, retries=retries-1)
-
-        logger.warning(f'Failed to get deals: {self.mt5.error}')
+        logger.warning(f'Failed to get deals')
         return tuple()
 
+    @backoff_decorator
     async def get_deals_ticket(self, *, ticket: int = None) -> tuple[TradeDeal, ...]:
         """Call specifying the order ticket. Return all deals having the specified order ticket in the DEAL_ORDER
         property.
@@ -106,6 +103,7 @@ class History:
         deals = await self.mt5.history_deals_get(ticket=ticket)
         return tuple(sorted([TradeDeal(**deal._asdict()) for deal in deals or []], key=lambda x: x.time_msc))
 
+    @backoff_decorator
     async def get_deals_position(self, *, position: int = None) -> tuple[TradeDeal, ...]:
         """
         Get all deals with the specified position ticket in the DEAL_POSITION_ID property
@@ -135,6 +133,7 @@ class History:
         total_deals = await self.mt5.history_deals_total(date_from, date_to)
         return total_deals
 
+    @backoff_decorator
     async def get_orders(self, *, date_from: datetime | int = None, date_to: datetime | int = None, group: str = '',
                          retries: int = 3) -> tuple[TradeOrder, ...]:
         """Get orders from trading history using the parameters set in the constructor or the method arguments.
@@ -142,30 +141,27 @@ class History:
         Returns:
             list[TradeOrder]: A list of trade orders
         """
-        if retries < 1:
-            logger.warning(f'Failed to get orders: {self.mt5.error}')
-            return tuple()
-
         date_from, date_to, group = date_from or self.date_from, date_to or self.date_to, group or self.group
         orders = await self.mt5.history_orders_get(date_from=date_from, date_to=date_to, group=group)
+
         if orders is not None:
             return tuple(TradeOrder(**order._asdict()) for order in orders)
 
-        if self.mt5.error.is_connection_error():
-            await asyncio.sleep(retries)
-            return await self.get_orders(date_from=date_from, date_to=date_to, group=group, retries=retries - 1)
-
-        logger.warning(f'Failed to get orders: {self.mt5.error}')
+        logger.warning(f'Failed to get orders')
         return tuple()
 
+    @backoff_decorator
     async def get_order_ticket(self, ticket: int | None = None) -> TradeOrder | None:
         ticket = ticket or self.ticket
         assert isinstance(ticket, int), 'ticket not provided'
         orders = await self.mt5.history_orders_get(ticket=ticket)
+
         if orders and (order := orders[0]).ticket == ticket:
             return TradeOrder(**order._asdict())
+
         return None
 
+    @backoff_decorator
     async def get_orders_position(self, position: int = None) -> tuple[TradeOrder, ...]:
         """
         Call specifying the position ticket. Return all orders with a position ticket specified in the
@@ -182,6 +178,7 @@ class History:
         orders = await self.mt5.history_orders_get(position=position)
         return tuple(sorted([TradeOrder(**order._asdict()) for order in orders or []], key=lambda x: x.time_done_msc))
 
+    @backoff_decorator
     async def orders_total(self, date_from: int | datetime = None, date_to: int | datetime = None) -> int:
         """Get total number of orders within the specified period in the constructor.
 

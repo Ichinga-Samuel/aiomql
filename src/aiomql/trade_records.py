@@ -7,7 +7,9 @@ import csv
 import logging
 from typing import Iterable
 
-from .core import Config, MetaTrader
+from .core.config import Config
+from .core.meta_trader import MetaTrader
+from .contrib.backtester.meta_tester import MetaTester
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ class TradeRecords:
         from the config
     """
     config: Config
-    mt5: MetaTrader
+    mt5: MetaTrader | MetaTester
 
     def __init__(self, *, records_dir: Path | str = ''):
         """Initialize the Records class. The main method of this class is update_records which you should call to update
@@ -31,7 +33,7 @@ class TradeRecords:
             records_dir (Path): Absolute path to directory containing record of placed trades.
         """
         self.config = Config()
-        self.mt5 = MetaTrader()
+        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
         self.records_dir = records_dir or self.config.records_dir
 
     async def get_csv_records(self):

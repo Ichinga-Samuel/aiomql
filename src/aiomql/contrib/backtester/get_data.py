@@ -4,7 +4,6 @@ from pathlib import Path
 import lzma
 from datetime import datetime
 from logging import getLogger
-import asyncio
 from typing import Sequence, ClassVar
 
 import pytz
@@ -13,7 +12,7 @@ from pandas import DataFrame
 
 from ...core.meta_trader import MetaTrader
 from ...core.config import Config
-from ...core.constants import TimeFrame, 
+from ...core.constants import TimeFrame, CopyTicks
 from ...core.task_queue import TaskQueue, QueueItem
 
 from ...utils import backoff_decorator
@@ -76,31 +75,6 @@ class GetData:
         self.mt5 = MetaTrader()
         self.task_queue = TaskQueue()
 
-    async def get_data(self):
-        """"""
-        qitems = [QueueItem(self.get_symbol_rates), QueueItem(self.get_symbol_ticks),
-                  QueueItem(self.get_symbol_prices), QueueItem(self.get_symbol_info),
-                    QueueItem(self.get_account_info), QueueItem(self.get_symbols_info), QueueItem(self.get_version)]
-        [self.task_queue.add(item=item, priority=0) for item in qitems]
-        await self.task_queue.run()
-        # terminal, version = await asyncio.gather(self.get_terminal_info(), self.get_version())
-
-        # self.data.setattrs(account=account, symbols=symbols, prices=prices, ticks=ticks, rates=rates,
-        #                    span=self.span, range=self.range, terminal=terminal, version=version, name=self.name)
-
-    def pickle_data(self):
-        """"""
-        fh = open(f'{self.config.test_data_dir}/{self.name}', 'wb')
-        pickle.dump(self.data, fh)
-        fh.close()
-    
-    async def compress_data(self):
-        """"""
-        bdata = pickle.dumps(self.data)
-        name = self.name + 'xz' 
-        with lzma.open(f'{self.config.test_data_dir}/{name}', 'w') as fh:
-            fh.write(bdata)
-
     @classmethod
     def dump_data(cls, data: Data, name: str | Path, compress: bool = False):
         """"""
@@ -136,6 +110,32 @@ class GetData:
             logger.error(f"Error: {err}")
             return None
 
+    async def get_data(self):
+        """"""
+        q_items = [QueueItem(self.get_symbol_rates, must_complete=True),
+                   QueueItem(self.get_symbol_ticks, must_complete=True),
+                   QueueItem(self.get_symbol_prices, must_complete=True),
+                   QueueItem(self.get_symbol_info, must_complete=True),
+                   QueueItem(self.get_account_info, must_complete=True),
+                   QueueItem(self.get_symbols_info, must_complete=True),
+                   QueueItem(self.get_version, must_complete=True),
+                   QueueItem(self.get_terminal_info, must_complete=True)]
+        [self.task_queue.add(item=item, priority=0) for item in q_items]
+        await self.task_queue.run()
+
+    def pickle_data(self):
+        """"""
+        fh = open(f'{self.config.test_data_dir}/{self.name}', 'wb')
+        pickle.dump(self.data, fh)
+        fh.close()
+
+    async def compress_data(self):
+        """"""
+        bdata = pickle.dumps(self.data)
+        name = self.name + 'xz'
+        with lzma.open(f'{self.config.test_data_dir}/{name}', 'w') as fh:
+            fh.write(bdata)
+
     async def get_terminal_info(self):
         """"""
         terminal = await self.mt5.terminal_info()
@@ -149,19 +149,19 @@ class GetData:
 
     async def get_symbols_info(self):
         """"""
-        [self.task_queue.add(QueueItem(self.get_symbol_info, symbol, must_complete=True), priority=4) for symbol in self.symbols]
+        [self.task_queue.add(item=QueueItem(self.get_symbol_info, symbol)) for symbol in self.symbols]
 
     async def get_symbols_ticks(self):
         """"""
-        [self.task_queue.add(QueueItem(self.get_symbol_ticks, symbol)) for symbol in self.symbols]
+        [self.task_queue.add(item=QueueItem(self.get_symbol_ticks, symbol)) for symbol in self.symbols]
 
     async def get_symbols_prices(self):
         """"""
-        [self.task_queue.add(QueueItem(self.get_symbol_prices, symbol)) for symbol in self.symbols]
+        [self.task_queue.add(item=QueueItem(self.get_symbol_prices, symbol)) for symbol in self.symbols]
 
     async def get_symbols_rates(self):
         """"""
-        [self.task_queue.add(QueueItem(self.get_symbol_rates, symbol, timeframe, must_complete=True), priority=4)
+        [self.task_queue.add(item=QueueItem(self.get_symbol_rates, symbol, timeframe), priority=4)
                   for symbol in self.symbols for timeframe in self.timeframes]
         
     @backoff_decorator(max_retries=5)
@@ -203,4 +203,4 @@ class GetData:
         res = pd.DataFrame(res)
         res.drop_duplicates(subset=['time'], keep='last', inplace=True)
         res.set_index('time', inplace=True, drop=False)
-        self.data.rates[symbol].setdefault(timeframe, res)
+        self.data.rates.setdefault(symbol, {})[timeframe.name] = res

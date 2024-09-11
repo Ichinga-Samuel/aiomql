@@ -8,7 +8,7 @@ logger = getLogger(__name__)
 
 
 class QueueItem:
-    def __init__(self, task_item: Callable | Coroutine, must_complete=False, *args, **kwargs):
+    def __init__(self, task_item: Callable | Coroutine, *args, must_complete: bool = False, **kwargs):
         self.task_item = task_item
         self.args = args
         self.kwargs = kwargs
@@ -30,7 +30,7 @@ class QueueItem:
                 self.task_item(*self.args, **self.kwargs)
             
         except Exception as err:
-            logger.error(f"Error {err} occurred in {self.func.__name__} with args {self.args} and kwargs {self.kwargs}")
+            logger.error(f"Error {err} occurred in {self.task_item.__name__} with args {self.args} and kwargs {self.kwargs}")
 
 
 class TaskQueue:
@@ -44,7 +44,7 @@ class TaskQueue:
         self.timeout = timeout
         self.stop = False
         self.on_exit = on_exit
-        signal(SIGINT, self.sigint_handle)
+        # signal(SIGINT, self.sigint_handle)
 
     def add(self, *, item: QueueItem, priority=3):
         try:
@@ -71,19 +71,24 @@ class TaskQueue:
             self.queue.task_done()
             self.priority_tasks.discard(item)
 
+            if self.stop and len(self.priority_tasks) == 0:
+                print('All priority tasks completed')
+                self.cancel()
+                break
+
     def sigint_handle(self, sig, frame):
         print('SIGINT received, cleaning up...')
 
-        if self.on_exit == 'complete_priority':
+        if self.on_exit == 'complete_priority' and self.priority_tasks:
             print(f'Completing {len(self.priority_tasks)} priority tasks...')
             self.stop = True
-
         else:
             self.cancel()
 
         self.on_exit = 'cancel'  # force cancel on exit if SIGINT is received again
                 
     async def run(self, timeout: int = 0):
+        signal(SIGINT, self.sigint_handle)
         loop = asyncio.get_running_loop()
         start = loop.time()
 
