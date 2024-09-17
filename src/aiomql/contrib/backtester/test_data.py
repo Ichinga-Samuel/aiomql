@@ -216,7 +216,12 @@ class TestData:
 
     @cached_property
     def symbols(self) -> dict[str, SymbolInfo]:
-        return {symbol: SymbolInfo(info.values()) for symbol, info in self._data.symbols.items()}
+        ma = SymbolInfo.__match_args__
+        symbols = {}
+        for symbol, info in self._data.symbols.items():
+            sym = {key: info.get(key) for key in ma}
+            symbols[symbol] = SymbolInfo(sym)
+        return symbols
 
     @error_handler
     async def order_send(self, request: dict, use_terminal: bool = True) -> OrderSendResult:
@@ -277,24 +282,28 @@ class TestData:
             return OrderSendResult(osr)
 
     @error_handler
-    async def order_check(self, request: dict, use_terminal=True) -> OrderCheckResult:
+    async def order_check(self, request: dict) -> OrderCheckResult:
         action, symbol, volume = request.get('action'), request.get('symbol'), request.get('volume')
         price = request.get('price')
         ocr = {'retcode': 0, 'balance': 0, 'profit': 0, 'margin': 0, 'equity': 0, 'margin_free': 0,
                'margin_level': 0, 'comment': 'Done', request: TradeRequest(request)}
-
-        margin = 0
+        
+        # check margin and confirm order can go through
+        margin = 0 
         if all([action, symbol, volume, price]):
-            margin = await self.order_calc_margin(action, symbol, volume, price, use_terminal=use_terminal)
-
-        acc = self.get_account_info()
+            margin = await self.order_calc_margin(action, symbol, volume, price)
+        acc = self._account
         equity = acc.equity
         used_margin = acc.margin + margin
         free_margin = acc.margin_free - margin
-        margin_level = (equity / used_margin) * 100 if (
-                    acc.margin_mode == AccountStopOutMode.PERCENT and used_margin > 0) else free_margin
-
-        if use_terminal and self.mt5.config.use_terminal_for_backtesting:
+        
+        if used_margin == 0:
+            margin_level = 0
+        else:
+            level = equity / used_margin * 100
+            margin_level = level if acc.margin_mode == AccountStopOutMode.PERCENT else free_margin
+        
+        if self.mt5.config.use_terminal_for_backtesting:
             ocr_t = await self.mt5.order_check(request)
             # return order check result if invalid stops level are detected or bad request
             if ocr_t.retcode in (10016, 10013, 10014):

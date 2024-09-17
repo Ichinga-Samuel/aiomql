@@ -2,6 +2,9 @@ from dataclasses import dataclass, asdict, field, fields
 from typing import ClassVar
 
 from ...core.constants import AccountTradeMode, AccountMarginMode, AccountStopOutMode
+from MetaTrader5 import AccountInfo
+
+__match_args__ = SymbolInfo
 
 
 @dataclass
@@ -38,8 +41,7 @@ class AccountInfo:
     _fields: list[ClassVar[str]] = field(default_factory=list)
 
     def asdict(self):
-        res = asdict(self)
-        res.pop('_fields', None)
+        res = {key: getattr(self, key) for key in __match_args__}
         return res
 
     def set_attrs(self, **kwargs):
