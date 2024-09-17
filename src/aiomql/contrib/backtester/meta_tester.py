@@ -20,20 +20,19 @@ class MetaTester(MetaTrader):
 
     def __init__(self, test_data: TestData = None):
         super().__init__()
-        if self.test_data:
+        if test_data is not None:
             self.config.test_data = test_data
 
     @property
     def test_data(self) -> TestData | None:
-        test_data = self.config.test_data
-        if test_data is None:
-            ...
-            # logger.error('No Test Data Available')
-        return test_data
+        return self.config.test_data
 
     @test_data.setter
     def test_data(self, value: TestData):
         self.config.test_data = value
+
+    async def last_error(self) -> tuple[int, str]:
+        return -1, ''
     
     async def initialize(self, path: str = "", login: int = 0, password: str = "", server: str = "", 
                    timeout: int | None = None, portable=False, load_test_data: bool = False,
@@ -63,16 +62,10 @@ class MetaTester(MetaTrader):
     async def shutdown(self) -> None:
         await super().shutdown() if self.config.use_terminal_for_backtesting else ...
 
-        # self.test_data.save()
-        # name = self.test_data.data.name
-        # if self.config.compress_test_data:
-        #     name += '.xz'
-        # name = self.config.test_data_dir/name
-        # GetData.dump_data(data=self.test_data.data, name=name, compress=self.config.compress_test_data)
-
     @error_handler(msg='test data not available', exe=AttributeError)
     async def terminal_info(self) -> TerminalInfo:
-        return self.test_data.get_terminal_info()
+        res = await self.test_data.get_terminal_info()
+        return res
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def account_info(self) -> AccountInfo:
@@ -81,49 +74,62 @@ class MetaTester(MetaTrader):
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def symbol_select(self, symbol: str, enable: bool = True) -> bool:
-        return symbol in self.test_data.symbols and enable
+        if self.config.use_terminal_for_backtesting:
+            res = await super().symbol_select(symbol, enable)
+            return res
+        res = (symbol in self.test_data.symbols) and enable
+        return res
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def symbols_total(self) -> int:
-        return self.test_data.get_symbols_total()
+        tot = await self.test_data.get_symbols_total()
+        return tot
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def symbols_get(self, group: str = "") -> tuple[SymbolInfo, ...] | None:
         """"""
-        return self.test_data.get_symbols(group)
+        syms = await self.test_data.get_symbols(group)
+        return syms
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def symbol_info(self, symbol: str) -> SymbolInfo | None:
-        return self.test_data.symbols.get(symbol)
+        sym = await self.test_data.get_symbol_info(symbol)
+        return sym
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def symbol_info_tick(self, symbol: str) -> Tick | None:
-        return self.test_data.get_symbol_info_tick(symbol)
+        tick = await self.test_data.get_symbol_info_tick(symbol)
+        return tick
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def copy_rates_from(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float,
                               count: int) -> ndarray | None:
-        return self.test_data.get_rates_from(symbol, timeframe, date_from, count)
+        rates = await self.test_data.get_rates_from(symbol, timeframe, date_from, count)
+        return rates
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def copy_rates_from_pos(self, symbol: str, timeframe: TimeFrame, start_pos: int,
                                   count: int) -> ndarray | None:
-        return self.test_data.get_rates_from_pos(symbol, timeframe, start_pos, count)
+        rates = await self.test_data.get_rates_from_pos(symbol, timeframe, start_pos, count)
+        return rates
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def copy_rates_range(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float,
                                date_to: datetime | float) -> ndarray | None:
-        return self.test_data.get_rates_range(symbol, timeframe, date_from, date_to)
+        rates = await self.test_data.get_rates_range(symbol, timeframe, date_from, date_to)
+        return rates
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def copy_ticks_from(self, symbol: str, date_from: datetime | float, count: int,
                               flags: CopyTicks) -> ndarray | None:
-        return self.test_data.get_ticks_from(symbol, date_from, count, flags)
+        ticks = await self.test_data.get_ticks_from(symbol, date_from, count, flags)
+        return ticks
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def copy_ticks_range(self, symbol: str, date_from: datetime | float, date_to: datetime | float,
                                flags: CopyTicks) -> ndarray | None:
-        return self.test_data.get_ticks_range(symbol, date_from, date_to, flags)
+        ticks = await self.test_data.get_ticks_range(symbol, date_from, date_to, flags)
+        return ticks
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def orders_total(self) -> int:
@@ -135,23 +141,26 @@ class MetaTester(MetaTrader):
         return self.test_data.get_orders(**kwargs)
 
     @error_handler(msg='test data not available', exe=AttributeError)
-    async def order_calc_margin(self, action: OrderType, symbol: str, volume: float,
-                                price: float, use_terminal: bool = True) -> float | None:
-        res = await self.test_data.order_calc_margin(action, symbol, volume, price, use_terminal=use_terminal)
+    async def order_calc_margin(self, action: OrderType, symbol: str, volume: float, price: float) -> float | None:
+        res = await self.test_data.order_calc_margin(action, symbol, volume, price)
         return res
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def order_calc_profit(self, action: OrderType, symbol: str, volume: float, price_open: float,
-                                price_close: float, use_terminal: bool = True) -> float | None:
-        return await self.test_data.order_calc_profit(action, symbol, volume,
-                                                      price_open, price_close, use_terminal=use_terminal)
+                                price_close: float) -> float | None:
+
+        profit = await self.test_data.order_calc_profit(action, symbol, volume,
+                                                      price_open, price_close)
+        return profit
 
     @error_handler(msg='test data not available', exe=AttributeError)
-    async def order_check(self, request: dict, use_terminal: bool = True) -> OrderCheckResult:
-        return await self.test_data.order_check(request, use_terminal=use_terminal)
+    async def order_check(self, request: dict) -> OrderCheckResult:
+        ocr = await self.test_data.order_check(request)
+        return ocr
 
-    async def order_send(self, request: dict, use_terminal: bool = True) -> OrderSendResult:
-        return await self.test_data.order_send(request, use_terminal=use_terminal)
+    async def order_send(self, request: dict) -> OrderSendResult:
+        osr = await self.test_data.order_send(request)
+        return osr
 
     @error_handler(msg='test data not available', exe=AttributeError)
     async def positions_total(self) -> int:

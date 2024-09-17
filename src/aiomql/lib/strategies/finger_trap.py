@@ -36,7 +36,6 @@ class FingerTrap(Strategy):
 
     async def check_trend(self):
         try:
-
             candles: Candles = await self.symbol.copy_rates_from_pos(timeframe=self.ttf, count=self.tcc)
             if not ((current := candles[-1].time) >= self.tracker.trend_time):
                 self.tracker.update(new=False, order_type=None)
@@ -57,6 +56,7 @@ class FingerTrap(Strategy):
                 self.tracker.update(trend="bearish")
             else:
                 self.tracker.update(trend="ranging", snooze=self.ttf.time, order_type=None)
+            self.tracker.update(trend="bullish") # remove this line
         except Exception as err:
             logger.error(f"{err} for {self.symbol} in {self.__class__.__name__}.check_trend")
             self.tracker.update(snooze=self.ttf.time, order_type=None)
@@ -73,7 +73,7 @@ class FingerTrap(Strategy):
             candles['cae'] = candles.ta_lib.cross(candles.close, candles.ema)
             candles['cbe'] = candles.ta_lib.cross(candles.close, candles.ema, above=False)
             current = candles[-1]
-            if self.tracker.bullish and current.cae:
+            if self.tracker.bullish and True or current.cae: # change True to current.cae
                 sl = find_bullish_fractal(candles).low
                 self.tracker.update(snooze=self.ttf.time, order_type=OrderType.BUY, sl=sl)
             elif self.tracker.bearish and current.cbe:

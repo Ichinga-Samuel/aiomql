@@ -1,4 +1,6 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field, fields
+from typing import ClassVar
+
 from ...core.constants import AccountTradeMode, AccountMarginMode, AccountStopOutMode
 
 
@@ -33,5 +35,16 @@ class AccountInfo:
     name: str = ''
     company: str = ''
 
+    _fields: list[ClassVar[str]] = field(default_factory=list)
+
     def asdict(self):
-        return asdict(self)
+        res = asdict(self)
+        res.pop('_fields', None)
+        return res
+
+    def set_attrs(self, **kwargs):
+        [setattr(self, k, v) for k, v in kwargs.items() if k in self.fields]
+
+    @property
+    def fields(self):
+        return self._fields or [name for f in fields(self) if (name := f.name) != '_fields']

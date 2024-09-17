@@ -29,11 +29,9 @@ class EventManager:
         self.tasks.extend(tasks)
 
     def sigint_handler(self, sig, frame):
-        print('KeyboardInterrupt')
-        print(self.config.test_data.orders)
         for task in self.tasks:
             task.cancel()
-        # self.mt.cancel()
+        self.config.test_data.save()
 
     async def acquire(self):
         await self.condition.acquire()
@@ -49,10 +47,9 @@ class EventManager:
                     await self.config.test_data.tracker()
                     self.config.test_data.next()
                     self.condition.notify_all()
-                    if (timestamp := self.config.test_data.cursor.time % int(60 * 60 * 24)) == 0:
-                        print(f"Time: {datetime.fromtimestamp(timestamp)}")
-                    else:
-                        print(f"Time: {datetime.fromtimestamp(timestamp)}")
+                    if ((timestamp := self.config.test_data.cursor.time) % int(60 * 60 * 24)) == 0:
+                        print(f"if Time: {datetime.fromtimestamp(timestamp)}")
+
                     await asyncio.sleep(0)
 
     async def wait(self):

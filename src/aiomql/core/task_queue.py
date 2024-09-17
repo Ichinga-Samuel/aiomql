@@ -3,7 +3,6 @@ from typing import Coroutine, Callable, Literal
 from signal import signal, SIGINT
 from logging import getLogger
 
-
 logger = getLogger(__name__)
 
 
@@ -44,7 +43,6 @@ class TaskQueue:
         self.timeout = timeout
         self.stop = False
         self.on_exit = on_exit
-        # signal(SIGINT, self.sigint_handle)
 
     def add(self, *, item: QueueItem, priority=3):
         try:

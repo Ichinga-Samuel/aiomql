@@ -216,7 +216,14 @@ class TimeFrame(Repr, IntEnum):
         times = {60: 1, 120: 2, 180: 3, 240: 4, 300: 5, 360: 6, 600: 10, 900: 15, 1200: 20, 1800: 30, 3600: 16385,
                  7200: 16386, 10800: 16387, 14400: 16388, 21600: 16390, 28800: 16392, 43200: 16396, 86400: 16408,
                  604800: 32769, 2592000: 49153}
-        return TimeFrame(times[int(time)])
+        return TimeFrame(times[time])
+
+    @classmethod
+    @property
+    def all(cls) -> tuple['TimeFrame', ...]:
+        return (TimeFrame.M1, TimeFrame.M2, TimeFrame.M3, TimeFrame.M4, TimeFrame.M5, TimeFrame.M6, TimeFrame.M10,
+                TimeFrame.M15, TimeFrame.M20, TimeFrame.M30, TimeFrame.H1, TimeFrame.H2, TimeFrame.H3, TimeFrame.H4,
+                TimeFrame.H6, TimeFrame.H8, TimeFrame.H12, TimeFrame.D1, TimeFrame.W1, TimeFrame.MN1)
 
 
 class CopyTicks(Repr, IntEnum):

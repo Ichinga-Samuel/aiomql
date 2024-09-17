@@ -524,7 +524,6 @@ class OrderSendResult(Base):
     profit: float = None
     loss: float = None
 
-
 class TradePosition(Base):
     """Trade Position
 

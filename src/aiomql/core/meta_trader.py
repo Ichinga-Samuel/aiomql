@@ -78,6 +78,30 @@ class MetaTrader(metaclass=BaseMeta):
         """
         await self.shutdown()
 
+    async def _handler(self, api: dict):
+        func = api['func']
+        args = api.get('args', ())
+        kwargs = api.get('kwargs', {})
+        error_msg = api.get('error_msg', 'An error occurred')
+
+        res = await asyncio.to_thread(func, *args, **kwargs)
+        if res is None:
+            err = await self.last_error()
+            self.error = Error(*err)
+
+            if self.error.is_connection_error():
+                await self.initialize(**self.config.account_info(), path=self.config.path)
+                await self.login(**self.config.account_info())
+                res = await asyncio.to_thread(func, *args, **kwargs)
+
+                if res is None:
+                    err = await self.last_error()
+                    self.error = Error(*err)
+                    logger.warning(f'{error_msg}:{self.error.description}')
+            else:
+                logger.warning(f'{error_msg}:{self.error.description}')
+        return res
+
     async def login(self, login: int, password: str, server: str, timeout: int = 60000) -> bool:
         """
         Connects to the MetaTrader terminal using the specified login, password and server.
@@ -112,7 +136,8 @@ class MetaTrader(metaclass=BaseMeta):
         args = (str(path),) if path else ()
         kwargs = {key: value for key, value in (('login', login), ('password', password), ('server', server),
                                                 ('timeout', timeout), ('portable', portable)) if value}
-        return await asyncio.to_thread(self._initialize, *args, **kwargs)
+        res = await asyncio.to_thread(self._initialize, *args, **kwargs)
+        return res
 
     async def shutdown(self) -> None:
         """
@@ -121,229 +146,179 @@ class MetaTrader(metaclass=BaseMeta):
         Returns:
             None: None
         """
-        return await asyncio.to_thread(self._shutdown)
+        res = await asyncio.to_thread(self._shutdown)
+        return res
 
     async def last_error(self) -> tuple[int, str]:
         try:
-            return await asyncio.to_thread(self._last_error)
+            res = await asyncio.to_thread(self._last_error)
+            return res
         except Exception as err:
             logger.warning(f'Error in obtaining last error.')
             return -1, str(err)
 
     async def version(self) -> tuple[int, int, str] | None:
         """"""
-        res = await asyncio.to_thread(self._version)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining version information.{self.error.description}')
+        api = {'func': self._version, 'error_msg': 'Error in obtaining version.'}
+        res = await self._handler(api)
         return res
 
     async def account_info(self) -> AccountInfo | None:
         """"""
-        res = await asyncio.to_thread(self._account_info)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining account information.{self.error.description}')
+        api = {'func': self._account_info, 'error_msg': 'Error in obtaining account information'}
+        res = await self._handler(api)
         return res
 
     async def terminal_info(self) -> TerminalInfo | None:
-        res = await asyncio.to_thread(self._terminal_info)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining terminal information.{self.error.description}')
-            return res
+        api = {'func': self._terminal_info, 'error_msg': 'Error in obtaining terminal information'}
+        res = await self._handler(api)
         return res
 
     async def symbols_total(self) -> int:
-        return await asyncio.to_thread(self._symbols_total)
+        api = {'func': self._symbols_total, 'error_msg': 'Error in obtaining total symbols.'}
+        res = await self._handler(api)
+        return res
 
     async def symbols_get(self, group: str = "") -> tuple[SymbolInfo] | None:
         kwargs = {'group': group} if group else {}
-        res = await asyncio.to_thread(self._symbols_get, **kwargs)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining symbols.{self.error.description}')
-            return res
+        api = {'func': self._symbols_get, 'kwargs': kwargs, 'error_msg': 'Error in obtaining symbols.'}
+        res = await self._handler(api)
         return res
 
     async def symbol_info(self, symbol: str) -> SymbolInfo | None:
-        res = await asyncio.to_thread(self._symbol_info, symbol)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining information for {symbol}.{self.error.description}')
-            return res
+        api = {'func': self._symbol_info, 'args': (symbol,), 'error_msg': f'Error in obtaining information for {symbol}'}
+        res = await self._handler(api)
         return res
 
     async def symbol_info_tick(self, symbol: str) -> Tick | None:
-        res = await asyncio.to_thread(self._symbol_info_tick, symbol)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining tick for {symbol}.{self.error.description}')
-            return res
+        api = {'func': self._symbol_info_tick, 'args': (symbol,), 'error_msg': f'Error in obtaining tick for {symbol}'}
+        res = await self._handler(api)
         return res
 
     async def symbol_select(self, symbol: str, enable: bool) -> bool:
-        return await asyncio.to_thread(self._symbol_select, symbol, enable)
+        api = {'func': self._symbol_select, 'args': (symbol, enable), 'error_msg': f'Error in selecting {symbol}'}
+        res = await self._handler(api)
+        return res
 
     async def market_book_add(self, symbol: str) -> bool:
-        return await asyncio.to_thread(self._market_book_add, symbol)
+        api = {'func': self._market_book_add, 'args': (symbol,), 'error_msg': f'Error in adding {symbol} to market book'}
+        res = await self._handler(api)
+        return res
 
     async def market_book_get(self, symbol: str) -> tuple[BookInfo] | None:
-        res = await asyncio.to_thread(self._market_book_get, symbol)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining market depth content for {symbol}.{self.error.description}')
-            return res
+        api = {'func': self._market_book_get, 'args': (symbol,), 'error_msg': f'Error in obtaining market depth for {symbol}'}
+        res = await self._handler(api)
         return res
 
     async def market_book_release(self, symbol: str) -> bool:
-        return await asyncio.to_thread(self._market_book_release, symbol)
+        api = {'func': self._market_book_release, 'args': (symbol,), 'error_msg': f'Error in releasing market depth for {symbol}'}
+        res = await self._handler(api)
+        return res
 
     async def copy_rates_from(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int):
-        res = await asyncio.to_thread(self._copy_rates_from, symbol, timeframe, date_from, count)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining rates for {symbol}.{self.error.description}')
-            return res
+        api = {'func': self._copy_rates_from, 'args': (symbol, timeframe, date_from, count),
+               'error_msg': f'Error in obtaining rates for {symbol}'}
+        res = await self._handler(api)
         return res
 
     async def copy_rates_from_pos(self, symbol: str, timeframe: TimeFrame, start_pos: int, count: int):
-        res = await asyncio.to_thread(self._copy_rates_from_pos, symbol, timeframe, start_pos, count)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining rates for {symbol}.{self.error.description}')
-            return res
+        api = {'func': self._copy_rates_from_pos, 'args': (symbol, timeframe, start_pos, count),
+               'error_msg': f'Error in obtaining rates for {symbol}'}
+        res = await self._handler(api)
         return res
 
     async def copy_rates_range(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float,
                                date_to: datetime | float):
-        res = await asyncio.to_thread(self._copy_rates_range, symbol, timeframe, date_from, date_to)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining rates for {symbol}.{self.error.description}')
-            return res
+        api = {'func': self._copy_rates_range, 'args': (symbol, timeframe, date_from, date_to),
+               'error_msg': f'Error in obtaining rates for {symbol}'}
+        res = await self._handler(api)
         return res
 
     async def copy_ticks_from(self, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks):
-        res = await asyncio.to_thread(self._copy_ticks_from, symbol, date_from, count, flags)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining ticks for {symbol}.{self.error.description}')
-            return res
+        api = {'func': self._copy_ticks_from, 'args': (symbol, date_from, count, flags),
+               'error_msg': f'Error in obtaining ticks for {symbol}'}
+        res = await self._handler(api)
         return res
 
     async def copy_ticks_range(self, symbol: str, date_from: datetime | float, date_to: datetime | float,
                                flags: CopyTicks):
-        res = await asyncio.to_thread(self._copy_ticks_range, symbol, date_from, date_to, flags)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining ticks for {symbol}.{self.error.description}')
-            return res
+        api = {'func': self._copy_ticks_range, 'args': (symbol, date_from, date_to, flags),
+               'error_msg': f'Error in obtaining ticks for {symbol}'}
+        res = await self._handler(api)
         return res
 
     async def orders_total(self) -> int:
-        return await asyncio.to_thread(self._orders_total)
+        api = {'func': self._orders_total, 'error_msg': 'Error in obtaining total orders.'}
+        res = await self._handler(api)
+        return res
 
     async def orders_get(self, group: str = "", ticket: int = 0, symbol: str = "") -> tuple[TradeOrder] | None:
-        """Get active orders with the ability to filter by symbol or ticket. There are three call options.
-           Call without parameters. Return active orders on all symbols
-
-        Keyword Args:
-            symbol (str): Symbol name. Optional named parameter. If a symbol is specified, the ticket parameter is ignored.
-
-            group (str): The filter for arranging a group of necessary symbols. Optional named parameter. If the group is specified, the function
-                returns only active orders meeting a specified criteria for a symbol name.
-
-            ticket (int): Order ticket (ORDER_TICKET). Optional named parameter.
-
-        Returns:
-            tuple[TradeOrder]: A list of active trade orders as TradeOrder objects
-        """
         kwargs = {key: value for key, value in (('group', group), ('ticket', ticket), ('symbol', symbol)) if value}
-        res = await asyncio.to_thread(self._orders_get, **kwargs)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining orders.{self.error.description}')
-            return res
+        api = {'func': self._orders_get, 'kwargs': kwargs, 'error_msg': 'Error in obtaining orders.'}
+        res = await self._handler(api)
         return res
 
     async def order_calc_margin(self, action: OrderType, symbol: str, volume: float, price: float) -> float | None:
-        res = await asyncio.to_thread(self._order_calc_margin, action, symbol, volume, price)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in calculating margin.{self.error.description}')
-            return res
+        api = {'func': self._order_calc_margin, 'args': (action, symbol, volume, price),
+               'error_msg': 'Error in calculating margin.'}
+        res = await self._handler(api)
         return res
 
     async def order_calc_profit(self, action: OrderType, symbol: str, volume: float, price_open: float,
                                 price_close: float) -> float | None:
-        res = await asyncio.to_thread(self._order_calc_profit, action, symbol, volume, price_open, price_close)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in calculating profit.{self.error.description}')
-            return res
+        api = {'func': self._order_calc_profit, 'args': (action, symbol, volume, price_open, price_close),
+               'error_msg': 'Error in calculating profit.'}
+        res = await self._handler(api)
         return res
 
     async def order_check(self, request: dict) -> OrderCheckResult:
-        return await asyncio.to_thread(self._order_check, request)
+        api = {'func': self._order_check, 'args': (request,), 'error_msg': 'Error in checking order.'}
+        res = await self._handler(api)
+        return res
 
     async def order_send(self, request: dict) -> OrderSendResult:
-        return await asyncio.to_thread(self._order_send, request)
+        api = {'func': self._order_send, 'args': (request,), 'error_msg': 'Error in sending order.'}
+        res = await self._handler(api)
+        return res
 
     async def positions_total(self) -> int:
-        return await asyncio.to_thread(self._positions_total)
+        api = {'func': self._positions_total, 'error_msg': 'Error in obtaining total positions.'}
+        res = await self._handler(api)
+        return res
 
     async def positions_get(self, group: str = "", ticket: int = None, symbol: str = "") -> tuple[TradePosition] | None:
         kwargs = {key: value for key, value in (('group', group), ('ticket', ticket), ('symbol', symbol)) if value}
-        res = await asyncio.to_thread(self._positions_get, **kwargs)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in obtaining open positions.{self.error.description}')
-            return res
+        api = {'func': self._positions_get, 'kwargs': kwargs,
+               'error_msg': 'Error in obtaining open positions.'}
+        res = await self._handler(api)
         return res
 
     async def history_orders_total(self, date_from: datetime | float, date_to: datetime | float) -> int:
-        return await asyncio.to_thread(self._history_orders_total, date_from, date_to)
+        api = {'func': self._history_orders_total, 'args': (date_from, date_to),
+               'error_msg': 'Error in obtaining total history orders.'}
+        res = await self._handler(api)
+        return res
 
     async def history_orders_get(self, date_from: datetime | float = None, date_to: datetime | float = None,
                                  group: str = '', ticket: int = None, position: int = None) -> tuple[TradeOrder] | None:
         kwargs = {key: value for key, value in (('group', group), ('ticket', ticket), ('position', position)) if value}
         args = tuple(arg for arg in (date_from, date_to) if arg)
-        res = await asyncio.to_thread(self._history_orders_get, *args, **kwargs)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in getting orders.{self.error.description}')
-            return res
+        api = {'func': self._history_orders_get, 'args': args, 'kwargs': kwargs,
+               'error_msg': 'Error in obtaining history orders'}
+        res = await self._handler(api)
         return res
 
     async def history_deals_total(self, date_from: datetime | float, date_to: datetime | float) -> int:
-        return await asyncio.to_thread(self._history_deals_total, date_from, date_to)
+        api = {'func': self._history_deals_total, 'args': (date_from, date_to),
+               'error_msg': 'Error in obtaining total history deals'}
+        res = await self._handler(api)
+        return res
 
     async def history_deals_get(self, date_from: datetime | float = None, date_to: datetime | float = None,
                                 group: str = '', ticket: int = None, position: int = None) -> tuple[TradeDeal] | None:
         kwargs = {key: value for key, value in (('group', group), ('ticket', ticket), ('position', position)) if value}
         args = tuple(arg for arg in (date_from, date_to) if arg)
-        res = await asyncio.to_thread(self._history_deals_get, *args, **kwargs)
-        if res is None:
-            err = await self.last_error()
-            self.error = Error(*err)
-            logger.warning(f'Error in getting deals.{self.error}')
-            return res
+        api = {'func': self._history_deals_get, 'args': args, 'kwargs': kwargs,
+               'error_msg': 'Error in obtaining history deals'}
+        res = await self._handler(api)
         return res
