@@ -4,6 +4,7 @@ from logging import getLogger
 from typing import Callable
 
 import MetaTrader5
+import numpy as np
 from MetaTrader5 import BookInfo, SymbolInfo, AccountInfo, Tick, TerminalInfo, TradeOrder, TradeDeal, \
     TradePosition, OrderSendResult, OrderCheckResult
 
@@ -215,33 +216,33 @@ class MetaTrader(metaclass=BaseMeta):
         res = await self._handler(api)
         return res
 
-    async def copy_rates_from(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int):
+    async def copy_rates_from(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int) -> np.ndarray | None:
         api = {'func': self._copy_rates_from, 'args': (symbol, timeframe, date_from, count),
                'error_msg': f'Error in obtaining rates for {symbol}'}
         res = await self._handler(api)
         return res
 
-    async def copy_rates_from_pos(self, symbol: str, timeframe: TimeFrame, start_pos: int, count: int):
+    async def copy_rates_from_pos(self, symbol: str, timeframe: TimeFrame, start_pos: int, count: int) -> np.ndarray | None:
         api = {'func': self._copy_rates_from_pos, 'args': (symbol, timeframe, start_pos, count),
                'error_msg': f'Error in obtaining rates for {symbol}'}
         res = await self._handler(api)
         return res
 
     async def copy_rates_range(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float,
-                               date_to: datetime | float):
+                               date_to: datetime | float) -> np.ndarray | None:
         api = {'func': self._copy_rates_range, 'args': (symbol, timeframe, date_from, date_to),
                'error_msg': f'Error in obtaining rates for {symbol}'}
         res = await self._handler(api)
         return res
 
-    async def copy_ticks_from(self, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks):
+    async def copy_ticks_from(self, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks) -> np.ndarray | None:
         api = {'func': self._copy_ticks_from, 'args': (symbol, date_from, count, flags),
                'error_msg': f'Error in obtaining ticks for {symbol}'}
         res = await self._handler(api)
         return res
 
     async def copy_ticks_range(self, symbol: str, date_from: datetime | float, date_to: datetime | float,
-                               flags: CopyTicks):
+                               flags: CopyTicks) -> np.ndarray | None:
         api = {'func': self._copy_ticks_range, 'args': (symbol, date_from, date_to, flags),
                'error_msg': f'Error in obtaining ticks for {symbol}'}
         res = await self._handler(api)

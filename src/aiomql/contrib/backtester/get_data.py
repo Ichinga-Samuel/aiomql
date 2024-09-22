@@ -225,7 +225,7 @@ class GetData:
         res = pd.DataFrame(res)
         res.drop_duplicates(subset=['time'], keep='last', inplace=True)
         res.set_index('time', inplace=True, drop=False)
-        res = res.reindex(self.span) # change method back to 'nearest'
+        res = res.reindex(self.span) # fill in missing values with NaN
         self.data.prices[symbol] = res
 
     @backoff_decorator

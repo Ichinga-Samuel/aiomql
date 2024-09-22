@@ -1,52 +1,45 @@
-from dataclasses import dataclass, asdict, field, fields
+from dataclasses import dataclass
 from typing import ClassVar
 
 from ...core.constants import AccountTradeMode, AccountMarginMode, AccountStopOutMode
-from MetaTrader5 import AccountInfo
-
-__match_args__ = SymbolInfo
 
 
 @dataclass
-class AccountInfo:
+class TestAccount:
     login: int = 0
-    server: str = ''
     trade_mode: AccountTradeMode = AccountTradeMode.DEMO
-    balance: float = 0
     leverage: float = 0
+    limit_orders: float = 0
+    margin_so_mode: AccountStopOutMode = AccountStopOutMode.PERCENT
+    trade_allowed: bool = True
+    trade_expert: bool = True
+    margin_mode: AccountMarginMode = AccountMarginMode.EXCHANGE
+    currency_digits: int = 2
+    fifo_close: bool = False
+    balance: float = 0
+    credit: float = 0
     profit: float = 0
     equity: float = 0
-    credit: float = 0
     margin: float = 0
-    margin_level: float = 0
     margin_free: float = 0
-    margin_mode: AccountMarginMode = AccountMarginMode.EXCHANGE
-    margin_so_mode: AccountStopOutMode = AccountStopOutMode.PERCENT
+    margin_level: float = 0
     margin_so_call: float = 0
     margin_so_so: float = 0
     margin_initial: float = 0
     margin_maintenance: float = 0
-    fifo_close: bool = False
-    limit_orders: float = 0
-    currency: str = "USD"
-    trade_allowed: bool = True
-    trade_expert: bool = True
-    currency_digits: int = 2
     assets: float = 0
     liabilities: float = 0
     commission_blocked: float = 0
     name: str = ''
+    server: str = ''
+    currency: str = "USD"
     company: str = ''
 
-    _fields: list[ClassVar[str]] = field(default_factory=list)
+    __match_args__: ClassVar[tuple]
 
     def asdict(self):
-        res = {key: getattr(self, key) for key in __match_args__}
+        res = {key: getattr(self, key) for key in self.__match_args__}
         return res
 
     def set_attrs(self, **kwargs):
-        [setattr(self, k, v) for k, v in kwargs.items() if k in self.fields]
-
-    @property
-    def fields(self):
-        return self._fields or [name for f in fields(self) if (name := f.name) != '_fields']
+        [setattr(self, k, v) for k, v in kwargs.items() if k in self.__match_args__]

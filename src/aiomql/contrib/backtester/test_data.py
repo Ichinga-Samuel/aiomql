@@ -17,9 +17,11 @@ from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TradeOrder, TradePositio
 from ...core.meta_trader import MetaTrader
 from ...core.constants import TimeFrame, CopyTicks, OrderType, TradeAction, AccountStopOutMode
 from ...core.config import Config
-from .get_data import Data, GetData
-from .test_account import AccountInfo as Account
 from ...utils import round_down, round_up, error_handler, error_handler_sync, async_cache
+
+from .get_data import Data, GetData
+from .test_account import TestAccount
+from .types import PositionsManager, OrdersManager
 
 tz = pytz.timezone('Etc/UTC')
 Cursor = namedtuple('Cursor', ['index', 'time'])
@@ -31,10 +33,7 @@ class TestData:
     
     def __init__(self, data: Data = None, speed: int = 1, start: float | datetime = 0, end: float | datetime = 0):
         self._data = data or Data()
-        self._account: Account = Account(**self._data.account)
-        self.prices: dict[str, DataFrame] = self._data.prices
-        self.ticks: dict[str, DataFrame] = self._data.ticks
-        self.rates: dict[str, dict[str, DataFrame]] = self._data.rates
+        self._account: TestAccount = TestAccount(**self._data.account)
         span_start = (int(start.timestamp()) if isinstance(start, datetime) else int(start)) or self._data.span.start
         span_end = (int(end.timestamp()) if isinstance(end, datetime) else int(end)) or self._data.span.stop
         self.span: range = range(span_start, span_end, speed)
@@ -50,7 +49,7 @@ class TestData:
         self.mt5 = MetaTrader()
         self.iter = zip_longest(self.range, self.span)
         self.cursor: Cursor = Cursor(index=self.range.start, time=self.span.start)
-        self.config = Config()
+        self.config = Config(test_data=self)
         self._data.name = self._data.name or f"{datetime.fromtimestamp(span_start):%d-%m-%y}_{datetime.fromtimestamp(span_end):%d-%m-%y}"
         self.fh = open(f'{self.config.test_data_dir}/data.json', 'a')
 
@@ -95,13 +94,6 @@ class TestData:
     def get_dtype(self, df: DataFrame) -> list[tuple[str, str]]:
         return [(c, t) for c, t in zip(df.columns, df.dtypes)]
 
-    @async_cache
-    async def get_price_tick(self, symbol, time: int) -> Tick | None:
-        if self.config.use_terminal_for_backtesting:
-            tick = await self.mt5.copy_ticks_from(symbol, time, 1, CopyTicks.ALL)
-            return Tick(tick[-1]) if tick else None
-        return self.prices[symbol].loc[self.cursor.time]
-
     async def tracker(self):
         pos_tasks = [self.check_position(ticket) for ticket in self.open_positions]
         await asyncio.gather(*pos_tasks)
@@ -126,6 +118,14 @@ class TestData:
                 GetData.dump_data(data=self._data, name=path, compress=self.config.compress_test_data)
         except Exception as err:
             print(err)
+
+    @async_cache
+    async def get_price_tick(self, symbol, time: int) -> Tick | None:
+        if self.config.use_terminal_for_backtesting:
+            tick = await self.mt5.copy_ticks_from(symbol, time, 1, CopyTicks.ALL)
+            return Tick(tick[-1]) if tick else None
+        tick = self.prices[symbol].loc[self.cursor.time]
+        return Tick(tick)
 
     @error_handler
     async def check_order(self, ticket: int):
@@ -194,7 +194,7 @@ class TestData:
         if self._account.margin == 0:
             self._account.margin_level = 0
         else:
-            mode = self._account.margin_mode
+            mode = self._account.margin_so_mode
             level = self._account.equity / self._account.margin * 100
             self._account.margin_level = level if mode == AccountStopOutMode.PERCENT else self._account.margin_free
 
@@ -202,25 +202,40 @@ class TestData:
         self.update_account(gain=amount)
 
     def withdraw(self, amount: float):
+        assert amount <= self._account.balance, 'Insufficient funds'
         self.update_account(gain=-amount)
 
     @error_handler
-    async def setup_account(self):
+    async def setup_account(self, **kwargs):
+        default = {'profit': self._account.profit, 'margin': self._account.margin, 'equity': self._account.equity,
+                   'margin_free': self._account.margin_free, 'margin_level': self._account.margin_level,
+                   'balance': self._account.balance,
+                   **{k: v for k, v in kwargs.items() if k in self._account.__match_args__}}
+
         if self.config.use_terminal_for_backtesting:
-            acc = self._account
-            default = {'profit': acc.profit, 'margin': acc.margin, 'equity': acc.equity, 'margin_free': acc.margin_free,
-                       'margin_level': acc.margin_level, 'balance': acc.balance}
-            acc = await self.mt5.account_info()
-            acc = acc._asdict() | default
-            self._account.set_attrs(**acc)
+            acc_info = await self.mt5.account_info()
+            default = {**acc_info._asdict(), **default}
+
+        self._account.set_attrs(**default)
+        self.update_account()
+
+    @cached_property
+    def prices(self) -> dict[str, DataFrame]:
+        return self._data.prices
+
+    @cached_property
+    def ticks(self) -> dict[str, DataFrame]:
+        return self._data.ticks
+
+    @property
+    def rates(self) -> dict[str, dict[str, DataFrame]]:
+        return self._data.rates
 
     @cached_property
     def symbols(self) -> dict[str, SymbolInfo]:
-        ma = SymbolInfo.__match_args__
         symbols = {}
         for symbol, info in self._data.symbols.items():
-            sym = {key: info.get(key) for key in ma}
-            symbols[symbol] = SymbolInfo(sym)
+            symbols[symbol] = SymbolInfo((info.get(key) for key in SymbolInfo.__match_args__))
         return symbols
 
     @error_handler
@@ -283,59 +298,71 @@ class TestData:
 
     @error_handler
     async def order_check(self, request: dict) -> OrderCheckResult:
-        action, symbol, volume = request.get('action'), request.get('symbol'), request.get('volume')
-        price = request.get('price')
-        ocr = {'retcode': 0, 'balance': 0, 'profit': 0, 'margin': 0, 'equity': 0, 'margin_free': 0,
-               'margin_level': 0, 'comment': 'Done', request: TradeRequest(request)}
-        
-        # check margin and confirm order can go through
-        margin = 0 
-        if all([action, symbol, volume, price]):
-            margin = await self.order_calc_margin(action, symbol, volume, price)
-        acc = self._account
-        equity = acc.equity
-        used_margin = acc.margin + margin
-        free_margin = acc.margin_free - margin
-        
-        if used_margin == 0:
-            margin_level = 0
-        else:
-            level = equity / used_margin * 100
-            margin_level = level if acc.margin_mode == AccountStopOutMode.PERCENT else free_margin
-        
-        if self.mt5.config.use_terminal_for_backtesting:
-            ocr_t = await self.mt5.order_check(request)
-            # return order check result if invalid stops level are detected or bad request
-            if ocr_t.retcode in (10016, 10013, 10014):
-                return ocr_t
+        ocr = {'retcode': 10013, 'balance': 0, 'profit': 0, 'margin': 0, 'equity': 0, 'margin_free': 0,
+               'margin_level': 0, 'comment': 'Invalid request',
+               'request': TradeRequest(request.get(k, (0 if k != 'comment' else 0)) for k in TradeRequest.__match_args__)}
 
-        sym = self.symbols[symbol]
-        tsl = sym.trade_stops_level
-        sl, tp = request.get('sl', 0), request.get('tp', 0)
+        action, symbol, volume = request.get('action'), request.get('symbol'), request.get('volume')
+
+        price, order_type = request.get('price'), request.get('type')
+        if price is None and (action is TradeAction.DEAL and order_type in (OrderType.BUY, OrderType.SELL)):
+            ocr['comment'] = 'Market is closed'
+            ocr['retcode'] = 10018
+            return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
+
+        # check margin and confirm order can go through
+        if order_type in (OrderType.BUY, OrderType.SELL):
+            margin = await self.order_calc_margin(action, symbol, volume, price)
+            if margin is None:
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
+
+            used_margin = self._account.margin + margin
+            free_margin = self._account.margin_free - margin
+
+            level = self._account.equity / used_margin * 100 if used_margin else float('inf')
+            margin_level = level if self._account.margin_so_mode == AccountStopOutMode.PERCENT else free_margin
+
+            ocr.update({'margin_level': margin_level, 'margin': margin, 'margin_free': free_margin})
+
+            # check if the account has enough money
+            if margin_level < self._account.margin_so_call:
+                ocr['retcode'] = 10019
+                ocr['comment'] = 'No money'
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
         # check if the stops level is valid
+        sym = await self.get_symbol_info(symbol)
+        tsl = sym.trade_stops_level + sym.spread
+        sl, tp = request.get('sl', 0), request.get('tp', 0)
+
         if tp or sl:
+            current_price = price
+            if action == TradeAction.SLTP:
+                pos = self.open_positions.get(request.get('position')) # ToDo: use positions manager
+                sym = pos.symbol
+                current_price = await self.get_price_tick(sym, self.cursor.time)
             min_sl = min(sl, tp)
-            dsl = abs(price - min_sl) / sym.point
-            if dsl < tsl:
+            dsl = abs(current_price - min_sl) / sym.point
+            if int(dsl) < int(tsl):
                 ocr['retcode'] = 10016
                 ocr['comment'] = 'Invalid stops'
-                return OrderCheckResult(ocr)
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
-        # check if the account has enough money
-        if margin_level < acc.margin_so_call:
-            ocr['retcode'] = 10019
-            ocr['comment'] = 'No money'
+        if self.mt5.config.use_terminal_for_backtesting:
+            ocr_t = await self.mt5.order_check(request)
+            if ocr_t.retcode in (10013, 10014):
+                return ocr_t
+        else:
+            # check volume
+            if volume < sym.volume_min or volume > sym.volume_max:
+                ocr['retcode'] = 10014
+                ocr['comment'] = 'Invalid volume'
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
-        # check volume
-        if volume < sym.volume_min or volume > sym.volume_max:
-            ocr['retcode'] = 10014
-            ocr['comment'] = 'Invalid volume'
+        ocr.update({'balance': self._account.balance, 'profit': self._account.profit, 'equity': self._account.equity,
+                    'comment': 'Done', 'retcode': 0})
 
-        ocr.update({'balance': acc.balance, 'profit': acc.profit, 'margin': used_margin, 'equity': equity,
-                    'margin_free': free_margin, 'margin_level': margin_level})
-
-        return OrderCheckResult(ocr)
+        return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
     @error_handler
     async def get_terminal_info(self) -> TerminalInfo:
@@ -378,14 +405,13 @@ class TestData:
     async def get_symbol_info(self, symbol: str) -> SymbolInfo:
         if self.config.use_terminal_for_backtesting:
             info = await self.mt5.symbol_info(symbol)
-            return info
+        else:
+            info = self.symbols[symbol]
 
-        info = self.symbols[symbol]
         tick = await self.get_symbol_info_tick(symbol)
-        info = info._asdict()
-        info |= {'bid': tick.bid, 'bidhigh': tick.bid, 'bidlow': tick.bid, 'ask': tick.ask,
+        info = info._asdict() | {'bid': tick.bid, 'bidhigh': tick.bid, 'bidlow': tick.bid, 'ask': tick.ask,
                  'askhigh': tick.ask, 'asklow': tick.bid, 'last': tick.last, 'volume_real': tick.volume_real}
-        return SymbolInfo(info)
+        return SymbolInfo((info.get(key) for key in SymbolInfo.__match_args__))
 
     @error_handler
     async def get_rates_from(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int) -> np.ndarray:
