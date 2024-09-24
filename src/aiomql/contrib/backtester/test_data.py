@@ -21,37 +21,38 @@ from ...utils import round_down, round_up, error_handler, error_handler_sync, as
 
 from .get_data import Data, GetData
 from .test_account import TestAccount
-from .types import PositionsManager, OrdersManager
+from .types import PositionsManager, OrdersManager, DealsManager
 
 tz = pytz.timezone('Etc/UTC')
 Cursor = namedtuple('Cursor', ['index', 'time'])
 
 
 class TestData:
-    history_orders: DataFrame
-    history_deals: DataFrame
-    
+    mt5: MetaTrader = MetaTrader()
+    span: range
+    range: range
+    cursor: Cursor
+    iter: zip_longest
+
     def __init__(self, data: Data = None, speed: int = 1, start: float | datetime = 0, end: float | datetime = 0):
         self._data = data or Data()
         self._account: TestAccount = TestAccount(**self._data.account)
+        self.positions: PositionsManager = PositionsManager()
+        self.orders: OrdersManager = OrdersManager()
+        self.deals: DealsManager = DealsManager()
+        self.margins: dict[int, float] = {}
+        self.config = Config(test_data=self)
+        self.set_up(start=start, end=end, speed=speed)
+        self._data.name = self._data.name or f"{datetime.fromtimestamp(self.span[0]):%d-%m-%y}_{datetime.fromtimestamp(self.span[-1]):%d-%m-%y}"
+        self.fh = open(f'{self.config.test_data_dir}/data.json', 'a')
+
+    def set_up(self, start: float | datetime = 0, end: float | datetime = 0, speed: int = 1):
         span_start = (int(start.timestamp()) if isinstance(start, datetime) else int(start)) or self._data.span.start
         span_end = (int(end.timestamp()) if isinstance(end, datetime) else int(end)) or self._data.span.stop
-        self.span: range = range(span_start, span_end, speed)
-        self.range: range = range(0, span_end - span_start, speed)
-        self.orders: dict[str, dict[int, TradeOrder]] = {}
-        self.deals: dict[str, dict[int, TradeDeal]] = {}
-        self.open_orders: dict[int, TradeOrder] = {}
-        self.positions: dict[str, dict[int, TradePosition]] = {}
-        self.open_positions: dict[int, TradePosition] = {}
-        self.history_orders = self._data.history_orders
-        self.history_deals = self._data.history_deals
-        self.margins: dict[int, float] = {}
-        self.mt5 = MetaTrader()
+        self.span = range(span_start, span_end, speed)
+        self.range = range(0, span_end - span_start, speed)
         self.iter = zip_longest(self.range, self.span)
         self.cursor: Cursor = Cursor(index=self.range.start, time=self.span.start)
-        self.config = Config(test_data=self)
-        self._data.name = self._data.name or f"{datetime.fromtimestamp(span_start):%d-%m-%y}_{datetime.fromtimestamp(span_end):%d-%m-%y}"
-        self.fh = open(f'{self.config.test_data_dir}/data.json', 'a')
 
     def __next__(self) -> Cursor:
         index, time = next(self.iter)
@@ -95,11 +96,11 @@ class TestData:
         return [(c, t) for c, t in zip(df.columns, df.dtypes)]
 
     async def tracker(self):
-        pos_tasks = [self.check_position(ticket) for ticket in self.open_positions]
+        pos_tasks = [self.check_position(ticket) for ticket in self.positions.open_items]
         await asyncio.gather(*pos_tasks)
-        order_tasks = [self.check_order(ticket) for ticket in self.open_orders]
+        order_tasks = [self.check_order(ticket) for ticket in self.orders.open_items]
         await asyncio.gather(*order_tasks)
-        profit = sum(pos.profit for pos in self.open_positions.values())
+        profit = sum(pos.profit for pos in self.positions.open_positions)
         self.update_account(profit=profit)
 
     def save(self):
@@ -129,9 +130,9 @@ class TestData:
 
     @error_handler
     async def check_order(self, ticket: int):
-        order = self.open_orders[ticket]
+        order = self.orders[ticket]
         order_type, symbol = order.type, order.symbol
-        tick = self.prices[symbol].loc[self.cursor.time]
+        tick = await self.get_price_tick(symbol, self.cursor.time)
         tp, sl = order.tp, order.sl
 
         match order_type:
@@ -147,23 +148,18 @@ class TestData:
 
     @error_handler
     async def check_position(self, ticket: int, use_terminal=True):
-        pos = self.open_positions[ticket]
+        pos = self.positions[ticket]
         order_type, symbol, volume, price_open, prev_profit = pos.type, pos.symbol, pos.volume, pos.price_open, pos.profit
-        tick = self.prices[symbol].loc[self.cursor.time]
+        tick = await self.get_price_tick(symbol, self.cursor.time)
         price_current = tick.bid if order_type == OrderType.BUY else tick.ask
         profit = await self.order_calc_profit(order_type, symbol, volume, price_open, price_current, use_terminal)
-        pos = pos._asdict()
-        pos.update(profit=profit, price_current=price_current, time_update=self.cursor.time)
-        pos = TradePosition(pos)
-        self.open_positions[ticket] = pos
-        self.positions[symbol][ticket] = pos
+        self.positions.update(ticket=pos.ticket, profit=profit, price_current=price_current, time_update=self.cursor.time)
 
     def close_position(self, ticket: int):
-        position = self.open_positions.pop(ticket)
+        position = self.positions.pop(ticket)
         margin = self.margins.pop(position.ticket)
-        order = self.open_orders.pop(ticket)
-        order = order._asdict()
-        order.update(time_done=self.cursor.time)
+        del self.orders[ticket]
+        self.orders.update(ticket=ticket, time_done=self.cursor.time)
         self.update_account(gain=position.profit, margin=-margin)  # ToDo: Create a deal object here? modify update account
 
     def modify_stops(self, ticket: int, sl: int = None, tp: int = None):
@@ -334,13 +330,14 @@ class TestData:
         sym = await self.get_symbol_info(symbol)
         tsl = sym.trade_stops_level + sym.spread
         sl, tp = request.get('sl', 0), request.get('tp', 0)
-
+        current_price = price
         if tp or sl:
-            current_price = price
             if action == TradeAction.SLTP:
-                pos = self.open_positions.get(request.get('position')) # ToDo: use positions manager
+                pos = self.positions.get(request.get('position')) # ToDo: use positions manager
                 sym = pos.symbol
-                current_price = await self.get_price_tick(sym, self.cursor.time)
+                current_tick = await self.get_price_tick(sym, self.cursor.time)
+                current_price = current_tick.bid if pos.type == OrderType.BUY else current_tick.ask
+
             min_sl = min(sl, tp)
             dsl = abs(current_price - min_sl) / sym.point
             if int(dsl) < int(tsl):
