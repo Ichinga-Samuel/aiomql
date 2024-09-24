@@ -79,12 +79,14 @@ class TestData:
     def go_to(self, time: datetime | int):
         time =  int(time.timestamp()) if isinstance(time, datetime) else int(time)
         steps = time - self.cursor.time
+        
         if steps > 0:
             self.fast_forward(steps)
             return
+
+        range_start = time - self.span.start
         span = range(time, self.span.stop, self.span.step)
-        start = span.start - self.span.start
-        range_ = range(start, self.range.stop, self.range.step)
+        range_ = range(range_start, self.range.stop, self.range.step)
         self.iter = zip_longest(range_, span)
         self.cursor = Cursor(index=range_.start, time=span.start)
 
@@ -121,7 +123,7 @@ class TestData:
             print(err)
 
     @async_cache
-    async def get_price_tick(self, symbol, time: int) -> Tick | None:
+    async def get_price_tick(self, symbol: str, time: int) -> Tick | None:
         if self.config.use_terminal_for_backtesting:
             tick = await self.mt5.copy_ticks_from(symbol, time, 1, CopyTicks.ALL)
             return Tick(tick[-1]) if tick else None
@@ -163,22 +165,14 @@ class TestData:
         self.update_account(gain=position.profit, margin=-margin)  # ToDo: Create a deal object here? modify update account
 
     def modify_stops(self, ticket: int, sl: int = None, tp: int = None):
-        pos = self.open_positions.pop(ticket)
-        order = self.open_orders.pop(ticket)
+        pos = self.positions[ticket]
+        order = self.orders[ticket]
         sl = sl or pos.sl
         tp = tp or pos.tp
-        pos = pos._asdict()
-        pos.update(tp=tp, sl=sl, time_update=self.cursor.time)
+        self.positions.update(ticket=ticket, sl=sl, tp=tp, time_update=self.cursor.time)
         sl = sl or order.sl
         tp = tp or order.tp
-        order = order._asdict()
-        order.update(tp=tp, sl=sl)
-        pos = TradePosition(pos)
-        order = TradeOrder(order)
-        self.open_positions[ticket] = pos
-        self.open_orders[ticket] = order
-        self.positions[pos.symbol][ticket] = pos
-        self.orders[order.symbol][ticket] = order
+        self.order.update(ticket=ticket, sl=sl, tp=tp, time_update=self.cursor.time)
 
     def update_account(self, *, profit: float = None, margin: float = 0, gain: float = 0):
         self._account.balance += gain
@@ -328,18 +322,18 @@ class TestData:
 
         # check if the stops level is valid
         sym = await self.get_symbol_info(symbol)
-        tsl = sym.trade_stops_level + sym.spread
         sl, tp = request.get('sl', 0), request.get('tp', 0)
         current_price = price
         if tp or sl:
             if action == TradeAction.SLTP:
-                pos = self.positions.get(request.get('position')) # ToDo: use positions manager
-                sym = pos.symbol
+                pos = self.positions.get(request.get('position')) 
+                sym = await self.get_symbol_info(pos.symbol)
                 current_tick = await self.get_price_tick(sym, self.cursor.time)
                 current_price = current_tick.bid if pos.type == OrderType.BUY else current_tick.ask
-
+            
             min_sl = min(sl, tp)
             dsl = abs(current_price - min_sl) / sym.point
+            tsl = sym.trade_stops_level + sym.spread
             if int(dsl) < int(tsl):
                 ocr['retcode'] = 10016
                 ocr['comment'] = 'Invalid stops'

@@ -90,7 +90,6 @@ def round_off(value: float, step: float, round_down: bool = False) -> float:
 
 
 def async_cache(fun):
-
     @wraps(fun)
     async def wrapper(*args, **kwargs):
         key = (args, frozenset(kwargs.items()))
