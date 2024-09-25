@@ -46,9 +46,9 @@ def backoff_decorator(func=None, *, max_retries: int = 5, retries: int = 0, erro
     return wrapper
 
 
-def error_handler(func=None, *, msg='', exe = Exception):
+def error_handler(func=None, *, msg='', exe = Exception, response=None):
     if func is None:
-        return partial(error_handler, msg=msg, exe=exe)
+        return partial(error_handler, msg=msg, exe=exe, response=response)
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -57,6 +57,7 @@ def error_handler(func=None, *, msg='', exe = Exception):
             return res
         except exe as err:
             logger.error(f'Error in {func.__name__}: {msg or err}')
+            return response
 
     return wrapper
 

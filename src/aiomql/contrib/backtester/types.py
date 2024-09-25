@@ -1,9 +1,11 @@
+from typing import Generic
+
 from MetaTrader5 import TradePosition, TradeOrder, TradeDeal
 
 from aiomql.utils import logger
 
 
-class TradingData:
+class TradingData[Generic]:
     _data: dict[int, TradePosition | TradeOrder | TradeDeal]
     _open_items: set[int]
 
