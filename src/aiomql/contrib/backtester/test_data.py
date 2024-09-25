@@ -16,7 +16,7 @@ from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TradeOrder, TradePositio
                          TradeRequest, OrderCheckResult, OrderSendResult, TerminalInfo)
 
 from ...core.meta_trader import MetaTrader
-from ...core.constants import TimeFrame, CopyTicks, OrderType, TradeAction, AccountStopOutMode
+from ...core.constants import TimeFrame, CopyTicks, OrderType, TradeAction, AccountStopOutMode, PositionReason
 from ...core.config import Config
 from ...lib.strategies.finger_trap import logger
 from ...utils import round_down, round_up, error_handler, error_handler_sync, async_cache
@@ -240,28 +240,30 @@ class TestData:
 
     @error_handler
     async def order_send(self, *, request: dict, use_terminal: bool = True) -> OrderSendResult:
-        order_ticket = random.randint(100_000_000, 999_999_999)
-        deal_ticket = random.randint(100_000_000, 999_999_999)
-
         osr = {'retcode': 10013, 'comment': 'Invalid request',
                'request': TradeRequest(request.get(k, (0 if k != 'comment' else '')) for k in
                                        TradeRequest.__match_args__)}
-
-        trade_order = {'ticket': order_ticket, 'time_setup': self.cursor.time,
-                       'time_setup_msc': self.cursor.time * 1000,
-                       **{k: v for k, v in request.items() if k in TradeOrder.__match_args__}}
-
-        order_type, symbol, action, position_ticket = (request.get('type'), request.get('symbol', ''),
-                                                request.get('action'), request.get('position'))
+        trade_order = {'ticket': order_ticket, **{k: v for k, v in request.items() if k in TradeOrder.__match_args__}}
+        current_tick = await self.get_price_tick(request.get('symbol'), self.cursor.time)
+        if current_tick is None:
+            osr['comment'] = 'Market is closed'
+            osr['retcode'] = 10018
+            return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
+        order_type, symbol = request.get('type'), request.get('symbol', '')
+        action, position_ticket = request.get('action'), request.get('position')
+        sl, tp, volume, symbol = request.get('sl'), request.get('tp'), request.get('volume'), request.get('symbol')
         order_type = OrderType(order_type)
         current_position = self.positions.get(position_ticket)
+        order_ticket = random.randint(100_000_000, 999_999_999)
+        deal_ticket = random.randint(100_000_000, 999_999_999)
 
         # closing an order by an opposite order using a position ticket and Deal action
         if action == TradeAction.DEAL and current_position and order_type.opposite == current_position.type:
             res = self.close_position(current_position.ticket)
             if res:
-                trade_order.update({'comment': 'Done', 'position_id': deal_ticket,
-                                    'position_by_id': current_position.ticket})
+                trade_order.update({'comment': 'Done', 'position_id': deal_ticket, 'ticket': order_ticket,
+                                    'position_by_id': current_position.ticket, 'time_setup': current_tick.time, 'time_expiration': current_tick.time,
+                                     'time_setup_msc': current_tick.time_msc, 'time_done': current_tick.time, 'time_done_msc': current_tick.time_msc})
                 # ToDo: Create a deal object here?
                 # ToDo: Update trade order with more information?
                 order = TradeOrder((trade_order.get(k, 0) for k in TradeOrder.__match_args__))
@@ -275,12 +277,11 @@ class TestData:
 
         if action == TradeAction.SLTP and current_position:
             check = await self.order_check(position_ticket)
-
             if check.retcode != 0:
                 osr = {'retcode': check.retcode, 'comment': check.comment, 'request': check.request}
                 return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
-            res = self.modify_stops(ticket=position_ticket, sl=request.get('sl'), tp=request.get('tp'))
+            res = self.modify_stops(ticket=position_ticket, sl=sl, tp=tp)
 
             if res:
                 # ToDo: Create a deal object here
@@ -294,38 +295,33 @@ class TestData:
             if check.retcode != 0:
                 osr = {'retcode': check.retcode, 'comment': check.comment, 'request': check.request}
                 return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
+            # self.to_json(osr) # ToDo: remove later
+            # return OrderSendResult(osr)
+            price = current_tick.ask if order_type == OrderType.BUY else current.tick.bid
+            # ToDo: Cross check this values with actual values.
+            position = {'comment': 'Position Opened', 'ticket': order_ticket, 'symbol': symbol, 'volume': volume,
+                   'price_open': price, 'price_current': price, 'type': order_type, 'profit': 0, 'reason': PositionReason.EXPERT,
+                   'sl': sl, 'tp': tp, 'time': current_tick.time, 'time_msc': current_tick.time_msc,
+                   'time_update': current_tick.time, 'time_update_msc': current_tick.time_msc}
 
-            self.to_json(osr) # ToDo: remove later
-            return OrderSendResult(osr)
-            order_type = request['type']
-            price = tick.ask if request['type'] == OrderType.BUY else tick.bid
-            volume = request['volume']
-            sl, tp = request.get('sl', 0), request.get('tp', 0)
-            symbol = request['symbol']
+            # ToDo: set time_expiration based on order_type_time
+            trade_order.update({'ticket': order_ticket, 'symbol': symbol, 'volume': volume, 'price': price, 'price_current': price, 'sl': sl,
+                                 'tp': tp, 'price_open': price, 'type': order_type, 'time_setup': current_tick.time, 'time_setup_msc': current_tick.time_msc,
+                                 'volume_current': volume, 'volume_initial': volume, 'position_id': order_ticket})
 
-            pos = {'comment': 'open position', 'ticket': order_ticket, 'symbol': symbol, 'volume': volume,
-                   'price_open': price, 'price_current': price, 'type': order_type, 'profit': 0,
-                   'sl': sl, 'tp': tp, 'time': tick.time,
-                   'time_msc': tick.time_msc}
-
-            order = {'ticket': order_ticket, 'symbol': symbol, 'volume': volume, 'price': price, 'price_current': price,
-                     'price_open': price, 'type': order_type, 'time_setup': tick.time,
-                     'time_setup_msc': tick.time_msc, 'volume_current': volume, 'sl': sl, 'tp': tp, }
-
-            pos = TradePosition(pos)
-            order = TradeOrder(order)
+            pos = TradePosition((position.get(k, 0) for k in TradePosition.__match_args__))
+            order = TradeOrder((trade_order.get(k, 0) for k in TradeOrder.__match_args__))
             # ToDo: Create a deal object here
-            self.open_positions[pos.ticket] = pos
-            self.open_orders[order.ticket] = order
-            self.orders.setdefault(order.symbol, {})[order.ticket] = order
-            self.positions.setdefault(pos.symbol, {})[pos.ticket] = pos
+
+            self.positions[order.ticket] = pos
+            self.orders[order.ticket] = order
             osr.update({'order': order_ticket, 'price': price, 'volume': volume, 'bid': tick.bid,
                         'ask': tick.ask, 'deal': deal_ticket})
-            margin = await self.order_calc_margin(action, symbol, volume, price, use_terminal=use_terminal)
+            margin = await self.order_calc_margin(action, symbol, volume, price, use_)
             self.margins[order_ticket] = margin
             self.update_account(margin=margin)
             self.to_json(osr) # ToDo: remove later
-            return OrderSendResult(osr)
+            return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
     @error_handler
     async def order_check(self, request: dict) -> OrderCheckResult:
