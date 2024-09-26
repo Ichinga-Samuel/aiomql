@@ -5,6 +5,7 @@ import lzma
 from datetime import datetime
 from logging import getLogger
 from typing import Sequence, ClassVar
+from collections import namedtuple
 
 import pytz
 import pandas as pd
@@ -21,11 +22,10 @@ logger = getLogger(__name__)
 from MetaTrader5 import TradePosition, TradeOrder, TradeDeal
 
 tof = list(TradeOrder.__match_args__)
-tof.append('symbol')
 tpf = list(TradePosition.__match_args__)
-tpf.append('symbol')
 tdf = list(TradeDeal.__match_args__)
-tdf.append('symbol')
+
+Cursor = namedtuple('Cursor', ['index', 'time'])
 
 
 @dataclass
@@ -40,12 +40,12 @@ class Data:
     rates: dict[str, dict[str, DataFrame]] = field(default_factory=dict)
     span: range = range(0)
     range: range = range(0)
-    history_orders: DataFrame = field(default_factory=lambda: DataFrame([], columns=tof))
-    history_deals: DataFrame = field(default_factory=lambda: DataFrame([], columns=tdf))
-    positions: dict[str, DataFrame] = field(default_factory=dict)
-    orders: dict[str, DataFrame] = field(default_factory=dict)
-
-    _fields: list[ClassVar[str]] = field(default_factory=list)
+    orders: dict[int, dict] = field(default_factory=lambda: {})
+    deals: dict[int, dict] = field(default_factory=lambda: {})
+    positions: dict[int, dict] = field(default_factory=lambda: {})
+    active_orders: tuple[int, ...] = field(default_factory=lambda: ())
+    open_positions: tuple[int, ...] = field(default_factory=lambda: ())
+    cursor: Cursor = None
 
     def __str__(self):
         return f"""
@@ -68,7 +68,7 @@ class Data:
 
     @property
     def fields(self):
-        return self._fields or [name for f in fields(self) if (name := f.name) != '_fields']
+        return [f.name for f in fields(self)]
 
 
 class GetData:

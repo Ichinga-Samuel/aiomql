@@ -1,16 +1,14 @@
 import asyncio
-from collections import namedtuple
 from datetime import datetime
 from typing import Literal
 from itertools import zip_longest
 import random
-import json
 from functools import cached_property
+from logging import getLogger
 
 import pandas as pd
 import pytz
 import numpy as np
-from debugpy.common.timestamp import current
 from pandas import DataFrame
 from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TradeOrder, TradePosition, TradeDeal,
                          TradeRequest, OrderCheckResult, OrderSendResult, TerminalInfo)
@@ -18,18 +16,18 @@ from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TradeOrder, TradePositio
 from ...core.meta_trader import MetaTrader
 from ...core.constants import TimeFrame, CopyTicks, OrderType, TradeAction, AccountStopOutMode, PositionReason
 from ...core.config import Config
-from ...lib.strategies.finger_trap import logger
 from ...utils import round_down, round_up, error_handler, error_handler_sync, async_cache
 
-from .get_data import Data, GetData
+from .get_data import Data, GetData, Cursor
 from .test_account import TestAccount
 from .types import PositionsManager, OrdersManager, DealsManager
 
 tz = pytz.timezone('Etc/UTC')
-Cursor = namedtuple('Cursor', ['index', 'time'])
+
+logger = getLogger(__name__)
 
 
-class TestData:
+class BackTestEngine:
     mt5: MetaTrader = MetaTrader()
     span: range
     range: range
@@ -45,8 +43,8 @@ class TestData:
         self.margins: dict[int, float] = {}
         self.config = Config(test_data=self)
         self.set_up(start=start, end=end, speed=speed)
+        self.cursor: Cursor = self._data.cursor or Cursor(index=self.range.start, time=self.span.start)
         self._data.name = self._data.name or f"{datetime.fromtimestamp(self.span[0]):%d-%m-%y}_{datetime.fromtimestamp(self.span[-1]):%d-%m-%y}"
-        self.fh = open(f'{self.config.test_data_dir}/data.json', 'a')
 
     def set_up(self, start: float | datetime = 0, end: float | datetime = 0, speed: int = 1):
         span_start = (int(start.timestamp()) if isinstance(start, datetime) else int(start)) or self._data.span.start
@@ -54,12 +52,14 @@ class TestData:
         self.span = range(span_start, span_end, speed)
         self.range = range(0, span_end - span_start, speed)
         self.iter = zip_longest(self.range, self.span)
-        self.cursor: Cursor = Cursor(index=self.range.start, time=self.span.start)
 
     def __next__(self) -> Cursor:
-        index, time = next(self.iter)
-        self.cursor = Cursor(index=index, time=time)
-        return self.cursor
+        try:
+            index, time = next(self.iter)
+            self.cursor = Cursor(index=index, time=time)
+            return self.cursor
+        except StopIteration:
+            logger.warning('End of time')
 
     def __repr__(self):
         return f"{self.__class__.__name__}()"
@@ -70,15 +70,12 @@ class TestData:
     @property
     def data(self):
         return self._data
-
-    def to_json(self, data):
-        json.dump(data, self.fh)
     
     def reset(self):
         self.iter = zip_longest(self.range, self.span)
         self.cursor = Cursor(index=self.range.start, time=self.span.start)
 
-    def go_to(self, time: datetime | int):
+    def go_to(self, *, time: datetime | int):
         time =  int(time.timestamp()) if isinstance(time, datetime) else int(time)
         steps = time - self.cursor.time
         
@@ -92,7 +89,7 @@ class TestData:
         self.iter = zip_longest(range_, span)
         self.cursor = Cursor(index=range_.start, time=span.start)
 
-    def fast_forward(self, steps: int):
+    def fast_forward(self, *, steps: int):
         for _ in range(steps):
             self.next()
 
@@ -108,7 +105,6 @@ class TestData:
         self.update_account(profit=profit)
 
     def save(self):
-        self.fh.close()
         try:
             if len(self.orders) or len(self.deals):
                 for symbol in self.orders:
@@ -243,7 +239,7 @@ class TestData:
         osr = {'retcode': 10013, 'comment': 'Invalid request',
                'request': TradeRequest(request.get(k, (0 if k != 'comment' else '')) for k in
                                        TradeRequest.__match_args__)}
-        trade_order = {'ticket': order_ticket, **{k: v for k, v in request.items() if k in TradeOrder.__match_args__}}
+        trade_order = {k: v for k, v in request.items() if k in TradeOrder.__match_args__}
         current_tick = await self.get_price_tick(request.get('symbol'), self.cursor.time)
         if current_tick is None:
             osr['comment'] = 'Market is closed'
@@ -297,7 +293,7 @@ class TestData:
                 return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
             # self.to_json(osr) # ToDo: remove later
             # return OrderSendResult(osr)
-            price = current_tick.ask if order_type == OrderType.BUY else current.tick.bid
+            price = current_tick.ask if order_type == OrderType.BUY else current_tick.bid
             # ToDo: Cross check this values with actual values.
             position = {'comment': 'Position Opened', 'ticket': order_ticket, 'symbol': symbol, 'volume': volume,
                    'price_open': price, 'price_current': price, 'type': order_type, 'profit': 0, 'reason': PositionReason.EXPERT,
@@ -315,9 +311,9 @@ class TestData:
 
             self.positions[order.ticket] = pos
             self.orders[order.ticket] = order
-            osr.update({'order': order_ticket, 'price': price, 'volume': volume, 'bid': tick.bid,
-                        'ask': tick.ask, 'deal': deal_ticket})
-            margin = await self.order_calc_margin(action, symbol, volume, price, use_)
+            osr.update({'order': order_ticket, 'price': price, 'volume': volume, 'bid': current_tick.bid,
+                        'ask': current_tick.ask, 'deal': deal_ticket})
+            margin = await self.order_calc_margin(action, symbol, volume, price)
             self.margins[order_ticket] = margin
             self.update_account(margin=margin)
             self.to_json(osr) # ToDo: remove later

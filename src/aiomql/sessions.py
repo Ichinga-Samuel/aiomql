@@ -6,7 +6,7 @@ from logging import getLogger
 
 from .positions import Positions
 from .core.config import Config
-from.contrib.backtester.event_manager import EventManager
+# from.contrib.backtester.event_manager import EventManager
 
 logger = getLogger(__name__)
 
@@ -20,13 +20,13 @@ def delta(obj: time) -> timedelta:
     return timedelta(hours=obj.hour, minutes=obj.minute, seconds=obj.second, microseconds=obj.microsecond)
 
 
-async def backtest_sleep(secs):
-    """A custom function to call when the session starts."""
-    em = EventManager()
-
-    async with em.condition:
-        while em.config.test_data.cursor.time < (em.config.test_data.cursor.time + secs):
-            await em.condition.wait()
+# async def backtest_sleep(secs):
+#     """A custom function to call when the session starts."""
+#     # em = EventManager()
+#
+#     async with em.condition:
+#         while em.config.test_data.cursor.time < (em.config.test_data.cursor.time + secs):
+#             await em.condition.wait()
 
 
 class Session:
@@ -213,7 +213,7 @@ class Sessions:
         current_session = self.find_next(now)
         secs = current_session.until() + 10
         logger.info(f'sleeping for {secs} seconds until next {current_session} session')
-        sleep_func = sleep if Config().mode == 'live' else backtest_sleep
+        sleep_func = sleep # if Config().mode == 'live' else backtest_sleep
         await sleep_func(secs)
         self.current_session = current_session
         await self.current_session.begin()

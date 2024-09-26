@@ -7,7 +7,7 @@ from .core.models import TradePosition, TradeAction
 from .core.constants import  OrderType
 from .core.config import Config
 
-from .contrib.backtester.meta_tester import MetaTester
+# from .contrib.backtester.meta_tester import MetaTester
 
 from .order import Order
 from .utils import backoff_decorator
@@ -25,7 +25,7 @@ class Positions:
         ticket (int): Position ticket.
         mt5 (MetaTrader): MetaTrader instance.
     """
-    mt5: MetaTrader | MetaTester
+    mt5: MetaTrader #| MetaTester
 
     def __init__(self, *, symbol: str = "", group: str = "", ticket: int = 0):
         """Get Open Positions.
@@ -38,7 +38,7 @@ class Positions:
 
         """
         self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
+        self.mt5 = MetaTrader() # if self.config.mode == 'live' else MetaTester()
         self.symbol = symbol
         self.group = group
         self.ticket = ticket

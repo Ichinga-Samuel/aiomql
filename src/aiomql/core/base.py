@@ -4,7 +4,7 @@ from logging import getLogger
 
 from .config import Config
 from .meta_trader import MetaTrader
-from ..contrib.backtester import MetaTester
+# from ..contrib.backtester import MetaTester
 logger = getLogger(__name__)
 
 
@@ -22,7 +22,7 @@ class Base:
             **kwargs: Set instance attributes with keyword arguments. Only if they are annotated on the class body.
         """
         self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
+        self.mt5 = MetaTrader() #if self.config.mode == 'live' else MetaTester()
         self.exclude = {'mt5', "config", 'exclude', 'include', 'annotations', 'class_vars', 'dict'}
         self.include = set()
         self.set_attributes(**kwargs)

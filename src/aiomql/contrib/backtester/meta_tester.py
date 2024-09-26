@@ -5,7 +5,7 @@ from numpy import ndarray
 from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TerminalInfo, TradeOrder, TradePosition, TradeDeal,
                          OrderCheckResult, OrderSendResult)
 
-from .test_data import TestData
+from .backtest_engine import BackTestEngine
 from .get_data import GetData
 
 from ...core.meta_trader import MetaTrader
@@ -18,17 +18,17 @@ logger = getLogger(__name__)
 class MetaTester(MetaTrader):
     """A class for testing trading strategies in the MetaTrader 5 terminal. A subclass of MetaTrader."""
 
-    def __init__(self, test_data: TestData = None):
+    def __init__(self, test_data: BackTestEngine = None):
         super().__init__()
         if test_data is not None:
             self.config.test_data = test_data
 
     @property
-    def test_data(self) -> TestData | None:
+    def test_data(self) -> BackTestEngine | None:
         return self.config.test_data
 
     @test_data.setter
-    def test_data(self, value: TestData):
+    def test_data(self, value: BackTestEngine):
         self.config.test_data = value
 
     async def last_error(self) -> tuple[int, str]:
@@ -47,7 +47,7 @@ class MetaTester(MetaTrader):
                 name = f"{self.config.test_data_dir_name}/{test_data_file}"
                 data = GetData.load_data(name=name, compressed=self.config.compress_test_data)
                 if data is not None:
-                    self.test_data = TestData(data)
+                    self.test_data = BackTestEngine(data)
                     success = True
 
         except Exception as err:

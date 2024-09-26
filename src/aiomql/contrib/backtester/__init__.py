@@ -1,5 +1,5 @@
 from .meta_tester import MetaTester
-from .test_data import TestData
+from .backtest_engine import BackTestEngine
 from .get_data import GetData
 from .test_strategy import TestStrategy
 from .event_manager import EventManager

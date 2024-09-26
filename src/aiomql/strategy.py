@@ -8,7 +8,7 @@ from datetime import time as dtime
 from .core.meta_trader import MetaTrader
 from .symbol import Symbol as _Symbol
 from .core import Config
-from .contrib.backtester.meta_tester import MetaTester
+# from .contrib.backtester.meta_tester import MetaTester
 from .sessions import Sessions, Session
 
 Symbol = TypeVar("Symbol", bound=_Symbol)
@@ -48,7 +48,7 @@ class Strategy(ABC):
         self.parameters["name"] = self.name
         self.sessions = sessions or Sessions(Session(start=0, end=dtime(hour=23, minute=59, second=59)))
         self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
+        self.mt5 = MetaTrader() #if self.config.mode == 'live' else MetaTester()
 
     def __repr__(self):
         return f"{self.name}({self.symbol!r})"

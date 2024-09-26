@@ -91,8 +91,8 @@ class MetaTrader(metaclass=BaseMeta):
             self.error = Error(*err)
 
             if self.error.is_connection_error():
-                await self.initialize(**self.config.account_info(), path=self.config.path)
-                await self.login(**self.config.account_info())
+                await self.initialize(path=self.config.path)
+                await self.login()
                 res = await asyncio.to_thread(func, *args, **kwargs)
 
                 if res is None:
@@ -103,7 +103,7 @@ class MetaTrader(metaclass=BaseMeta):
                 logger.warning(f'{error_msg}:{self.error.description}')
         return res
 
-    async def login(self, login: int, password: str, server: str, timeout: int = 60000) -> bool:
+    async def login(self, *, login: int = 0, password: str = '', server: str = '', timeout: int = 60000) -> bool:
         """
         Connects to the MetaTrader terminal using the specified login, password and server.
 
@@ -116,6 +116,10 @@ class MetaTrader(metaclass=BaseMeta):
         Returns:
             bool: True if successful, False otherwise.
         """
+        acc_details = self.config.account_info()
+        login = login or acc_details.get('login', 0)
+        password = password or acc_details.get('password', '')
+        server = server or acc_details.get('server', '')
         return await asyncio.to_thread(self._login, login, password=password, server=server, timeout=timeout)
 
     async def initialize(self, path: str = "", login: int = 0, password: str = "", server: str = "",
@@ -128,15 +132,20 @@ class MetaTrader(metaclass=BaseMeta):
             login (int): The trading account number.
             password (str): The trading account password.
             server (str): The trading server name.
-            timeout (int): The timeout for the connection in seconds.
+            timeout (int): The timeout for the connection in milliseconds.
             portable (bool): If True, the terminal will be launched in portable mode.
 
         Returns:
             bool: True if successful, False otherwise.
         """
+        path = path or self.config.path
         args = (str(path),) if path else ()
-        kwargs = {key: value for key, value in (('login', login), ('password', password), ('server', server),
-                                                ('timeout', timeout), ('portable', portable)) if value}
+        acc = self.config.account_info()
+        kwargs = {key: value for key, value in (('login', login or acc.get('login')),
+                                                ('password', password or acc.get('password')),
+                                                ('server', server or acc.get('server')),
+                                                ('timeout', timeout or 60000),
+                                                ('portable', portable)) if key is not None}
         res = await asyncio.to_thread(self._initialize, *args, **kwargs)
         return res
 

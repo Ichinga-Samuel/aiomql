@@ -1,18 +1,24 @@
-from typing import Generic
+from typing import TypeVar, Generic
 
 from MetaTrader5 import TradePosition, TradeOrder, TradeDeal
 
 from aiomql.utils import logger
 
+TradeData = TypeVar('TradeData', bound=TradePosition | TradeOrder | TradeDeal)
 
-class TradingData[Generic]:
-    _data: dict[int, TradePosition | TradeOrder | TradeDeal]
+
+class TradingData(Generic[TradeData]):
+    _data: dict[int, TradeData]
     _open_items: set[int]
+
+    def __init__(self, open_items: set[int] = None, data: dict = None):
+        self._data = data or {}
+        self._open_items = open_items or {trade.ticket for trade in self._data.values()}
 
     def __getitem__(self, item):
         return self._data[item]
 
-    def __setitem__(self, key, value: TradePosition | TradeOrder | TradeDeal):
+    def __setitem__(self, key, value: TradeData):
         self._open_items.add(value.ticket)
         self._data[key] = value
 
@@ -23,7 +29,7 @@ class TradingData[Generic]:
         except KeyError:
             logger.warning(f'{key} not found')
 
-    def __contains__(self, item):
+    def __contains__(self, item: int):
         return item in self._open_items
 
     def __iter__(self):
@@ -32,10 +38,10 @@ class TradingData[Generic]:
     def __len__(self):
         return len(self._data)
 
-    def get(self, key, default=None):
+    def get(self, key, default=None) -> TradeData | None:
         return self._data.get(key, default) if key in self._open_items else default
 
-    def pop(self, key, default=None):
+    def pop(self, key, default=None) -> TradeData | None:
         self._open_items.discard(key)
         return self._data.get(key, default)
 
@@ -59,10 +65,6 @@ class TradingData[Generic]:
 class PositionsManager(TradingData):
     _data: dict[int, TradePosition]
 
-    def __init__(self, open_items: set[int] = None, data: dict = None):
-        self._open_items = open_items or set()
-        self._data = data or {}
-
     @property
     def open_positions(self) -> tuple[TradePosition, ...]:
         return tuple(position for position in self._data.values() if position.ticket in self.open_items)
@@ -71,16 +73,10 @@ class PositionsManager(TradingData):
 class OrdersManager(TradingData):
     _data = dict[int, TradeOrder]
 
-    def __init__(self, open_items: set[int] = None, data: dict = None):
-        self._open_items = open_items or set()
-        self._data = data or {}
-
     @property
     def active_orders(self) -> tuple[TradeOrder, ...]:
         return tuple(order for order in self._data.values() if order.ticket in self.open_items)
 
 
 class DealsManager(TradingData):
-    def __init__(self, open_items: set[int] = None, data: dict = None):
-        self._open_items = open_items or set()
-        self._data = data or {}
+    ...
