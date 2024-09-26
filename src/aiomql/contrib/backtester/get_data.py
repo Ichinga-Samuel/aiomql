@@ -8,7 +8,9 @@ from typing import Sequence, ClassVar
 from collections import namedtuple
 
 import pytz
+import numpy as np
 import pandas as pd
+from numpy import ndarray
 from pandas import DataFrame
 
 from ...core.meta_trader import MetaTrader
@@ -35,9 +37,9 @@ class Data:
     version: tuple[int, int, str] = (0, 0, '')
     account: dict = field(default_factory=dict)
     symbols: dict[str, dict] = field(default_factory=dict)
-    prices: dict[str, DataFrame] = field(default_factory=dict)
-    ticks: dict[str, DataFrame] = field(default_factory=dict)
-    rates: dict[str, dict[str, DataFrame]] = field(default_factory=dict)
+    prices: dict[str, ndarray] = field(default_factory=dict)
+    ticks: dict[str, ndarray] = field(default_factory=dict)
+    rates: dict[str, dict[str, ndarray]] = field(default_factory=dict)
     span: range = range(0)
     range: range = range(0)
     orders: dict[int, dict] = field(default_factory=lambda: {})
@@ -92,77 +94,54 @@ class GetData:
         self.task_queue = TaskQueue(workers=250)
 
     @classmethod
-    def dump_data(cls, data: Data, name: str | Path, compress: bool = False):
+    def pickle_data(cls, *, data: Data, name: str | Path):
         """"""
         try:
-            fo = open(name, 'wb')
-
-            if compress:
-                data = lzma.compress(pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL))
-            else:
-                data = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
-
-            fo.write(data)
-            fo.close()
+            with open(name, 'wb') as fo:
+                data = pickle.dump(data, fo, protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as err:
             logger.error(f"Error in dump_data: {err}")
 
 
     @classmethod
-    def load_data(cls, *, name: str | Path, compressed=False):
+    def load_data(cls, *, name: str | Path):
         """"""
         try:
-            fo = open(name, 'rb')
-            data = fo.read()
-
-            if compressed:
-                data = lzma.decompress(data)
-            else:
-                data = pickle.loads(data)
-
-            fo.close()
-
-            return data
+            with open(name, 'rb') as fo:
+                data = pickle.load(fo)
+                return data
         except Exception as err:
             logger.error(f"Error: {err}")
             return None
+
+    def pickle_data(self, *, name: str | Path = ''):
+        name = name or self.name
+        self.__class___.pickle_data(data=self.data, name=name)
+
 
     async def get_data(self, workers: int = None):
         """"""
         if workers:
             self.task_queue.workers = workers
 
-        q_items = [QueueItem(self.get_symbols_rates, must_complete=True),
-                   QueueItem(self.get_symbols_ticks, must_complete=True),
-                   QueueItem(self.get_symbols_prices, must_complete=True),
-                   QueueItem(self.get_symbols_info, must_complete=True),
+        q_items = [QueueItem(self.get_symbols_rates),
+                   QueueItem(self.get_symbols_ticks),
+                   QueueItem(self.get_symbols_prices),
+                   QueueItem(self.get_symbols_info),
                    ]
 
-        [self.task_queue.add(item=item, priority=0) for item in q_items]
+        [self.task_queue.add(item=item, priority=0, must_complete=True) for item in q_items]
 
         if not self.data.account:
-            self.task_queue.add(item=QueueItem(self.get_account_info, must_complete=True))
+            self.task_queue.add(item=QueueItem(self.get_account_info), must_complete=True)
 
         if not self.data.terminal:
-            self.task_queue.add(item=QueueItem(self.get_terminal_info, must_complete=True))
+            self.task_queue.add(item=QueueItem(self.get_terminal_info), must_complete=True)
 
         if not self.data.version:
-            self.task_queue.add(item=QueueItem(self.get_version, must_complete=True))
+            self.task_queue.add(item=QueueItem(self.get_version), must_complete=True)
 
         await self.task_queue.run()
-
-    def pickle_data(self):
-        """"""
-        fh = open(f'{self.config.test_data_dir}/{self.name}.pkl', 'wb')
-        pickle.dump(self.data, fh, protocol=pickle.HIGHEST_PROTOCOL)
-        fh.close()
-
-    async def compress_data(self):
-        """"""
-        bdata = pickle.dumps(self.data, protocol=pickle.HIGHEST_PROTOCOL)
-        name = self.name + 'xz'
-        with lzma.open(f'{self.config.test_data_dir}/{name}', 'w') as fh:
-            fh.write(bdata)
 
     async def get_terminal_info(self):
         """"""
@@ -184,55 +163,55 @@ class GetData:
 
     async def get_symbols_info(self):
         """"""
-        [self.task_queue.add(item=QueueItem(self.get_symbol_info, symbol))
+        [self.task_queue.add(item=QueueItem(self.get_symbol_info, symbol=symbol))
          for symbol in self.symbols if self.data.symbols.get(symbol) is None]
 
     async def get_symbols_ticks(self):
         """"""
-        [self.task_queue.add(item=QueueItem(self.get_symbol_ticks, symbol))
+        [self.task_queue.add(item=QueueItem(self.get_symbol_ticks, symbol=symbol))
          for symbol in self.symbols if self.data.ticks.get(symbol) is None]
 
     async def get_symbols_prices(self):
         """"""
-        [self.task_queue.add(item=QueueItem(self.get_symbol_prices, symbol))
+        [self.task_queue.add(item=QueueItem(self.get_symbol_prices, symbol=symbol))
          for symbol in self.symbols if self.data.prices.get(symbol) is None]
 
     async def get_symbols_rates(self):
         """"""
-        [self.task_queue.add(item=QueueItem(self.get_symbol_rates, symbol, timeframe), priority=4)
+        [self.task_queue.add(item=QueueItem(self.get_symbol_rates, symbol=symbol, timeframe=timeframe), priority=4)
                   for symbol in self.symbols for timeframe in self.timeframes
-         if self.data.rates.get(symbol, {}).get(timeframe.name) is None]
+         if self.data.rates.get(symbol, {}).get(timeframe) is None]
 
     @backoff_decorator
-    async def get_symbol_info(self, symbol: str):
+    async def get_symbol_info(self, *, symbol: str):
         """"""
         res = await self.mt5.symbol_info(symbol)
         self.data.symbols[symbol] = res._asdict()
 
     @backoff_decorator
-    async def get_symbol_ticks(self, symbol: str):
+    async def get_symbol_ticks(self, *, symbol: str):
         """"""
         res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
-        res = pd.DataFrame(res)
-        res.drop_duplicates(subset=['time'], keep='last', inplace=True)
-        res.set_index('time', inplace=True, drop=False)
+        # res = pd.DataFrame(res)
+        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+        # res.set_index('time', inplace=True, drop=False)
         self.data.ticks[symbol] = res
 
     @backoff_decorator
-    async def get_symbol_prices(self, symbol: str):
+    async def get_symbol_prices(self, *, symbol: str):
         """"""
         res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
-        res = pd.DataFrame(res)
-        res.drop_duplicates(subset=['time'], keep='last', inplace=True)
-        res.set_index('time', inplace=True, drop=False)
-        res = res.reindex(self.span) # fill in missing values with NaN
+        # res = pd.DataFrame(res)
+        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+        # res.set_index('time', inplace=True, drop=False)
+        # res = res.reindex(self.span) # fill in missing values with NaN
         self.data.prices[symbol] = res
 
     @backoff_decorator
-    async def get_symbol_rates(self, symbol: str, timeframe: TimeFrame):
+    async def get_symbol_rates(self, *, symbol: str, timeframe: TimeFrame):
         """"""
         res = await self.mt5.copy_rates_range(symbol, timeframe, self.start, self.end)
-        res = pd.DataFrame(res)
-        res.drop_duplicates(subset=['time'], keep='last', inplace=True)
-        res.set_index('time', inplace=True, drop=False)
-        self.data.rates.setdefault(symbol, {})[timeframe.name] = res
+        # res = pd.DataFrame(res)
+        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+        # res.set_index('time', inplace=True, drop=False)
+        self.data.rates.setdefault(symbol, {})[timeframe] = res

@@ -7,11 +7,12 @@ logger = getLogger(__name__)
 
 
 class QueueItem:
-    def __init__(self, task_item: Callable | Coroutine, *args, must_complete: bool = False, **kwargs):
+    must_complete: bool
+    
+    def __init__(self, task_item: Callable | Coroutine, *args, **kwargs):
         self.task_item = task_item
         self.args = args
         self.kwargs = kwargs
-        self.must_complete = must_complete
         self.time = asyncio.get_event_loop().time()
 
     def __hash__(self):
@@ -44,12 +45,13 @@ class TaskQueue:
         self.stop = False
         self.on_exit = on_exit
 
-    def add(self, *, item: QueueItem, priority=3):
+    def add(self, *, item: QueueItem, priority=3, must_complete=False):
         try:
             if not self.stop:
+                item.must_complete = must_complete
                 if isinstance(self.queue, asyncio.PriorityQueue):
-                    self.priority_tasks.add(item) if item.must_complete else ...
                     item = (priority, item)
+                self.priority_tasks.add(item) if item.must_complete else ...
                 self.queue.put_nowait(item)
 
         except asyncio.QueueFull:
