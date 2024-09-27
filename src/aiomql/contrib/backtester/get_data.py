@@ -31,7 +31,7 @@ Cursor = namedtuple('Cursor', ['index', 'time'])
 
 
 @dataclass
-class Data:
+class TestData:
     name: str = ''
     terminal: dict[str, [str | int | bool | float]] = field(default_factory=dict)
     version: tuple[int, int, str] = (0, 0, '')
@@ -39,7 +39,7 @@ class Data:
     symbols: dict[str, dict] = field(default_factory=dict)
     prices: dict[str, ndarray] = field(default_factory=dict)
     ticks: dict[str, ndarray] = field(default_factory=dict)
-    rates: dict[str, dict[str, ndarray]] = field(default_factory=dict)
+    rates: dict[str, dict[int, ndarray]] = field(default_factory=dict)
     span: range = range(0)
     range: range = range(0)
     orders: dict[int, dict] = field(default_factory=lambda: {})
@@ -48,6 +48,7 @@ class Data:
     active_orders: tuple[int, ...] = field(default_factory=lambda: ())
     open_positions: tuple[int, ...] = field(default_factory=lambda: ())
     cursor: Cursor = None
+    margins: dict[int, float] = field(default_factory=lambda: {})
 
     def __str__(self):
         return f"""
@@ -74,7 +75,7 @@ class Data:
 
 
 class GetData:
-    data: Data | None
+    data: TestData
 
     def __init__(self, *, start: datetime, end: datetime, symbols: Sequence[str],
                  timeframes: Sequence[TimeFrame], name: str = '', tz: str = 'Etc/UTC'):
@@ -89,22 +90,22 @@ class GetData:
         diff = int((self.end - self.start).total_seconds())
         self.range = range(diff)
         self.span = range(start := int(self.start.timestamp()), diff + start)
-        self.data = Data(name=name, span=self.span, range=self.range)
+        self.data = TestData(name=name, span=self.span, range=self.range)
         self.mt5 = MetaTrader()
         self.task_queue = TaskQueue(workers=250)
 
     @classmethod
-    def pickle_data(cls, *, data: Data, name: str | Path):
+    def pickle_data(cls, *, data: TestData, name: str | Path):
         """"""
         try:
             with open(name, 'wb') as fo:
-                data = pickle.dump(data, fo, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(data, fo, protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as err:
             logger.error(f"Error in dump_data: {err}")
 
 
     @classmethod
-    def load_data(cls, *, name: str | Path):
+    def load_data(cls, *, name: str | Path) -> TestData:
         """"""
         try:
             with open(name, 'rb') as fo:
@@ -112,12 +113,11 @@ class GetData:
                 return data
         except Exception as err:
             logger.error(f"Error: {err}")
-            return None
 
-    def pickle_data(self, *, name: str | Path = ''):
+    def save_data(self, *, name: str | Path = ''):
         name = name or self.name
-        self.__class___.pickle_data(data=self.data, name=name)
-
+        with open(name, 'wb') as fo:
+            pickle.dump(self.data, fo, protocol=pickle.HIGHEST_PROTOCOL)
 
     async def get_data(self, workers: int = None):
         """"""
@@ -192,26 +192,16 @@ class GetData:
     async def get_symbol_ticks(self, *, symbol: str):
         """"""
         res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
-        # res = pd.DataFrame(res)
-        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
-        # res.set_index('time', inplace=True, drop=False)
         self.data.ticks[symbol] = res
 
     @backoff_decorator
     async def get_symbol_prices(self, *, symbol: str):
         """"""
         res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
-        # res = pd.DataFrame(res)
-        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
-        # res.set_index('time', inplace=True, drop=False)
-        # res = res.reindex(self.span) # fill in missing values with NaN
         self.data.prices[symbol] = res
 
     @backoff_decorator
     async def get_symbol_rates(self, *, symbol: str, timeframe: TimeFrame):
         """"""
         res = await self.mt5.copy_rates_range(symbol, timeframe, self.start, self.end)
-        # res = pd.DataFrame(res)
-        # res.drop_duplicates(subset=['time'], keep='last', inplace=True)
-        # res.set_index('time', inplace=True, drop=False)
         self.data.rates.setdefault(symbol, {})[timeframe] = res

@@ -14,11 +14,12 @@ from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TradeOrder, TradePositio
                          TradeRequest, OrderCheckResult, OrderSendResult, TerminalInfo)
 
 from ...core.meta_trader import MetaTrader
-from ...core.constants import TimeFrame, CopyTicks, OrderType, TradeAction, AccountStopOutMode, PositionReason
+from ...core.constants import (TimeFrame, CopyTicks, OrderType, TradeAction, AccountStopOutMode, PositionReason,
+                               DealType, DealReason, DealEntry, OrderReason)
 from ...core.config import Config
 from ...utils import round_down, round_up, error_handler, error_handler_sync, async_cache
 
-from .get_data import Data, GetData, Cursor
+from .get_data import TestData, GetData, Cursor
 from .test_account import TestAccount
 from .types import PositionsManager, OrdersManager, DealsManager
 
@@ -33,25 +34,53 @@ class BackTestEngine:
     range: range
     cursor: Cursor
     iter: zip_longest
+    rates: dict[str, dict[int, DataFrame]]
+    ticks: dict[str, DataFrame]
+    prices: dict[str, DataFrame]
+    orders: OrdersManager
+    deals: DealsManager
+    positions: PositionsManager
+    _account: TestAccount
+    margins: dict[int, float]
 
-    def __init__(self, data: Data = None, speed: int = 1, start: float | datetime = 0, end: float | datetime = 0):
-        self._data = data or Data()
-        self._account: TestAccount = TestAccount(**self._data.account)
-        self.positions: PositionsManager = PositionsManager()
-        self.orders: OrdersManager = OrdersManager()
-        self.deals: DealsManager = DealsManager()
-        self.margins: dict[int, float] = {}
-        self.config = Config(test_data=self)
-        self.set_up(start=start, end=end, speed=speed)
-        self.cursor: Cursor = self._data.cursor or Cursor(index=self.range.start, time=self.span.start)
-        self._data.name = self._data.name or f"{datetime.fromtimestamp(self.span[0]):%d-%m-%y}_{datetime.fromtimestamp(self.span[-1]):%d-%m-%y}"
+    def __init__(self, *, data: TestData = None, speed: int = 1, start: float | datetime = 0,
+                 end: float | datetime = 0, restart: bool = False):
+        self._data = data or TestData()
+        self.config = Config(backtest_engine=self)
+        self.set_up(start=start, end=end, speed=speed, restart=restart)
+        self.prepare_data()
 
-    def set_up(self, start: float | datetime = 0, end: float | datetime = 0, speed: int = 1):
+    def set_up(self, *, start: float | datetime = 0, end: float | datetime = 0, speed: int = 1, restart: bool = False):
         span_start = (int(start.timestamp()) if isinstance(start, datetime) else int(start)) or self._data.span.start
         span_end = (int(end.timestamp()) if isinstance(end, datetime) else int(end)) or self._data.span.stop
         self.span = range(span_start, span_end, speed)
         self.range = range(0, span_end - span_start, speed)
         self.iter = zip_longest(self.range, self.span)
+
+        if restart and self._data.cursor is not None:
+            self.cursor = self._data.cursor
+            self.go_to(time=self.cursor.time)
+        else:
+            self.cursor: Cursor = self._data.cursor or Cursor(index=self.range.start, time=self.span.start)
+
+    def prepare_data(self):
+        orders = {}
+        for ticket, order in self._data.orders.items():
+            orders[ticket] = TradeOrder((order.get(k) for k in TradeOrder.__match_args__))
+        self.orders = OrdersManager(data=orders)
+
+        positions = {}
+        for ticket, position in self._data.positions.items():
+            positions[ticket] = TradePosition((position.get(k) for k in TradePosition.__match_args__))
+        self.positions = PositionsManager(data=positions)
+
+        deals = {}
+        for ticket, deal in self._data.deals.items():
+            deals[ticket] = TradeDeal((deal.get(k) for k in TradeDeal.__match_args__))
+
+        self._account: TestAccount = TestAccount(**self._data.account)
+
+        self.margins = self._data.margins
 
     def __next__(self) -> Cursor:
         try:
@@ -75,12 +104,12 @@ class BackTestEngine:
         self.iter = zip_longest(self.range, self.span)
         self.cursor = Cursor(index=self.range.start, time=self.span.start)
 
-    def go_to(self, *, time: datetime | int):
+    def go_to(self, *, time: datetime | float):
         time =  int(time.timestamp()) if isinstance(time, datetime) else int(time)
         steps = time - self.cursor.time
         
         if steps > 0:
-            self.fast_forward(steps)
+            self.fast_forward(steps=steps)
             return
 
         range_start = time - self.span.start
@@ -126,6 +155,7 @@ class BackTestEngine:
             if self.config.use_terminal_for_backtesting:
                 tick = await self.mt5.copy_ticks_from(symbol, time, 1, CopyTicks.ALL)
                 return Tick(tick[-1]) if tick else None
+
             tick = self.prices[symbol].loc[self.cursor.time]
             return Tick(tick)
         except Exception as exe:
@@ -217,15 +247,38 @@ class BackTestEngine:
 
     @cached_property
     def prices(self) -> dict[str, DataFrame]:
-        return self._data.prices
+        prices = {}
+        for symbol in self._data.prices.keys():
+            res = self._data.prices[symbol]
+            res = pd.DataFrame(res)
+            res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+            res.set_index('time', inplace=True, drop=False)
+            res.reindex(self.span) # fill in missing values with NaN
+            prices[symbol] = res
+        return prices
 
     @cached_property
     def ticks(self) -> dict[str, DataFrame]:
-        return self._data.ticks
+        ticks = {}
+        for symbol in self._data.ticks.keys():
+            res = self._data.ticks[symbol]
+            res = pd.DataFrame(res)
+            res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+            res.set_index('time', inplace=True, drop=False)
+            ticks[symbol] = res
+        return ticks
 
-    @property
-    def rates(self) -> dict[str, dict[str, DataFrame]]:
-        return self._data.rates
+    @cached_property
+    def rates(self) -> dict[str, dict[int, DataFrame]]:
+        rates = {}
+        for symbol in self._data.rates.keys():
+            for timeframe in self._data.rates[symbol].keys():
+                res = self._data.rates[symbol][timeframe]
+                res = pd.DataFrame(res)
+                res.drop_duplicates(subset=['time'], keep='last', inplace=True)
+                res.set_index('time', inplace=True, drop=False)
+                rates[symbol][timeframe] = res
+        return rates
 
     @cached_property
     def symbols(self) -> dict[str, SymbolInfo]:
@@ -257,18 +310,24 @@ class BackTestEngine:
         if action == TradeAction.DEAL and current_position and order_type.opposite == current_position.type:
             res = self.close_position(current_position.ticket)
             if res:
-                trade_order.update({'comment': 'Done', 'position_id': deal_ticket, 'ticket': order_ticket,
-                                    'position_by_id': current_position.ticket, 'time_setup': current_tick.time, 'time_expiration': current_tick.time,
-                                     'time_setup_msc': current_tick.time_msc, 'time_done': current_tick.time, 'time_done_msc': current_tick.time_msc})
-                # ToDo: Create a deal object here?
-                # ToDo: Update trade order with more information?
+                trade_order.update({'comment': '', 'position_id': current_position.ticket, 'ticket': order_ticket,
+                                    'time_setup': current_tick.time, 'time_expiration': current_tick.time,
+                                    'time_setup_msc': current_tick.time_msc, 'time_done': current_tick.time,
+                                    'time_done_msc': current_tick.time_msc, 'type': order_type, 'symbol': symbol,
+                                    'price_current': current_position.price_current, 'reason': OrderReason.EXPERT,
+                                    'volume_initial': current_position.volume})
+                deal = {'ticket': deal_ticket, 'position_id': current_position.ticket, 'order': order_ticket,
+                        'symbol': symbol, 'commission': 0, 'swap': 0, 'fee': 0, 'time': current_tick.time,
+                        'time_msc': current_tick.time_msc, 'volume': current_position.volume,
+                        'price': current_position.price_current, 'type': DealType(order_type), 'reason': DealReason.EXPERT,
+                        'entry': DealEntry.OUT, 'comment': ''}
+
                 order = TradeOrder((trade_order.get(k, 0) for k in TradeOrder.__match_args__))
                 self.orders[order.ticket] = order
-                del self.orders[order.ticket]
+                deal = TradeDeal((deal.get(k, 0) for k in TradeDeal.__match_args__))
+                self.deals[deal.ticket] = deal
                 osr.update({'comment': 'Request completed', 'retcode': 10009,
                             'order': order_ticket, 'deal': deal_ticket,})
-                # ToDo: remove later
-                self.to_json(osr)
             return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
         if action == TradeAction.SLTP and current_position:
@@ -282,33 +341,37 @@ class BackTestEngine:
             if res:
                 # ToDo: Create a deal object here
                 osr.update({'comment': 'Request completed', 'retcode': 10009, 'order': order_ticket, 'deal': deal_ticket,})
-                self.to_json(osr) # ToDo: remove later
-
             return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
         if action == TradeAction.DEAL and order_type in (OrderType.BUY, OrderType.SELL):
             check = await self.order_check(request=request)
+
             if check.retcode != 0:
                 osr = {'retcode': check.retcode, 'comment': check.comment, 'request': check.request}
                 return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
-            # self.to_json(osr) # ToDo: remove later
-            # return OrderSendResult(osr)
+
             price = current_tick.ask if order_type == OrderType.BUY else current_tick.bid
-            # ToDo: Cross check this values with actual values.
-            position = {'comment': 'Position Opened', 'ticket': order_ticket, 'symbol': symbol, 'volume': volume,
-                   'price_open': price, 'price_current': price, 'type': order_type, 'profit': 0, 'reason': PositionReason.EXPERT,
+            position = {'ticket': order_ticket, 'symbol': symbol, 'volume': volume,
+                   'price_open': price, 'price_current': price, 'type': order_type, 'profit': 0,
+                   'reason': PositionReason.EXPERT, 'identifier': order_ticket,
                    'sl': sl, 'tp': tp, 'time': current_tick.time, 'time_msc': current_tick.time_msc,
                    'time_update': current_tick.time, 'time_update_msc': current_tick.time_msc}
 
+            deal = {'ticket': deal_ticket, 'position': order_ticket, 'symbol': symbol, 'commission': 0, 'swap': 0,
+                    'position_id': order_ticket, 'fee': 0, 'time': current_tick.time, 'time_msc': current_tick.time_msc,
+                    'volume': volume, 'price': price, 'type': DealType(order_type), 'reason': DealReason.EXPERT,
+                    'entry': DealEntry.IN}
+
             # ToDo: set time_expiration based on order_type_time
-            trade_order.update({'ticket': order_ticket, 'symbol': symbol, 'volume': volume, 'price': price, 'price_current': price, 'sl': sl,
-                                 'tp': tp, 'price_open': price, 'type': order_type, 'time_setup': current_tick.time, 'time_setup_msc': current_tick.time_msc,
-                                 'volume_current': volume, 'volume_initial': volume, 'position_id': order_ticket})
+            trade_order.update({'ticket': order_ticket, 'symbol': symbol, 'volume': volume, 'price': price,
+                                'price_current': price, 'sl': sl, 'time_setup_msc': current_tick.time_msc,
+                                'tp': tp, 'price_open': price, 'type': order_type, 'time_setup': current_tick.time,
+                                'volume_current': volume, 'volume_initial': volume, 'position_id': order_ticket})
 
             pos = TradePosition((position.get(k, 0) for k in TradePosition.__match_args__))
             order = TradeOrder((trade_order.get(k, 0) for k in TradeOrder.__match_args__))
-            # ToDo: Create a deal object here
-
+            deal = TradeDeal((deal.get(k, 0) for k in TradeDeal.__match_args__))
+            self.deals[deal_ticket] = deal
             self.positions[order.ticket] = pos
             self.orders[order.ticket] = order
             osr.update({'order': order_ticket, 'price': price, 'volume': volume, 'bid': current_tick.bid,
@@ -316,7 +379,6 @@ class BackTestEngine:
             margin = await self.order_calc_margin(action, symbol, volume, price)
             self.margins[order_ticket] = margin
             self.update_account(margin=margin)
-            self.to_json(osr) # ToDo: remove later
             return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
     @error_handler

@@ -1,9 +1,10 @@
+class Form:
+    rest: str
 
-def add(a, b):
-    return a + b
+    @property
+    def rest(self):
+        return 'rest'
 
-def sum(a, b):
-    return add(a, b)
 
-f = sum(1, 2)
-print(f)
+g = Form()
+print(g.rest)
