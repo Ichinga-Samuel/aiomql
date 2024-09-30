@@ -4,7 +4,7 @@ from .constants import BookType, TradeAction, OrderType, OrderTime, OrderFilling
     DealReason, SymbolChartMode, SymbolTradeMode, SymbolCalcMode, SymbolOptionMode, SymbolOrderGTCMode, \
     SymbolOptionRight, \
     SymbolTradeExecution, SymbolSwapMode, DayOfWeek, AccountTradeMode, AccountStopOutMode, AccountMarginMode, \
-    OrderReason, TickFlag
+    OrderReason
 
 from .base import Base
 

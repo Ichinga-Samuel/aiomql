@@ -20,7 +20,7 @@ class Error:
         -10005: 'internal timeout',
     }
 
-    conn_errors = (-10000, -10001, -10002, -10003, -10004, -10005)
+    conn_errors = (-10000, -10001, -10002, -10003, -10004, -10005, -6)
 
     def __init__(self, code: int, description: str = ''):
         self.code = code

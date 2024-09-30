@@ -13,6 +13,7 @@ class QueueItem:
         self.task_item = task_item
         self.args = args
         self.kwargs = kwargs
+        self.must_complete = False
         self.time = asyncio.get_event_loop().time()
 
     def __hash__(self):
@@ -55,7 +56,7 @@ class TaskQueue:
                 self.queue.put_nowait(item)
 
         except asyncio.QueueFull:
-            logger.error(f"Queue is full, could not add {item}")
+            logger.error(f"Queue is full")
 
     async def worker(self):
         while True:

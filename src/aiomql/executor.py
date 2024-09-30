@@ -1,6 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Sequence, Coroutine, Callable
+from typing import Coroutine, Callable
 from logging import getLogger
 
 from .strategy import Strategy
@@ -20,7 +20,7 @@ class Executor:
 
     def __init__(self):
         self.executor = ThreadPoolExecutor
-        self.workers: list[type(Strategy)] = []
+        self.workers: list[Strategy] = []
         self.coroutines: dict[Coroutine | Callable: dict] = {}
         self.functions: dict[Callable: dict] = {}
 
@@ -30,7 +30,7 @@ class Executor:
     def add_coroutine(self, coro: Coroutine, kwargs: dict):
         self.coroutines[coro] = kwargs
 
-    def add_workers(self, strategies: Sequence[type(Strategy)]):
+    def add_workers(self, strategies: tuple[Strategy]):
         """Add multiple strategies at once
 
         Args:
@@ -42,7 +42,7 @@ class Executor:
         """Removes any worker running on a symbol not successfully initialized."""
         self.workers = [worker for worker in self.workers if worker.symbol in symbols]
 
-    def add_worker(self, strategy: type(Strategy)):
+    def add_worker(self, strategy: Strategy):
         """Add a strategy instance to the list of workers
 
         Args:
@@ -51,7 +51,7 @@ class Executor:
         self.workers.append(strategy)
 
     @staticmethod
-    def trade(strategy: type(Strategy)):
+    def trade(strategy: Strategy):
         """Wraps the coroutine trade method of each strategy with 'asyncio.run'.
 
         Args:

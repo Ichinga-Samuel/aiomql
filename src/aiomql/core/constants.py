@@ -17,7 +17,7 @@ class Repr:
     __enum_name__ = ""
     name: str
 
-    def __repr__(self):
+    def __str__(self):
         return f"{self.__enum_name__}_{self.name}"
 
 

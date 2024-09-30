@@ -1,33 +1,26 @@
 from dataclasses import dataclass, field, fields
 import pickle
 from pathlib import Path
-import lzma
 from datetime import datetime
 from logging import getLogger
-from typing import Sequence, ClassVar
-from collections import namedtuple
+from typing import Sequence, NamedTuple
 
+import MetaTrader5
 import pytz
-import numpy as np
-import pandas as pd
 from numpy import ndarray
-from pandas import DataFrame
 
 from ...core.meta_trader import MetaTrader
 from ...core.config import Config
-from ...core.constants import TimeFrame, CopyTicks
+from ...core.constants import TimeFrame
 from ...core.task_queue import TaskQueue, QueueItem
-
 from ...utils import backoff_decorator
 
 logger = getLogger(__name__)
-from MetaTrader5 import TradePosition, TradeOrder, TradeDeal
 
-tof = list(TradeOrder.__match_args__)
-tpf = list(TradePosition.__match_args__)
-tdf = list(TradeDeal.__match_args__)
 
-Cursor = namedtuple('Cursor', ['index', 'time'])
+class Cursor(NamedTuple):
+    index: int
+    time: int
 
 
 @dataclass
@@ -45,23 +38,12 @@ class TestData:
     orders: dict[int, dict] = field(default_factory=lambda: {})
     deals: dict[int, dict] = field(default_factory=lambda: {})
     positions: dict[int, dict] = field(default_factory=lambda: {})
-    active_orders: tuple[int, ...] = field(default_factory=lambda: ())
-    open_positions: tuple[int, ...] = field(default_factory=lambda: ())
+    open_positions: set[int, ...] = field(default_factory=lambda: set())
     cursor: Cursor = None
     margins: dict[int, float] = field(default_factory=lambda: {})
 
     def __str__(self):
-        return f"""
-        Data: {self.name}
-        Terminal: {str(list(self.terminal.keys())[0:2]) + '...' if len(self.terminal) > 3 else list(self.terminal.keys())}
-        Version: {self.version}
-        Account: {str(list(self.account.keys())[0:2]) + '...' if len(self.account) > 3 else list(self.account.keys())}
-        Symbols: {len(self.symbols)} symbols
-        Prices: Prices for {len(self.prices)} symbols
-        Ticks: Ticks for {len(self.ticks)} symbols 
-        Rates: Bars for {len(self.rates)} symbols
-        Span: {datetime.fromtimestamp(self.span.start)} to {datetime.fromtimestamp(self.span.stop)}
-        """
+        return f"{self.name}"
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.name})"
@@ -191,13 +173,13 @@ class GetData:
     @backoff_decorator
     async def get_symbol_ticks(self, *, symbol: str):
         """"""
-        res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
+        res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, MetaTrader5.COPY_TICKS_ALL)
         self.data.ticks[symbol] = res
 
     @backoff_decorator
     async def get_symbol_prices(self, *, symbol: str):
         """"""
-        res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, CopyTicks.ALL)
+        res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, MetaTrader5.COPY_TICKS_ALL)
         self.data.prices[symbol] = res
 
     @backoff_decorator

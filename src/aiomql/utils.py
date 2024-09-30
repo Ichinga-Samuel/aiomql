@@ -61,9 +61,9 @@ def error_handler(func=None, *, msg='', exe = Exception, response=None):
 
     return wrapper
 
-def error_handler_sync(func=None, *, msg='', exe=Exception):
+def error_handler_sync(func=None, *, msg='', exe=Exception, response=None):
     if func is None:
-        return partial(error_handler, msg=msg, exe=exe)
+        return partial(error_handler, msg=msg, exe=exe, response=response)
 
     @wraps(func)
     def wrapper(*args, **kwargs):

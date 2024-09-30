@@ -104,13 +104,13 @@ class Positions:
     async def close_by(self, pos: TradePosition):
         """Close an open position for the trading account."""
         order = Order(position=pos.ticket, symbol=pos.symbol, volume=pos.volume, type=pos.type.opposite,
-                      price=pos.price_current)
+                      price=pos.price_current, action=TradeAction.DEAL)
         return await order.send()
 
     async def close_position(self, *, position: TradePosition):
         """Close an open position for the trading account. Using a position object."""
         order = Order(position=position.ticket, symbol=position.symbol, volume=position.volume,
-                      type=position.type.opposite, price=position.price_current)
+                      type=position.type.opposite, price=position.price_current, action=TradeAction.DEAL)
         return await order.send()
 
     async def close_all(self, symbol: str = '', group: str = '') -> int:

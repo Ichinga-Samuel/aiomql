@@ -7,8 +7,9 @@ from logging import getLogger
 from .task_queue import TaskQueue
 
 logger = getLogger(__name__)
+
 Bot = TypeVar("Bot")
-TestData = TypeVar("TestData")
+BackTestEngine = TypeVar("BackTestEngine")
 
 
 class Config:
@@ -45,20 +46,17 @@ class Config:
     record_trades: bool
     records_dir: Path
     records_dir_name: str
-    compress_test_data: bool
-    test_data_dir: Path
-    test_data_dir_name: str
+    backtest_dir: Path
+    backtest_dir_name: str
     task_queue: TaskQueue
-    _test_data: TestData
+    _backtest_engine: BackTestEngine
     bot: Bot
     _instance: 'Config'
     mode: Literal['backtest', 'live']
     use_terminal_for_backtesting: bool
-    test_data_file: str
     _defaults = {"timeout": 60000, "record_trades": True, "trade_record_mode": "csv", "mode": "live",
-                'filename': "aiomql.json", "records_dir_name": "trade_records", "test_data_dir_name": "test_data",
-                "use_terminal_for_backtesting": True, 'path': '', 'login': 0, 'password': '', 'server': '',
-                 "compress_test_data": False, 'test_data_file': ''}
+                'filename': "aiomql.json", "records_dir_name": "trade_records", "backtest_dir_name": "backtester",
+                "use_terminal_for_backtesting": True, 'path': '', 'login': 0, 'password': '', 'server': ''}
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
@@ -66,7 +64,7 @@ class Config:
             cls._instance.state = {}
             cls._instance.task_queue = TaskQueue()
             cls._instance.set_attributes(**cls._defaults)
-            cls._instance._test_data = None
+            cls._instance._backtest_engine = None
             cls._instance.load_config(**kwargs)
         return cls._instance
 
@@ -74,12 +72,12 @@ class Config:
         self.set_attributes(**kwargs)
 
     @property
-    def test_data(self):
-        return self._test_data
+    def backtest_engine(self):
+        return self._backtest_engine
 
-    @test_data.setter
-    def test_data(self, value: TestData):
-        self._test_data = value
+    @backtest_engine.setter
+    def backtest_engine(self, value: BackTestEngine):
+        self._backtest_engine = value
 
     def set_attributes(self, **kwargs):
         """Set keyword arguments as object attributes
@@ -111,7 +109,8 @@ class Config:
                 if os.path.isfile(check_path):
                     return check_path
             return None
-        except Exception as _:
+        except Exception as err:
+            logger.debug(f"Error finding config file: {err}")
             return
 
     def load_config(self, *, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs):
@@ -156,9 +155,9 @@ class Config:
             self.records_dir = self.root / self.records_dir_name
             self.records_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.mode == "backtest" and not hasattr(self, "test_data_dir"):
-            self.test_data_dir = self.root / self.test_data_dir_name
-            self.test_data_dir.mkdir(parents=True, exist_ok=True)
+        if self.mode == "backtest" and not hasattr(self, "backtest_dir"):
+            self.backtest_dir = self.root / self.backtest_dir_name
+            self.backtest_dir.mkdir(parents=True, exist_ok=True)
 
     def account_info(self) -> dict[str, int | str]:
         """Returns Account login details as found in the config object if available

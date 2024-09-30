@@ -25,13 +25,13 @@ class EventManager:
     def __init__(self, *, num_tasks: int = 0):
         self.num_main_tasks = num_tasks or self.num_main_tasks
 
-    def add_task(self, *tasks: Task):
+    def add_tasks(self, *tasks: Task):
         self.tasks.extend(tasks)
 
     def sigint_handler(self, sig, frame):
         for task in self.tasks:
             task.cancel()
-        self.config.test_data.save()
+        self.config.backtest_engine.wrap_up()
 
     async def acquire(self):
         await self.condition.acquire()
@@ -44,12 +44,11 @@ class EventManager:
             async with self.condition:
                 if self.task_tracker == self.num_main_tasks:
                     self.task_tracker = 0
-                    await self.config.test_data.tracker()
-                    self.config.test_data.next()
+                    await self.config.backtest_engine.tracker()
+                    self.config.backtest_engine.next()
                     self.condition.notify_all()
-                    if ((timestamp := self.config.test_data.cursor.time) % int(60 * 60 * 24)) == 0:
+                    if ((timestamp := self.config.backtest_engine.cursor.time) % int(60 * 60 * 24)) == 0:
                         print(f"if Time: {datetime.fromtimestamp(timestamp)}")
-
                     await asyncio.sleep(0)
 
     async def wait(self):

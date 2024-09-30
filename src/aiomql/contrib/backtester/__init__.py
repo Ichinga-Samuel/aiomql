@@ -1,8 +1,8 @@
 from .meta_tester import MetaTester
 from .backtest_engine import BackTestEngine
-from .get_data import GetData
-from .test_strategy import TestStrategy
+from .get_data import GetData, TestData
+from .strategy_tester import StrategyTester
 from .event_manager import EventManager
-from .strategy_tester import StrategyTester, SingleStrategyTester
+from .backtester import BackTester
 from .test_account import TestAccount
-from .types import PositionsManager, OrdersManager, DealsManager
+from .trades_manager import PositionsManager, OrdersManager, DealsManager

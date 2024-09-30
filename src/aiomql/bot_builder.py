@@ -6,13 +6,11 @@ import logging
 from .executor import Executor
 from .account import Account
 from .core.config import Config
-from .symbol import Symbol as _Symbol
-from .strategy import Strategy as _Strategy
+from .symbol import Symbol as Symbol
+from .strategy import Strategy as Strategy
 
 logger = logging.getLogger(__name__)
 
-Strategy = TypeVar("Strategy", bound=_Strategy)
-Symbol = TypeVar("Symbol", bound=_Symbol)
 
 
 class Bot:

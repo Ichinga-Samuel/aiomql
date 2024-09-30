@@ -1,63 +1,22 @@
 from datetime import datetime
 import asyncio
 from logging import getLogger
-from typing import Callable
+from typing import Literal
 
-import MetaTrader5
 import numpy as np
-from MetaTrader5 import BookInfo, SymbolInfo, AccountInfo, Tick, TerminalInfo, TradeOrder, TradeDeal, \
-    TradePosition, OrderSendResult, OrderCheckResult
+from MetaTrader5 import (BookInfo, SymbolInfo, AccountInfo, Tick, TerminalInfo, TradeOrder, TradeDeal,
+                         TradePosition, OrderSendResult, OrderCheckResult)
 
-from .constants import TimeFrame, CopyTicks, OrderType
+from .constants import OrderType, CopyTicks
+
+from ._core import MetaCore
 from .errors import Error
 from .config import Config
 
 logger = getLogger()
 
 
-class BaseMeta(type):
-    def __new__(mcs, cls_name, bases, cls_dict):
-        defaults = MetaTrader5.__dict__
-        defaults = {f'_{key}': value for key, value in defaults.items() if not key.startswith('_')}
-        cls_dict |= defaults
-        return super().__new__(mcs, cls_name, bases, cls_dict)
-
-
-class MetaTrader(metaclass=BaseMeta):
-    _account_info: Callable
-    _copy_rates_from: Callable
-    _copy_rates_from_pos: Callable
-    _copy_rates_range: Callable
-    _copy_ticks_from: Callable
-    _copy_ticks_range: Callable
-    _history_deals_get: Callable
-    _history_deals_total: Callable
-    _history_orders_get: Callable
-    _history_orders_total: Callable
-    _initialize: Callable
-    _last_error: Callable
-    _login: Callable
-    _market_book_add: Callable
-    _market_book_get: Callable
-    _market_book_release: Callable
-    _order_calc_margin: Callable
-    _order_calc_profit: Callable
-    _order_check: Callable
-    _order_send: Callable
-    _orders_get: Callable
-    _orders_total: Callable
-    _positions_get: Callable
-    _positions_total: Callable
-    _shutdown: Callable
-    _symbol_info: Callable
-    _symbol_info_tick: Callable
-    _symbol_select: Callable
-    _symbols_get: Callable
-    _symbols_total: Callable
-    _terminal_info: Callable
-    _version: Callable
-    config: Config
-
+class MetaTrader(MetaCore):
     def __init__(self):
         self.config = Config()
         self.error: Error = Error(1)
@@ -225,26 +184,27 @@ class MetaTrader(metaclass=BaseMeta):
         res = await self._handler(api)
         return res
 
-    async def copy_rates_from(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int) -> np.ndarray | None:
+    async def copy_rates_from(self, symbol: str, timeframe: int, date_from: datetime | float, count: int) -> np.ndarray | None:
         api = {'func': self._copy_rates_from, 'args': (symbol, timeframe, date_from, count),
                'error_msg': f'Error in obtaining rates for {symbol}'}
         res = await self._handler(api)
         return res
 
-    async def copy_rates_from_pos(self, symbol: str, timeframe: TimeFrame, start_pos: int, count: int) -> np.ndarray | None:
+    async def copy_rates_from_pos(self, symbol: str, timeframe: int, start_pos: int, count: int) -> np.ndarray | None:
         api = {'func': self._copy_rates_from_pos, 'args': (symbol, timeframe, start_pos, count),
                'error_msg': f'Error in obtaining rates for {symbol}'}
         res = await self._handler(api)
         return res
 
-    async def copy_rates_range(self, symbol: str, timeframe: TimeFrame, date_from: datetime | float,
+    async def copy_rates_range(self, symbol: str, timeframe: int, date_from: datetime | float,
                                date_to: datetime | float) -> np.ndarray | None:
         api = {'func': self._copy_rates_range, 'args': (symbol, timeframe, date_from, date_to),
                'error_msg': f'Error in obtaining rates for {symbol}'}
         res = await self._handler(api)
         return res
 
-    async def copy_ticks_from(self, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks) -> np.ndarray | None:
+    async def copy_ticks_from(self, symbol: str, date_from: datetime | float, count: int,
+                              flags: CopyTicks) -> np.ndarray | None:
         api = {'func': self._copy_ticks_from, 'args': (symbol, date_from, count, flags),
                'error_msg': f'Error in obtaining ticks for {symbol}'}
         res = await self._handler(api)
@@ -274,8 +234,8 @@ class MetaTrader(metaclass=BaseMeta):
         res = await self._handler(api)
         return res
 
-    async def order_calc_profit(self, action: OrderType, symbol: str, volume: float, price_open: float,
-                                price_close: float) -> float | None:
+    async def order_calc_profit(self, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str,
+                                volume: float, price_open: float, price_close: float) -> float | None:
         api = {'func': self._order_calc_profit, 'args': (action, symbol, volume, price_open, price_close),
                'error_msg': 'Error in calculating profit.'}
         res = await self._handler(api)
