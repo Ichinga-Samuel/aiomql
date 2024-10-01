@@ -1,38 +1,34 @@
 import asyncio
 from concurrent.futures import ProcessPoolExecutor
-from typing import Type, Iterable, TypeVar, Callable, Coroutine
+from typing import Type, Iterable, Callable, Coroutine
 import logging
 
 from .executor import Executor
-from .account import Account
 from .core.config import Config
+from .core.meta_trader import MetaTrader
 from .symbol import Symbol as Symbol
 from .strategy import Strategy as Strategy
 
 logger = logging.getLogger(__name__)
 
 
-
 class Bot:
     """The bot class. Create a bot instance to run your strategies.
 
     Attributes:
-        account (Account): Account Object.
         executor: The default thread executor.
-        symbols (list[Symbols]): A set of symbols for the trading session
         config (Config): Config instance
+        mt (MetaTrader): MetaTrader instance
 
     """
     config: Config
-    account: Account
-    symbols: set
     executor: Executor
+    mt: MetaTrader
 
     def __init__(self):
-        self.config = Config()
-        self.account = Account()
-        self.symbols = set()
+        self.config = Config(bot=self)
         self.executor = Executor()
+        self.mt = MetaTrader()
 
     @classmethod
     def run_bots(cls, funcs: dict[Callable: dict] = None, num_workers: int = None):
@@ -55,20 +51,18 @@ class Bot:
             SystemExit if sign in was not successful
         """
         try:
-            init = await self.account.sign_in()
-            if not init:
+            login = await self.mt.login()
+            if not login:
                 logger.warning(f"Unable to sign in to MetaTrder 5 Terminal")
                 raise SystemExit
             logger.info("Login Successful")
-            await self.init_symbols()
-            self.executor.remove_workers(symbols=self.symbols)
+            await self.init_strategies()
             self.add_coroutine(self.config.task_queue.start)
-            self.config.bot = self
         except Exception as err:
             logger.error(f"{err}. Bot initialization failed")
             raise SystemExit
 
-    def add_function(self, func: Callable, **kwargs: dict):
+    def add_function(self, func: Callable[..., ...], **kwargs: dict):
         """Add a function to the executor.
 
         Args:
@@ -77,7 +71,7 @@ class Bot:
         """
         self.executor.add_function(func, kwargs)
 
-    def add_coroutine(self, coro: Coroutine | Callable, **kwargs):
+    def add_coroutine(self, coro: Coroutine[..., ...], **kwargs):
         """Add a coroutine to the executor.
 
         Args:
@@ -117,39 +111,32 @@ class Bot:
         """
         [self.add_strategy(strategy) for strategy in strategies]
 
-    def add_strategy_all(self, *, strategy: Type[Strategy], params: dict | None = None):
-        """Use this to run a single strategy on all available instruments in the market using the default parameters
-        i.e. one set of parameters for all trading symbols
+    def add_strategy_all(self, *, strategy: Type[Strategy], params: dict | None = None,
+                         symbols: list[Symbol] = None, **kwargs):
+        """Use this to run a single strategy on multiple symbols with the same parameters and keyword arguments.
 
         Keyword Args:
             strategy (Strategy): Strategy class
             params (dict): A dictionary of parameters for the strategy
+            symbols (list): A list of symbols to run the strategy on
+            **kwargs: Additional keyword arguments for the strategy
         """
         [
-            self.add_strategy(strategy(symbol=symbol, params=params))
-            for symbol in self.symbols
+            self.add_strategy(strategy(symbol=symbol, params=params, **kwargs))
+            for symbol in symbols
         ]
 
-    async def init_symbols(self):
+    @staticmethod
+    async def init_strategy(strategy: Strategy) -> tuple[bool, Strategy]:
+        """Initialize a single strategy. This method is called internally by the bot."""
+        res = await strategy.symbol.init()
+        return res, strategy
+
+    async def init_strategies(self):
         """Initialize the symbols for the current trading session. This method is called internally by the bot."""
-        syms = [self.init_symbol(strategy.symbol) for strategy in self.executor.workers]
-        await asyncio.gather(*syms, return_exceptions=True)
-
-    async def init_symbol(self, symbol: Symbol) -> Symbol:
-        """Initialize a symbol before the beginning of a trading sessions.
-        Removes it from the list of symbols if it was not successfully initialized or not available
-        for the account.
-
-        Args:
-            symbol (Symbol): Symbol object to be initialized
-
-        Returns:
-            Symbol: if successfully initialized
-        """
-        if self.account.has_symbol(symbol):
-            init = await symbol.init()
-            if init:
-                self.symbols.add(symbol)
-                return symbol
-            logger.warning(f"Unable to initialize symbol {symbol}")
-        logger.warning(f"{symbol} not a available for this market")
+        tasks = [self.init_strategy(strategy) for strategy in self.executor.workers]
+        for task in asyncio.as_completed(tasks):
+            res = await task
+            if not res[0]:
+                logger.warning(f"Failed to initialize symbol {res[1].symbol}")
+                self.executor.workers.remove(res[1])

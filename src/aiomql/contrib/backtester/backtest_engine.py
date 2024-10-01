@@ -391,7 +391,7 @@ class BackTestEngine:
                    'sl': sl, 'tp': tp, 'time': current_tick.time, 'time_msc': current_tick.time_msc,
                    'time_update': current_tick.time, 'time_update_msc': current_tick.time_msc}
 
-            deal = {'ticket': deal_ticket, 'position': order_ticket, 'symbol': symbol, 'commission': 0, 'swap': 0,
+            deal = {'ticket': deal_ticket, 'order': order_ticket, 'symbol': symbol, 'commission': 0, 'swap': 0,
                     'position_id': order_ticket, 'fee': 0, 'time': current_tick.time, 'time_msc': current_tick.time_msc,
                     'volume': volume, 'price': price, 'type': DealType(order_type), 'reason': DealReason.EXPERT,
                     'entry': DealEntry.IN}

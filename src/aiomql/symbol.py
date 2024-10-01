@@ -107,16 +107,14 @@ class Symbol(SymbolInfo):
              bool: Returns True if symbol info was successful initialized
         """
         try:
-            if await self.symbol_select():
-                await self.book_add()
-                await self.info()
-                await self.info_tick()
+            res = await asyncio.gather(self.symbol_select(), self.info(), self.info_tick(), self.book_add(),
+                                       return_exceptions=True)
+            if all(res):
                 return True
-            logger.warning(f'Unable to initialized symbol {self}')
+            logger.warning(f'Unable to initialized {self}')
             return False
         except Exception as err:
-            self.select = False
-            logger.warning(err)
+            logger.warning(f'{err}: Unable to initialized {self}')
             return False
 
     async def book_add(self) -> bool:

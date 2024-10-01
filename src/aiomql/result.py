@@ -4,6 +4,8 @@ from logging import getLogger
 from typing import Iterable, Literal
 from asyncio import Lock
 
+from _typeshed import SupportsWrite, SupportsRead
+
 from .core.config import Config
 from .core.models import OrderSendResult
 
@@ -57,16 +59,18 @@ class Result:
             data = self.get_data()
             file = self.config.records_dir / f"{self.name}.csv"
             file.touch(exist_ok=True) if not file.exists() else ...
-            reader: Iterable[dict] = csv.DictReader(file.open('r', newline=''))
+            read_file = file.open('r', newline='')
+            reader: Iterable[dict] = csv.DictReader(read_file)
+            read_file.close()
             rows: list[dict] = []
             headers = set()
             [(rows.append(row), headers.update(row.keys())) for row in reader]
             rows.append(data)
             headers.update(data.keys())
-            writer = csv.DictWriter(file.open('w', newline=''), fieldnames=headers, restval=None,
-                                    extrasaction='ignore')
-            writer.writeheader()
-            writer.writerows(rows)
+            with file.open('w', newline='') as write_file: # type: SupportsWrite[str]
+                writer = csv.DictWriter(write_file, fieldnames=headers, restval=None, extrasaction='ignore')
+                writer.writeheader()
+                writer.writerows(rows)
         except Exception as err:
             logger.error(f'Unable to save to csv: {err}')
 
@@ -89,14 +93,14 @@ class Result:
         try:
             file = self.config.records_dir / f"{self.name}.json"
             data = self.get_data()
-            exists = file.touch(exist_ok=True) if not file.exists() else True
-            if not exists:
-                json.dump([], file.open('w'))
-            with file.open('r') as fh:
+            file.touch(exist_ok=True) if not file.exists() else ...
+            with file.open('r') as fh: # type: SupportsRead[str]
                 rows = json.load(fh)
-            rows.append(data)
-            with file.open('w') as fh:
+                rows.append(data)
+
+            with file.open('w') as fh: # type: SupportsWrite[str]
                 json.dump(rows, fh, indent=2, skipkeys=True, default=self.serialize)
+
         except Exception as err:
             logger.error(f"Unable to save as json file: {err}")
 

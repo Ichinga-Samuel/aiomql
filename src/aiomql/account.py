@@ -1,7 +1,7 @@
-import asyncio
 from logging import getLogger
+from typing import Self
 
-from .core.models import AccountInfo, SymbolInfo
+from .core.models import AccountInfo
 from .core.exceptions import LoginError
 
 logger = getLogger(__name__)
@@ -13,25 +13,18 @@ class Account(AccountInfo):
 
     Attributes:
         connected (bool): Status of connection to MetaTrader 5 Terminal
-        symbols (set[SymbolInfo]): A set of available symbols for the financial market.
 
     Notes:
         Other Account properties are defined in the AccountInfo class.
     """
-    _instance: 'Account'
+    _instance: Self
     connected: bool
-    symbols = set()
     
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, '_instance'):
             cls._instance = super().__new__(cls)
+            cls._instance.exclude = cls._instance.exclude | {'_instance'}
         return cls._instance
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.exclude = self.exclude | {'_instance', 'symbols'}
-        acc = {k: (self.dict[k] or v) for k, v in self.config.account_info().items()}
-        self.set_attributes(**acc)
 
     async def refresh(self):
         """Refreshes the account instance with the latest account details from the MetaTrader 5 terminal"""
@@ -39,7 +32,7 @@ class Account(AccountInfo):
         acc = account_info._asdict()
         self.set_attributes(**acc)
 
-    async def __aenter__(self) -> 'Account':
+    async def __aenter__(self) -> Self:
         """Connect to a trading account and return the account instance.
         Async context manager for the Account class.
 
@@ -49,70 +42,11 @@ class Account(AccountInfo):
         Raises:
             LoginError: If login fails
         """
-        res = await self.sign_in()
-        if not res:
+        self.connected = await self.mt5.login()
+        if not self:
             raise LoginError('Login failed')
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.mt5.shutdown()
         self.connected = False
-
-    async def sign_in(self, **kwargs) -> bool:
-        """Connect to a trading account.
-
-        Returns:
-            bool: True if login was successful else False
-        """
-        acc = self.get_dict(include={'login', 'server', 'password'})
-        self.connected = await self._login(acc=acc, **kwargs)
-        if self.connected:
-            await self.refresh()
-            self.symbols = await self.symbols_get()
-            return self.connected
-        await self.mt5.shutdown()
-        return False
-
-    async def _login(self, *, acc: dict, tries=3, **kwargs) -> bool:
-        res = False
-
-        if tries == 0:
-            return False
-
-        init_args = {**acc} | {'path': self.config.path} | {**kwargs}
-        ini = await self.mt5.initialize(**init_args)
-
-        if ini:
-            res = await self.mt5.login(**acc)
-            if not res:
-                await self.mt5.shutdown()
-
-        if ini and res:
-            return True
-        else:
-            await asyncio.sleep(5+tries)
-            return await self._login(acc=acc, tries=tries-1, **kwargs)
-
-    def has_symbol(self, symbol: str | SymbolInfo):
-        """Checks to see if a symbol is available for a trading account.
-
-        Args:
-            symbol (str | SymbolInfo):
-
-        Returns:
-            bool: True if symbol is present otherwise False
-        """
-        try:
-            return str(symbol) in {s.name for s in self.symbols}
-        except Exception as err:
-            logger.warning(f'Error: {err}; {symbol} not available in this market')
-            return False
-
-    async def symbols_get(self) -> set[SymbolInfo]:
-        """Get all financial instruments from the MetaTrader 5 terminal available for the current account.
-
-        Returns:
-            set[Symbol]: A set of available symbols.
-        """
-        syms = await self.mt5.symbols_get()
-        return {SymbolInfo(name=sym.name) for sym in syms}

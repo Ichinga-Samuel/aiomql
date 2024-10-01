@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Iterator, Literal, TypeVar
+from typing import Iterator, Literal, TypeVar, Self
 import json
 from logging import getLogger
 
@@ -51,7 +51,7 @@ class Config:
     task_queue: TaskQueue
     _backtest_engine: BackTestEngine
     bot: Bot
-    _instance: 'Config'
+    _instance: Self
     mode: Literal['backtest', 'live']
     use_terminal_for_backtesting: bool
     _defaults = {"timeout": 60000, "record_trades": True, "trade_record_mode": "csv", "mode": "live",

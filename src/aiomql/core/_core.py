@@ -1,10 +1,10 @@
 from typing import Callable
 
 import MetaTrader5
-
 from MetaTrader5 import (Tick, SymbolInfo, AccountInfo, TerminalInfo, TradeOrder, TradePosition, TradeDeal,
                          OrderCheckResult, OrderSendResult, BookInfo, TradeRequest)
 
+from .config import Config
 
 constants = ('TIMEFRAME_M1', 'TIMEFRAME_M2', 'TIMEFRAME_M3', 'TIMEFRAME_M4', 'TIMEFRAME_M5', 'TIMEFRAME_M6',
              'TIMEFRAME_M10', 'TIMEFRAME_M12', 'TIMEFRAME_M15', 'TIMEFRAME_M20', 'TIMEFRAME_M30', 'TIMEFRAME_H1',

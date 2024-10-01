@@ -6,7 +6,6 @@ from .event_manager import EventManager
 from .meta_tester import MetaTester
 from .backtest_engine import BackTestEngine
 from .strategy_tester import StrategyTester
-from ...core import Config
 
 logger = getLogger(__name__)
 
@@ -22,7 +21,6 @@ class BackTester:
         try:
             await self.mt5.initialize()
             strategies = [strategy for strategy in self.strategies if await strategy.symbol.init()]
-            print(f"Number of strategies: {len(strategies)}")
             self.event_manager.num_main_tasks = len(strategies)
             tasks = [*[asyncio.create_task(strategy.test()) for strategy in strategies],
                      asyncio.create_task(self.event_manager.event_monitor())]

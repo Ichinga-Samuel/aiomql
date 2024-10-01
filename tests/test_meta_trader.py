@@ -9,16 +9,17 @@ from . import metatrader5
 
 
 class TestMetaTrader:
+
     @classmethod
-    def setup_class(self):
+    def setup_class(cls, metatrader5):
         tz = pytz.timezone('Etc/UTC')
-        self.mt = MetaTrader()
-        self.mt5 = metatrader5
-        self.symbol = "Volatility 100 Index"
+        cls.mt = MetaTrader()
+        cls.mt5 = metatrader5
+        cls.symbol = "Volatility 100 Index"
         now = datetime.now(tz=tz)
-        self.start = now - timedelta(hours=24)
-        self.end = now + timedelta(hours=2)
-        self.tf = self.mt.TIMEFRAME_H1
+        cls.start = now - timedelta(hours=24)
+        cls.end = now + timedelta(hours=2)
+        cls.tf = cls.mt.TIMEFRAME_H1
 
     @pytest.mark.asyncio
     async def test_initialize(self):

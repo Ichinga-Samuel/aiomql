@@ -1,9 +1,10 @@
 from logging import getLogger
 
-from .core.models import TradeRequest, OrderSendResult, OrderCheckResult, TradeOrder
+from .core.models import TradeRequest, TradeOrder
 from .core.constants import TradeAction, OrderTime, OrderFilling
 from .core.exceptions import OrderError
-from .utils import backoff_decorator
+from .utils import backoff_decorator, error_handler
+from MetaTrader5 import OrderCheckResult, OrderSendResult
 
 logger = getLogger(__name__)
 
@@ -24,25 +25,20 @@ class Order(TradeRequest):
             type_time (OrderTime.DAY): Order time
             type_filling (OrderFilling.FOK): Order filling
         """
-        if 'symbol' in kwargs:
-            kwargs['symbol'] = str(kwargs['symbol'])
-        self.action = kwargs.pop('action', TradeAction.DEAL)
-        self.type_time = kwargs.pop('type_time', OrderTime.DAY)
-        self.type_filling = kwargs.pop('type_filling', OrderFilling.FOK)
+        kwargs = {'action': TradeAction.DEAL, OrderTime.DAY: self.type_time, 'type_filling': OrderFilling.FOK, **kwargs}
         super().__init__(**kwargs)
 
     async def orders_total(self):
-        """Get the number of active orders.
+        """Get the number of active pending orders.
 
         Returns:
             (int): total number of active orders
         """
         return await self.mt5.orders_total()
 
-    @backoff_decorator
     async def get_order(self, *, ticket: int) -> TradeOrder | None:
         """
-        Get the order by ticket number.
+        Get a pending order by ticket number.
 
         Args:
             ticket (int): Order ticket number
@@ -50,15 +46,15 @@ class Order(TradeRequest):
         Returns:
         """
         orders = await self.mt5.orders_get(ticket=ticket)
+        order = None
+        for order_ in orders:
+            if order_.ticket == ticket:
+                return TradeOrder(**order_._asdict())
+        return order
 
-        if orders and (order := orders[0]).ticket == ticket:
-            return TradeOrder(**order._asdict())
-
-        return None
-
-    @backoff_decorator
     async def get_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '') -> tuple[TradeOrder, ...]:
-        """Get the list of active orders for the current symbol.
+        """Get the list of active pending orders for the current symbol.
+
         Keyword Args:
             ticket (int): Order ticket number
             symbol (str): Symbol name
@@ -66,15 +62,12 @@ class Order(TradeRequest):
         Returns:
             tuple[TradeOrder]: A Tuple of active trade orders as TradeOrder objects
         """
-        symbol = getattr(self, 'symbol', symbol)
         orders = await self.mt5.orders_get(symbol=symbol, ticket=ticket, group=group)
-
         if orders is not None:
-            orders = (TradeOrder(**order._asdict()) for order in orders)
-            return tuple(orders)
-
+            return tuple(TradeOrder(**order._asdict()) for order in orders)
         return tuple()
 
+    @backoff_decorator
     async def check(self, **kwargs) -> OrderCheckResult:
         """Check funds sufficiency for performing a required trading operation and the possibility of executing it.
 
@@ -88,8 +81,9 @@ class Order(TradeRequest):
         res = await self.mt5.order_check(req)
         if res is None:
             raise OrderError(f'Order check failed for {self.symbol}')
-        return OrderCheckResult(**res._asdict())
+        return res
 
+    @backoff_decorator
     async def send(self) -> OrderSendResult:
         """Send a request to perform a trading operation from the terminal to the trade server.
 
@@ -102,17 +96,9 @@ class Order(TradeRequest):
         res = await self.mt5.order_send(self.dict)
         if res is None:
             raise OrderError(f'Failed to send order {self.symbol}')
-        res = OrderSendResult(**res._asdict())
-        try:
-            profit = await self.calc_profit()
-            loss = await self.calc_profit(tp=self.sl)
-            res.loss = loss
-            res.profit = profit
-        except Exception as _:
-            pass
         return res
 
-    async def calc_margin(self) -> float:
+    async def calc_margin(self) -> float | None:
         """Return the required margin in the account currency to perform a specified trading operation.
 
         Returns:
@@ -122,21 +108,16 @@ class Order(TradeRequest):
             OrderError: If not successful
         """
         res = await self.mt5.order_calc_margin(self.type, self.symbol, self.volume, self.price)
-        if res is None:
-            raise OrderError(f'Failed to calculate margin for {self.symbol}')
         return res
 
-    async def calc_profit(self, **kwargs) -> float | None:
+    @error_handler(response=0)
+    async def calc_profit(self) -> float:
         """Return profit in the account currency for a specified trading operation.
 
         Returns:
             float: Returns float value if successful
             None: If not successful
         """
-        include = {'tp', 'price', 'symbol', 'volume', 'type'}
-        args = self.get_dict(include=include)
-        args |= kwargs
-        if len(include.intersection(args.keys())) < len(include):
-            return None
-        res = await self.mt5.order_calc_profit(args['type'], args['symbol'], args['volume'], args['price'], args['tp'])
+        action, symbol, volume, price_open, price_close = self.type, self.symbol, self.volume, self.price, self.tp
+        res = await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
         return res

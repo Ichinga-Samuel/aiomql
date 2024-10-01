@@ -1,5 +1,5 @@
 import pytest
-from aiomql import MetaTester, TestData, MetaTrader, Config
+from aiomql import Config
 import MetaTrader5
 
 
@@ -10,5 +10,5 @@ def config():
 
 
 @pytest.fixture(scope='session', autouse=True)
-def metatrader5(config):
+def metatrader5():
     return MetaTrader5

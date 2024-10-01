@@ -19,7 +19,6 @@ class AccountInfo(Base):
 
     Attributes:
         login: int
-        password: str
         server: str
         trade_mode: AccountTradeMode
         balance: float
@@ -51,7 +50,6 @@ class AccountInfo(Base):
         company: str
     """
     login: int = 0
-    password: str = ''
     server: str = ''
     trade_mode: AccountTradeMode
     balance: float
@@ -334,9 +332,7 @@ class SymbolInfo(Base):
     path: str
 
     def __init__(self, **kwargs):
-        if (name := kwargs.pop('name', '')) == '':
-            raise AttributeError('Symbol Object Must be initialized with a name')
-        self.name = name
+        assert 'name' in kwargs, "Symbol Object Must be initialized with a name"
         super().__init__(**kwargs)
 
     def __repr__(self):

@@ -46,7 +46,7 @@ class Strategy(ABC):
         self.name = name or self.__class__.__name__
         self.parameters["symbol"] = symbol.name
         self.parameters["name"] = self.name
-        self.sessions = sessions or Sessions(Session(start=0, end=dtime(hour=23, minute=59, second=59)))
+        self.sessions = sessions or Sessions(sessions=[Session(start=0, end=dtime(hour=23, minute=59, second=59))])
         self.config = Config()
         self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
 

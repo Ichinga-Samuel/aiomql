@@ -38,10 +38,6 @@ class Executor:
         """
         self.workers.extend(strategies)
 
-    def remove_workers(self, *, symbols: set):
-        """Removes any worker running on a symbol not successfully initialized."""
-        self.workers = [worker for worker in self.workers if worker.symbol in symbols]
-
     def add_worker(self, strategy: Strategy):
         """Add a strategy instance to the list of workers
 
