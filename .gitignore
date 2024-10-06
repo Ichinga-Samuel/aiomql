@@ -48,7 +48,6 @@ nosetests.xml
 coverage.xml
 *,cover
 .hypothesis/
-scrap.py
 
 # Translations
 *.mo
@@ -74,9 +73,9 @@ target/
 .vscode/
 
 # config files
-config.json
 aiomql.json
-config/
-test_data/
-test.json
+
+# development 
+terminals/
+
 

@@ -327,13 +327,9 @@ class SymbolInfo(Base):
     exchange: str
     formula: str
     isin: str
-    name: str
     page: str
     path: str
-
-    def __init__(self, **kwargs):
-        assert 'name' in kwargs, "Symbol Object Must be initialized with a name"
-        super().__init__(**kwargs)
+    name: str = ''
 
     def __repr__(self):
         return '%(class)s(name=%(name)s)' % {'class': self.__class__.__name__, 'name': self.name}
@@ -346,6 +342,7 @@ class SymbolInfo(Base):
 
     def __hash__(self):
         return hash(self.name)
+        # return hash(id(self))
 
 
 class BookInfo(Base):

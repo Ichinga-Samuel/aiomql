@@ -4,7 +4,7 @@ from logging import getLogger
 
 from .config import Config
 from .meta_trader import MetaTrader
-from ..contrib.backtester import MetaTester
+from .meta_backtester import MetaBackTester
 
 logger = getLogger(__name__)
 
@@ -13,18 +13,17 @@ class Base:
     """A base class for all data structure classes in the aiomql package. This class provides a set of common methods
      and attributes for handling data.
     """
-    mt5: MetaTrader
-    config: Config
+    exclude: set
+    include: set
 
     def __init__(self, **kwargs):
         """
         Initialize a new instance of the Base class
+
         Args:
             **kwargs: Set instance attributes with keyword arguments. Only if they are annotated on the class body.
         """
-        self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaTester()
-        self.exclude = {'mt5', "config", 'exclude', 'include', 'annotations', 'class_vars', 'dict'}
+        self.exclude = {'mt5', "config", 'exclude', 'include', 'annotations', 'class_vars', 'dict', '_instance'}
         self.include = set()
         self.set_attributes(**kwargs)
 
@@ -37,7 +36,7 @@ class Base:
 
     def set_attributes(self, **kwargs):
         """Set keyword arguments as object attributes
-        
+
         Keyword Args:
             **kwargs: Object attributes and values as keyword arguments
 
@@ -51,15 +50,15 @@ class Base:
             try:
                 setattr(self, i, self.annotations[i](j))
             except KeyError:
-                logger.warning(f"Attribute {i} does not belong to class {self.__class__.__name__}")
+                logger.debug(f"Attribute {i} does not belong to class {self.__class__.__name__}")
                 continue
 
-            except ValueError:
-                logger.warning(f'Cannot covert object of type {type(j)} to type {self.annotations[i]}')
-                continue
+            except (ValueError, TypeError):
+                logger.debug(f'Cannot covert object of type {type(j)} to type {self.annotations[i]}')
+                setattr(self, i, j)
 
             except Exception as exe:
-                logger.warning(f'Did not set attribute {i} on class {self.__class__.__name__} due to {exe}')
+                logger.debug(f'Did not set attribute {i} on class {self.__class__.__name__} due to {exe}')
                 continue
 
     @property
@@ -71,7 +70,7 @@ class Base:
             dict: A dictionary of class annotations
         """
         annots = {}
-        for base in self.__class__.__mro__[-3::-1]:
+        for base in self.__class__.__mro__[::-1]:
             annots |= getattr(base, '__annotations__', {})
         return annots
 
@@ -100,7 +99,7 @@ class Base:
         Returns:
             dict: A dictionary of available class attributes in all ancestor classes and the current class.
         """
-        clss = self.__class__.__mro__[-3::-1]
+        clss = self.__class__.__mro__[::-1]
         cls_dict = {}
         for cls in clss:
             cls_dict |= cls.__dict__
@@ -119,3 +118,10 @@ class Base:
                     key not in _filter}
         except Exception as err:
             logger.warning(err)
+
+
+class _Base(Base):
+    def __init__(self, **kwargs):
+        self.config = Config()
+        self.mt5 = MetaTrader() if self.config.mode != 'backtest' else MetaBackTester()
+        super().__init__(**kwargs)

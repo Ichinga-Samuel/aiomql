@@ -54,34 +54,35 @@ class TaskQueue:
                     item = (priority, item)
                 self.priority_tasks.add(item) if item.must_complete else ...
                 self.queue.put_nowait(item)
-
         except asyncio.QueueFull:
-            logger.error(f"Queue is full")
+            logger.error("Queue is full")
 
     async def worker(self):
         while True:
-            if isinstance(self.queue, asyncio.PriorityQueue):
-                _, item = await self.queue.get()
+            try:
+                if isinstance(self.queue, asyncio.PriorityQueue):
+                    _, item = self.queue.get_nowait()
 
-            else:
-                item = await self.queue.get()
-                
-            if not self.stop or item.must_complete:
-                await item.run()
+                else:
+                    item = self.queue.get_nowait()
 
-            self.queue.task_done()
-            self.priority_tasks.discard(item)
+                if not self.stop or item.must_complete:
+                    await item.run()
 
-            if self.stop and len(self.priority_tasks) == 0:
-                print('All priority tasks completed')
-                self.cancel()
-                break
+                self.queue.task_done()
+                self.priority_tasks.discard(item)
+                if self.stop and len(self.priority_tasks) == 0:
+                    logger.info('All priority tasks completed')
+                    self.cancel()
+                    break
+            except Exception as err:
+                logger.error(f"Error {err} occurred in worker")
 
     def sigint_handle(self, sig, frame):
-        print('SIGINT received, cleaning up...')
+        logger.info('SIGINT received, cleaning up...')
 
         if self.on_exit == 'complete_priority' and self.priority_tasks:
-            print(f'Completing {len(self.priority_tasks)} priority tasks...')
+            logger.info(f'Completing {len(self.priority_tasks)} priority tasks...')
             self.stop = True
         else:
             self.cancel()
@@ -100,26 +101,24 @@ class TaskQueue:
             await asyncio.wait_for(task, timeout = timeout or self.timeout)
 
         except TimeoutError:
-            print(f"Timed out after {loop.time() - start} seconds. {self.queue.qsize()} tasks remaining")
+            logger.warning(f"Timed out after {loop.time() - start} seconds. {self.queue.qsize()} tasks remaining")
 
             if self.on_exit == 'complete_priority' and self.priority_tasks:
-                print(f'Completing {len(self.priority_tasks)} priority tasks...')
+                logger.info(f'Completing {len(self.priority_tasks)} priority tasks...')
                 self.stop = True
                 await self.queue.join()
-
             else:
                 self.cancel()
 
         except asyncio.CancelledError:
-            print('Tasks cancelled')
+            logger.debug('All tasks cancelled')
 
         finally:
-            print(f'Exiting queue after {(loop.time() - start)} seconds.'
+            logger.info(f'Exiting queue after {(loop.time() - start)} seconds.'
                   f'{self.queue.qsize()} tasks remaining, {len(self.priority_tasks)} are priority tasks')
 
         self.cancel()
 
     def cancel(self):
-        cancelled = [task.cancel() for task in self.tasks if not task.done()]
-        print(f'Cancelled {len(cancelled)} worker tasks') if cancelled else ...
+        [task.cancel() for task in self.tasks if not task.done()]
         self.tasks.clear()

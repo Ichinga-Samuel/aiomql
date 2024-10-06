@@ -1,5 +1,5 @@
-from datetime import datetime
 import asyncio
+from datetime import datetime
 from logging import getLogger
 from typing import Literal
 
@@ -17,6 +17,7 @@ logger = getLogger()
 
 
 class MetaTrader(MetaCore):
+
     def __init__(self):
         self.config = Config()
         self.error: Error = Error(1)
@@ -29,7 +30,8 @@ class MetaTrader(MetaCore):
         Returns:
             MetaTrader: An instance of the MetaTrader class.
         """
-        await self.initialize(**Config().account_info())
+        await self.initialize()
+        await self.login()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -50,7 +52,7 @@ class MetaTrader(MetaCore):
             self.error = Error(*err)
 
             if self.error.is_connection_error():
-                await self.initialize(path=self.config.path)
+                await self.initialize()
                 await self.login()
                 res = await asyncio.to_thread(func, *args, **kwargs)
 
@@ -81,7 +83,7 @@ class MetaTrader(MetaCore):
         server = server or acc_details.get('server', '')
         return await asyncio.to_thread(self._login, login, password=password, server=server, timeout=timeout)
 
-    async def initialize(self, path: str = "", login: int = 0, password: str = "", server: str = "",
+    async def initialize(self, path: str = None, login: int = 0, password: str = "", server: str = "",
                          timeout: int | None = None, portable=False) -> bool:
         """
         Initializes the connection to the MetaTrader terminal. All parameters are optional.
@@ -97,16 +99,23 @@ class MetaTrader(MetaCore):
         Returns:
             bool: True if successful, False otherwise.
         """
-        path = path or self.config.path
-        args = (str(path),) if path else ()
-        acc = self.config.account_info()
-        kwargs = {key: value for key, value in (('login', login or acc.get('login')),
-                                                ('password', password or acc.get('password')),
-                                                ('server', server or acc.get('server')),
-                                                ('timeout', timeout or 60000),
-                                                ('portable', portable)) if key is not None}
-        res = await asyncio.to_thread(self._initialize, *args, **kwargs)
-        return res
+        async with asyncio.Lock() as _:
+            path = self.config.path if path is None else path
+            args = (str(path),) if path else ()
+            acc = self.config.account_info()
+            kwargs = {key: value for key, value in (('login', login or acc.get('login')),
+                                                    ('password', password or acc.get('password')),
+                                                    ('server', server or acc.get('server')),
+                                                    ('timeout', timeout or 60000),
+                                                    ('portable', portable)) if key is not None}
+            res = await asyncio.to_thread(self._initialize, *args, **kwargs)
+            if res is False:
+                await self.shutdown()
+                res = await asyncio.to_thread(self._initialize, *args, **kwargs)
+            if not res:
+                err = await self.last_error()
+                self.error = Error(*err)
+            return res
 
     async def shutdown(self) -> None:
         """
@@ -228,7 +237,8 @@ class MetaTrader(MetaCore):
         res = await self._handler(api)
         return res
 
-    async def order_calc_margin(self, action: OrderType, symbol: str, volume: float, price: float) -> float | None:
+    async def order_calc_margin(self, action: Literal[OrderType.BUY, OrderType.SELL],
+                                symbol: str, volume: float, price: float) -> float | None:
         api = {'func': self._order_calc_margin, 'args': (action, symbol, volume, price),
                'error_msg': 'Error in calculating margin.'}
         res = await self._handler(api)

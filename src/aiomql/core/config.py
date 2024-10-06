@@ -1,3 +1,4 @@
+import inspect
 import os
 from pathlib import Path
 from typing import Iterator, Literal, TypeVar, Self
@@ -7,9 +8,14 @@ from logging import getLogger
 from .task_queue import TaskQueue
 
 logger = getLogger(__name__)
-
 Bot = TypeVar("Bot")
 BackTestEngine = TypeVar("BackTestEngine")
+
+def func():
+    stack = inspect.stack()
+    calling_context = next(context for context in stack if context.filename != __file__)
+    print(calling_context.filename)
+    return calling_context.filename
 
 
 class Config:
@@ -26,7 +32,7 @@ class Config:
         path (str): Path to terminal file
         timeout (int): Timeout for terminal connection
         state (dict): A global state dictionary for storing data across the framework
-        root (str): Root directory of the project
+        root (Path): Root directory of the project
 
     Notes:
         By default, the config class looks for a file named aiomql.json.
@@ -80,11 +86,13 @@ class Config:
         self._backtest_engine = value
 
     def set_attributes(self, **kwargs):
-        """Set keyword arguments as object attributes
+        """Set keyword arguments as object attributes, The root folder attribute can't be set here.
 
         Keyword Args:
             **kwargs: Object attributes and values as keyword arguments
         """
+        if kwargs.pop('root', None) is not None:
+            logger.warning('Tried setting root from set_attributes. Use load_config to change project root')
         [setattr(self, key, value) for key, value in kwargs.items()]
 
     @staticmethod
@@ -113,7 +121,7 @@ class Config:
             logger.debug(f"Error finding config file: {err}")
             return
 
-    def load_config(self, *, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs):
+    def load_config(self, *, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Self:
         """Load configuration settings from a file.
 
         Keyword Args:
@@ -128,7 +136,6 @@ class Config:
             self.root = root
         else:
             self.root = self.root if hasattr(self, 'root') else Path.cwd()
-
         if file is not None:
             file = Path(file).resolve()
             if not file.exists():
@@ -151,6 +158,9 @@ class Config:
         data = file_config | kwargs
         self.set_attributes(**data)
 
+        if self.path:
+            self.path = self.root / self.path if not Path(self.path).resolve().exists() else self.path
+
         if self.record_trades and not hasattr(self, "records_dir"):
             self.records_dir = self.root / self.records_dir_name
             self.records_dir.mkdir(parents=True, exist_ok=True)
@@ -158,6 +168,8 @@ class Config:
         if self.mode == "backtest" and not hasattr(self, "backtest_dir"):
             self.backtest_dir = self.root / self.backtest_dir_name
             self.backtest_dir.mkdir(parents=True, exist_ok=True)
+
+        return self
 
     def account_info(self) -> dict[str, int | str]:
         """Returns Account login details as found in the config object if available
