@@ -62,7 +62,8 @@ class Config:
     use_terminal_for_backtesting: bool
     _defaults = {"timeout": 60000, "record_trades": True, "trade_record_mode": "csv", "mode": "live",
                 'filename': "aiomql.json", "records_dir_name": "trade_records", "backtest_dir_name": "backtester",
-                "use_terminal_for_backtesting": True, 'path': '', 'login': 0, 'password': '', 'server': ''}
+                "use_terminal_for_backtesting": True, 'path': '', 'login': 0, 'password': '',
+                 'server': '', 'records_dir': None}
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
@@ -161,7 +162,7 @@ class Config:
         if self.path:
             self.path = self.root / self.path if not Path(self.path).resolve().exists() else self.path
 
-        if self.record_trades and not hasattr(self, "records_dir"):
+        if self.record_trades and (hasattr(self, "records_dir") is False or self.records_dir is None):
             self.records_dir = self.root / self.records_dir_name
             self.records_dir.mkdir(parents=True, exist_ok=True)
 

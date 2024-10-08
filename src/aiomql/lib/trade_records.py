@@ -7,6 +7,8 @@ import csv
 import logging
 from typing import Iterable
 
+from MetaTrader5 import TradePosition
+
 from ..core.config import Config
 from ..core.meta_trader import MetaTrader
 from ..core.meta_backtester import MetaBackTester
@@ -24,6 +26,7 @@ class TradeRecords:
     """
     config: Config
     mt5: MetaTrader | MetaBackTester
+    positions: list[TradePosition] | None = None
 
     def __init__(self, *, records_dir: Path | str = ''):
         """Initialize the Records class. The main method of this class is update_records which you should call to update
@@ -33,10 +36,10 @@ class TradeRecords:
             records_dir (Path): Absolute path to directory containing record of placed trades.
         """
         self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaBackTester()
+        self.mt5 = MetaTrader() if self.config.mode != 'backtest' else MetaBackTester()
         self.records_dir = records_dir or self.config.records_dir
 
-    async def get_csv_records(self):
+    def get_csv_records(self):
         """Get trade records saved as csv from records_dir folder
 
         Yields:
@@ -46,11 +49,11 @@ class TradeRecords:
             if file.is_file() and file.name.endswith('.csv'):
                 yield file
 
-    async def get_json_records(self):
+    def get_json_records(self):
         """Get trade records from records_dir folder
 
         Yields:
-            files: Trade record files
+            files (Path): Trade record files
         """
         for file in self.records_dir.iterdir():
             if file.is_file() and file.name.endswith('.json'):
@@ -68,7 +71,7 @@ class TradeRecords:
                 rows = [row for row in reader]
                 rows = await self.update_rows(rows=rows)
 
-            with open(file, mode='w', newline='') as fw: # type: SupportsWrite[str]
+            with open(file, mode='w', newline='') as fw:
                 writer = csv.DictWriter(fw, fieldnames=reader.fieldnames, extrasaction='ignore', restval=None)
                 writer.writeheader()
                 writer.writerows(rows)
@@ -81,12 +84,12 @@ class TradeRecords:
             file: Trade record file in csv format
         """
         try:
-            with open(file, mode='r') as fh: # type: SupportsRead[str | bytes]
+            with open(file, mode='r') as fh:
                 data = json.load(fh)
                 rows = [row for row in data]
                 rows = await self.update_rows(rows=rows)
 
-            with open(file, mode='w') as fh: # type: SupportsWrite[str]
+            with open(file, mode='w') as fh:
                 json.dump(rows, fh, indent=2)
         except Exception as err:
             logger.error(f'Error: {err}. Unable to read and update json trade records')
@@ -102,11 +105,13 @@ class TradeRecords:
         """
         try:
             order = int(row['order'])
+            positions = self.positions or await self.mt5.positions_get()
+            position_ids = [position.ticket for position in positions]
             deals = await self.mt5.history_deals_get(position=order)
             if not deals or len(deals) <= 1:
                 return row
             deals = [deal for deal in deals if (deal.order != deal.position_id and deal.position_id == order
-                                                and deal.entry == 1)]
+                                                and deal.entry == 1 and deal.position_id not in position_ids)]
             deals.sort(key=lambda deal: deal.time_msc)
             deal = deals[-1]
             row.update(actual_profit=deal.profit, win=deal.profit > 0, closed=True)
@@ -124,6 +129,7 @@ class TradeRecords:
         Returns:
             list[dict]: A list of dictionaries with the actual profit and win status.
         """
+        self.positions = await self.mt5.positions_get()
         closed, unclosed = [], []
         for row in rows:
             closed_ = row.get('closed', False)
@@ -137,12 +143,12 @@ class TradeRecords:
 
     async def update_csv_records(self):
         """Update csv trade records in the records_dir folder."""
-        records = [self.read_update_csv(file=record) async for record in self.get_csv_records()]
+        records = [self.read_update_csv(file=record) for record in self.get_csv_records()]
         await asyncio.gather(*records)
 
     async def update_json_records(self):
         """Update json trade records in the records_dir folder."""
-        records = [self.read_update_json(file=record) async for record in self.get_json_records()]
+        records = [self.read_update_json(file=record) for record in self.get_json_records()]
         await asyncio.gather(*records)
 
     async def update_csv_record(self, *, file: Path | str):

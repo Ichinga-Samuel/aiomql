@@ -77,7 +77,7 @@ async def buy_order(mt):
            'type': mt.ORDER_TYPE_BUY, 'price': sym_info.ask, 'sl': sl, 'tp': tp}
 
 @pytest.fixture(scope='class')
-async def make_orders(mt):
+async def make_buy_sell_orders(mt):
     sym = 'BTCUSD'
     sym_info = await mt.symbol_info(sym)
     dsl = (sym_info.trade_stops_level + sym_info.spread) * 2 * sym_info.point
