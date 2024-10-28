@@ -613,12 +613,16 @@ class BackTestEngine:
     async def get_rates_from_pos(self, *, symbol: str, timeframe: TimeFrame, start_pos: int, count: int) -> np.ndarray:
         if self.use_terminal:
             # Todo: Optimize this!!!
-            now = datetime.now(tz=UTC).timestamp()
-            b_now = self.cursor.time
-            diff = ceil((now - b_now) / timeframe.seconds)
-            start_pos = int(diff + start_pos)
-            # print('hehk', start_pos, count)
-            res = await self.mt5.copy_rates_from_pos(symbol, timeframe, start_pos, count)
+            # now = datetime.now(tz=UTC).timestamp()
+            # b_now = self.cursor.time
+            # diff = ceil((now - b_now) / timeframe.seconds)
+            # start_pos = int(diff + start_pos)
+            # # print('hehk', start_pos, count)
+            # res = await self.mt5.copy_rates_from_pos(symbol, timeframe, start_pos, count)
+            current_time = self.cursor.time if start_pos == 0 else self.cursor.time - start_pos * timeframe.seconds
+            start = current_time - count * timeframe.seconds
+            start = datetime.fromtimestamp(start, tz=UTC)
+            rates = self.mt5.copy_rates_from(symbol, timeframe, start, count)
             return res
 
         rates = self.rates[symbol][timeframe]

@@ -52,7 +52,6 @@ class EventManager:
                     await self.backtest_engine.tracker()
                     self.backtest_engine.next()
                     self.condition.notify_all()
-                    # print(f"Time: {self.backtest_engine.cursor.time}")
                     if self.backtest_engine.cursor.time % 3600 == 0:
                         print(datetime.strftime(self.backtest_engine.cursor.time, "%Y-%m-%d %H:%M:%S"))
                 if self.backtest_engine.stop_testing:
