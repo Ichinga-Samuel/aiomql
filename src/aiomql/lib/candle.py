@@ -227,7 +227,7 @@ class Candles:
     @property
     def timeframe(self):
         tf = self.time[1] - self.time[0]
-        return TimeFrame.get(abs(tf))
+        return TimeFrame.get_timeframe(abs(tf))
 
     @property
     def columns(self) -> DataFrame:

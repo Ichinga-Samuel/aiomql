@@ -53,7 +53,7 @@ class History:
         self.total_deals: int = 0
         self.total_orders: int = 0
 
-    async def init(self):
+    async def initialize(self):
         """Get history deals and orders"""
         deals, orders = await asyncio.gather(self.get_deals(), self.get_orders(), return_exceptions=True)
         self.deals = deals if isinstance(deals, tuple) else ()

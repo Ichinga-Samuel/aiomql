@@ -1,6 +1,6 @@
 from .account import Account
 from .backtest_runner import BackTestRunner
-from .bot_factory import Bot
+from .bot import Bot
 from .candle import Candle, Candles
 from .executor import Executor
 from .history import History

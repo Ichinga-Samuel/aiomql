@@ -89,7 +89,7 @@ class Base:
         """
         exclude, include = exclude or set(), include or set()
         filter_ = include or set(self.dict.keys()).difference(exclude)
-        return {key: value for key, value in self.dict.items() if key in filter_}
+        return {key: value for key, value in self.dict.items() if key in filter_ and value is not None}
 
     @property
     @cache
@@ -115,7 +115,7 @@ class Base:
         try:
             _filter = self.exclude.difference(self.include)
             return {key: value for key, value in (self.class_vars | self.__dict__).items() if
-                    key not in _filter}
+                    key not in _filter and value is not None}
         except Exception as err:
             logger.warning(err)
 

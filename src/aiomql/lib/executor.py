@@ -1,8 +1,10 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Coroutine, Callable
+import os
 from logging import getLogger
 
+from ..core.config import Config
 from .strategy import Strategy
 
 logger = getLogger(__name__)
@@ -14,23 +16,31 @@ class Executor:
     Attributes:
         executor (ThreadPoolExecutor): The executor object.
         strategy_runners (list): List of strategies.
-        coroutines (dict[Coroutine, dict]): A dictionary of coroutines to run in the executor
+        coroutines (list[Coroutine]): A list of coroutines to run in the executor
         functions (dict[Callable, dict]): A dictionary of functions to run in the executor
-        loop (asyncio.AbstractEventLoop): The event loop
     """
-    loop: asyncio.AbstractEventLoop
+    executor: ThreadPoolExecutor
+    tasks: list[asyncio.Task]
+    config: Config
 
     def __init__(self):
-        self.executor = ThreadPoolExecutor
         self.strategy_runners: list[Strategy] = []
-        self.coroutines: dict[Coroutine | Callable: dict] = {}
+        self.coroutines: list[Coroutine] = []
+        self.coroutine_threads: list[Coroutine] = []
         self.functions: dict[Callable: dict] = {}
+        self.tasks = []
+        self.no_of_running_strategies = 0
+        self.config = Config()
+        self.timeout = None # Timeout for the executor. For testing purposes only
 
-    def add_function(self, *, function: Callable, kwargs: dict):
+    def add_function(self, *, function: Callable, kwargs: dict = None):
+        kwargs = kwargs or {}
         self.functions[function] = kwargs
 
-    def add_coroutine(self, *, coroutine: Coroutine, kwargs: dict):
-        self.coroutines[coroutine] = kwargs
+    def add_coroutine(self, *, coroutine: Callable | Coroutine, kwargs: dict = None, on_separate_thread=False):
+        kwargs = kwargs or {}
+        coroutine = coroutine(**kwargs)
+        self.coroutines.append(coroutine) if on_separate_thread is False else self.coroutine_threads.append(coroutine)
 
     def add_strategies(self, *, strategies: tuple[Strategy]):
         """Add multiple strategies at once
@@ -48,26 +58,69 @@ class Executor:
         """
         self.strategy_runners.append(strategy)
 
+    async def create_strategy_task(self, strategy: Strategy):
+        task = asyncio.create_task(strategy.run_strategy())
+        self.tasks.append(task)
+        self.no_of_running_strategies += 1
+        await task
+
     def run_strategy(self, strategy: Strategy):
         """Wraps the coroutine trade method of each strategy with 'asyncio.run'.
 
         Args:
             strategy (Strategy): A strategy object
         """
-        self.loop.run_until_complete(strategy.run_strategy())
+        asyncio.run(self.create_strategy_task(strategy))
 
-    def run_coroutine(self, func, kwargs: dict):
-        """
-        Run a coroutine function
+    async def create_coroutine_task(self, coroutine: Coroutine):
+        task = asyncio.create_task(coroutine)
+        self.tasks.append(task)
+        await task
+
+    async def create_coroutines_task(self):
+        """"""
+        task = asyncio.create_task(asyncio.gather(*self.coroutines, return_exceptions=True))
+        self.tasks.append(task)
+        await task
+
+    def run_coroutine_tasks(self):
+        """Run all coroutines in the executor"""
+        asyncio.run(self.create_coroutines_task())
+
+    def run_coroutine_task(self, coroutine):
+        asyncio.run(self.create_coroutine_task(coroutine))
+
+    @staticmethod
+    def run_function(function: Callable, kwargs: dict):
+        """Run a function
 
         Args:
-            func: The coroutine. A variadic function.
+            function: The function to run
             kwargs: A dictionary of keyword arguments for the function
         """
         try:
-            self.loop.run_until_complete(func(**kwargs))
+            function(**kwargs)
         except Exception as err:
-            logger.error(f'Error: {err}. Unable to run function')
+            logger.error(f'Error: {err}. Unable to run function: {function.__name__}')
+
+    async def exit(self):
+        """Shutdown the executor"""
+        try:
+            while self.config.shutdown is False and self.config.force_shutdown is False:
+                if self.timeout is not None and self.no_of_running_strategies == len(self.strategy_runners):
+                    self.timeout -= 1
+                    if self.timeout == 0:
+                        self.config.shutdown = True
+                continue
+            for strategy in self.strategy_runners:
+                strategy.running = False
+            for task in self.tasks:
+                task.cancel()
+            self.executor.shutdown(wait=False, cancel_futures=True)
+            if self.config.force_shutdown:
+                os._exit(1)
+        except Exception as err:
+            logger.error(f"Error: {err}. Unable to shutdown executor")
 
     async def execute(self, *, workers: int = 5):
         """Run the strategies with a threadpool executor.
@@ -80,9 +133,9 @@ class Executor:
         """
         workers_ = sum([len(self.strategy_runners), len(self.functions), len(self.coroutines)])
         workers = max(workers, workers_)
-        self.loop = asyncio.get_running_loop()
-        with self.executor(max_workers=workers) as executor:
-            [self.loop.run_in_executor(executor, self.run_strategy, worker) for worker in self.strategy_runners]
-            [self.loop.run_in_executor(executor, self.run_coroutine, coroutine, kwargs) for coroutine,
-            kwargs in self.coroutines.items()]
-            [self.loop.run_in_executor(executor, function, kwargs) for function, kwargs in self.functions.items()]
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            self.executor = executor
+            self.executor.submit(self.run_coroutine_tasks)
+            [self.executor.submit(self.run_coroutine_task, coroutine) for coroutine in self.coroutine_threads]
+            [self.executor.submit(self.run_strategy, strategy) for strategy in self.strategy_runners]
+            [self.executor.submit(function, **kwargs) for function, kwargs in self.functions.items()]

@@ -78,7 +78,7 @@ class PositionsManager(TradeManager):
         return item.ticket in self._open_positions
 
     def __getitem__(self, item):
-        if item in self:
+        if item in self._open_positions:
             return super().__getitem__(item)
         raise KeyError('Position not found')
 
@@ -89,6 +89,11 @@ class PositionsManager(TradeManager):
     def __delitem__(self, key):
         self._open_positions.discard(key)
         del self._data[key]
+
+    @property
+    def margin(self):
+        """Returns the total margin of all open positions"""
+        return sum(self.margins.values())
 
     def close(self, *, ticket: int) -> bool:
         is_open = ticket in self._open_positions
@@ -104,7 +109,7 @@ class PositionsManager(TradeManager):
     def set_margin(self, *, ticket: int, margin: float):
         self.margins[ticket] = margin
     
-    def positions_get(self, *, ticket: int = None, symbol: str = None, group: None) -> tuple[TradePosition, ...]:
+    def positions_get(self, *, ticket: int = None, symbol: str = None, group: None = None) -> tuple[TradePosition, ...]:
         if ticket:
             return tuple(position for position in self.open_positions if position.ticket == ticket)
 
@@ -120,7 +125,7 @@ class PositionsManager(TradeManager):
         return tuple()
     
     def positions_total(self) -> int:
-        return len(self)
+        return len(self._open_positions)
 
     @property
     def open_positions(self) -> tuple[TradePosition, ...]:
@@ -147,7 +152,7 @@ class OrdersManager(TradeManager):
             return tuple(order for order in self.values() if order.ticket == ticket)
 
         if position:
-            return tuple(order for order in self.values() if order.position == position)
+            return tuple(order for order in self.values() if order.position_id == position)
 
         return ()
 
@@ -174,7 +179,7 @@ class DealsManager(TradeManager):
             return tuple(deal for deal in self.values() if deal.ticket == ticket)
 
         if position and (ticket is None):
-            return tuple(deal for deal in self.values() if deal.position == position)
+            return tuple(deal for deal in self.values() if deal.position_id == position)
 
         return ()
 

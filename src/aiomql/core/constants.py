@@ -169,10 +169,6 @@ class TimeFrame(Repr, IntEnum):
         get: get a timeframe object from a time value in seconds
     """
     __enum_name__ = "TIMEFRAME"
-
-    def __str__(self):
-        return self.name
-
     M1 = mt5.TIMEFRAME_M1
     M2 = mt5.TIMEFRAME_M2
     M3 = mt5.TIMEFRAME_M3
@@ -195,7 +191,7 @@ class TimeFrame(Repr, IntEnum):
     MN1 = mt5.TIMEFRAME_MN1
 
     @property
-    def time(self):
+    def seconds(self):
         """The number of seconds in a TIMEFRAME
 
         Returns:
@@ -203,20 +199,21 @@ class TimeFrame(Repr, IntEnum):
 
         Examples:
             >>> t = TimeFrame.H1
-            >>> print(t.time)
+            >>> print(t.seconds)
             3600
         """
-        times = {1: 60, 2: 120, 3: 180, 4: 240, 5: 300, 6: 360, 10: 600, 15: 900, 20: 1200, 30: 1800, 16385: 3600,
+        seconds = {1: 60, 2: 120, 3: 180, 4: 240, 5: 300, 6: 360, 10: 600, 15: 900, 20: 1200, 30: 1800, 16385: 3600,
                  16386: 7200, 16387: 10800, 16388: 14400, 16390: 21600, 16392: 28800, 16396: 43200, 16408: 86400,
                  32769: 604800, 49153: 2592000}
-        return times[self]
+        return seconds[self]
 
     @classmethod
-    def get(cls, time: int) -> 'TimeFrame':
-        times = {60: 1, 120: 2, 180: 3, 240: 4, 300: 5, 360: 6, 600: 10, 900: 15, 1200: 20, 1800: 30, 3600: 16385,
+    def get_timeframe(cls, time: int) -> 'TimeFrame':
+        """Get a timeframe object from a time value in seconds"""
+        time_frames = {60: 1, 120: 2, 180: 3, 240: 4, 300: 5, 360: 6, 600: 10, 900: 15, 1200: 20, 1800: 30, 3600: 16385,
                  7200: 16386, 10800: 16387, 14400: 16388, 21600: 16390, 28800: 16392, 43200: 16396, 86400: 16408,
                  604800: 32769, 2592000: 49153}
-        return TimeFrame(times[time])
+        return TimeFrame(time_frames[time])
 
     @classmethod
     @property

@@ -6,7 +6,7 @@ from aiomql.lib.history import History
 class TestHistory:
     @pytest.fixture(scope='class', autouse=True)
     async def init(self, make_buy_sell_orders):
-        await self.history.init()
+        await self.history.initialize()
 
     @classmethod
     def setup_class(cls):

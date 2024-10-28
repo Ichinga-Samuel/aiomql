@@ -186,9 +186,10 @@ The number of seconds in a TIMEFRAME
 
 <a id="TimeFrame.example"></a>
 ### Example
+
 ```python
 t = TimeFrame.H1
-print(t.time)  # 3600
+print(t.seconds)  # 3600
 ```
 
 <a id="CopyTicks"></a>

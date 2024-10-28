@@ -38,7 +38,7 @@ class Bot:
             funcs (dict): A dictionary of functions to run with their respective keyword arguments as a dictionary
             num_workers (int): Number of workers to run the functions
         """
-        num_workers = num_workers or len(funcs) * 2
+        num_workers = num_workers or len(funcs)
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
             for bot, kwargs in funcs.items():
                 executor.submit(bot, **kwargs)
@@ -58,7 +58,8 @@ class Bot:
                 raise SystemExit
             logger.info("Login Successful")
             await self.init_strategies()
-            self.add_coroutine(coroutine=self.config.task_queue.run)
+            self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
+            self.add_coroutine(coroutine=self.executor.exit)
         except Exception as err:
             logger.error(f"{err}. Bot initialization failed")
             raise SystemExit
@@ -72,17 +73,18 @@ class Bot:
         """
         self.executor.add_function(function=function, kwargs=kwargs)
 
-    def add_coroutine(self, *, coroutine: Callable[..., ...] | Coroutine, **kwargs):
+    def add_coroutine(self, *, coroutine: Callable[..., ...] | Coroutine, on_separate_thread=False, **kwargs):
         """Add a coroutine to the executor.
 
         Args:
             coroutine (Coroutine): A coroutine to be executed
+            on_separate_thread (bool): Run the coroutine
             **kwargs (dict): keyword arguments for the coroutine
 
         Returns:
 
         """
-        self.executor.add_coroutine(coroutine=coroutine, kwargs=kwargs)
+        self.executor.add_coroutine(coroutine=coroutine, kwargs=kwargs, on_separate_thread=on_separate_thread)
 
     def execute(self):
         """Execute the bot."""
@@ -130,7 +132,7 @@ class Bot:
     @staticmethod
     async def init_strategy(*, strategy: Strategy) -> tuple[bool, Strategy]:
         """Initialize a single strategy. This method is called internally by the bot."""
-        res = await strategy.symbol.init()
+        res = await strategy.symbol.initialize()
         return res, strategy
 
     async def init_strategies(self):

@@ -77,7 +77,7 @@ class Order(_Base, TradeRequest):
         Raises:
             OrderError: If not successful
         """
-        req = self.dict | kwargs
+        req = self.request | kwargs
         res = await self.mt5.order_check(req)
         if res is None:
             raise OrderError(f'Order check failed for {self.symbol}')
@@ -93,24 +93,22 @@ class Order(_Base, TradeRequest):
         Raises:
             OrderError: If not successful
         """
-        res = await self.mt5.order_send(self.dict)
+        res = await self.mt5.order_send(self.request)
         if res is None:
             raise OrderError(f'Failed to send order {self.symbol}')
         return OrderSendResult(**res._asdict())
 
+    @error_handler(log_error_msg=False)
     async def calc_margin(self) -> float | None:
         """Return the required margin in the account currency to perform a specified trading operation.
 
         Returns:
             float: Returns float value if successful
-
-        Raises:
-            OrderError: If not successful
         """
         res = await self.mt5.order_calc_margin(self.type, self.symbol, self.volume, self.price)
         return res
 
-    @error_handler(response=0)
+    @error_handler(response=0, log_error_msg=False)
     async def calc_profit(self) -> float:
         """Return profit in the account currency for a specified trading operation.
 
@@ -121,3 +119,20 @@ class Order(_Base, TradeRequest):
         action, symbol, volume, price_open, price_close = self.type, self.symbol, self.volume, self.price, self.tp
         res = await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
         return res
+
+    @error_handler(response=0, log_error_msg=False)
+    async def calc_loss(self) -> float:
+        """Return profit in the account currency for a specified trading operation.
+
+        Returns:
+            float: Returns float value if successful
+            None: If not successful
+        """
+        action, symbol, volume, price_open, price_close = self.type, self.symbol, self.volume, self.price, self.sl
+        res = await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
+        return res
+
+    @property
+    def request(self) -> dict:
+        """Return the order request as a dictionary."""
+        return {key: value for key, value in self.dict.items() if key in self.mt5.TradeRequest.__match_args__}

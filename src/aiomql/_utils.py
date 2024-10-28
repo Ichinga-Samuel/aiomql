@@ -22,7 +22,7 @@ def dict_to_string(data: dict, multi=False) -> str:
     return f"{sep}".join(f"{key}: {value}" for key, value in data.items())
 
 
-def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0, error='') -> callable:
+def backoff_decorator(func=None, *, max_retries: int = 2, retries: int = 0, error='') -> callable:
     if func is None:
         return partial(backoff_decorator, max_retries=max_retries, retries=retries, error=error)
 
@@ -41,16 +41,16 @@ def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0, erro
                 retries = 0
                 return res
         except Exception as err:
-             logger.error(f'Error in {func.__name__}: {err}')
-             await asyncio.sleep(retries + random.randint(1, max_retries))
+             logger.error('Error in %s: %s', func.__name__, err)
+             await asyncio.sleep(2**retries + random.uniform(0, 1))
              await wrapper(*args, **kwargs)
 
     return wrapper
 
 
-def error_handler(func=None, *, msg='', exe = Exception, response=None):
+def error_handler(func=None, *, msg='', exe = Exception, response=None, log_error_msg=True):
     if func is None:
-        return partial(error_handler, msg=msg, exe=exe, response=response)
+        return partial(error_handler, msg=msg, exe=exe, response=response, log_error_msg=log_error_msg)
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -58,14 +58,15 @@ def error_handler(func=None, *, msg='', exe = Exception, response=None):
             res = await func(*args, **kwargs)
             return res
         except exe as err:
-            logger.error(f'Error in {func.__name__}: {msg or err}')
+            if log_error_msg:
+                logger.error(f'Error in {func.__name__}: {msg or err}')
             return response
 
     return wrapper
 
-def error_handler_sync(func=None, *, msg='', exe=Exception, response=None):
+def error_handler_sync(func=None, *, msg='', exe=Exception, response=None, log_error_msg=True):
     if func is None:
-        return partial(error_handler, msg=msg, exe=exe, response=response)
+        return partial(error_handler, msg=msg, exe=exe, response=response, log_error_msg=log_error_msg)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -73,17 +74,18 @@ def error_handler_sync(func=None, *, msg='', exe=Exception, response=None):
             res = func(*args, **kwargs)
             return res
         except exe as err:
-            logger.error(f'Error in {func.__name__}: {msg or err}')
+            if log_error_msg:
+                logger.error(f'Error in {func.__name__}: {msg or err}')
             return response
 
     return wrapper
 
-def round_down(value: int, base: int) -> int:
-    return value if value % base == 0 else value  - (value % base)
+def round_down(value: int | float, base: int) -> int:
+    return int(value) if value % base == 0 else int(value  - (value % base))
 
 
-def round_up(value: int, base: int) -> int:
-    return value if value % base == 0 else value + base - (value % base)
+def round_up(value: int | float, base: int) -> int:
+    return int(value) if value % base == 0 else int(value + base - (value % base))
 
 
 # noinspection PyShadowingNames

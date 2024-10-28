@@ -41,24 +41,22 @@ class Symbol(_Base, SymbolInfo):
         self.account = Account()
 
     @backoff_decorator
-    async def info_tick(self, *, name: str = "") -> Tick:
+    async def info_tick(self, *, name: str = "") -> Tick | None:
         """Get the current price tick of a financial instrument.
 
         Args:
-            name: if name is supplied get price tick of that financial instrument
+            name: if name is supplied get price tick of that financial instrument. Optional unnamed parameter.
 
         Returns:
             Tick: Return a Tick Object
-
-        Raises:
-            ValueError: If request was unsuccessful and None was returned
+            None: If request was unsuccessful
         """
         tick = await self.mt5.symbol_info_tick(name or self.name)
         if tick is not None:
             tick = Tick(**tick._asdict())
             setattr(self, 'tick', tick) if not name else ...
             return tick
-        raise ValueError(f'Could not get tick for {name or self.name}.')
+        return None
 
     async def symbol_select(self, *, enable: bool = True) -> bool:
         """Select a symbol in the MarketWatch window or remove a symbol from the window.
@@ -75,25 +73,23 @@ class Symbol(_Base, SymbolInfo):
         return self.select
 
     @backoff_decorator
-    async def info(self) -> SymbolInfo:
+    async def info(self) -> SymbolInfo | None:
         """Get data on the specified financial instrument and update the symbol object properties
 
         Returns:
             (SymbolInfo): SymbolInfo if successful
-
-        Raises:
-            ValueError: If request was unsuccessful and None was returned
+            (None): If request was unsuccessful
         """
         info = await self.mt5.symbol_info(self.name)
-        if info:
+        if info is not None:
             info = info._asdict()
             info['swap_rollover3days'] = info.get('swap_rollover3days', 0) % 7
             self.set_attributes(**info)
             return SymbolInfo(**info)
-        raise ValueError(f'Could not get info for {self.name}')
+        return None
 
-    async def init(self) -> bool:
-        """Initialized the symbol by pulling properties from the terminal
+    async def initialize(self) -> bool:
+        """Initialize the symbol by pulling properties from the terminal
 
         Returns:
              bool: Returns True if symbol info was successful initialized
@@ -101,12 +97,12 @@ class Symbol(_Base, SymbolInfo):
         try:
             res = await asyncio.gather(self.symbol_select(), self.info(), self.info_tick(), self.book_add(),
                                        return_exceptions=True)
-            if all(res):
+            if any(res):
                 return True
-            logger.warning(f'Unable to initialized {self}')
+            logger.warning('Unable to initialize %s', self.name)
             return False
         except Exception as err:
-            logger.warning(f'{err}: Unable to initialized {self}')
+            logger.warning('%s: Unable to initialize %s', err, self.name)
             return False
 
     async def book_add(self) -> bool:
@@ -116,7 +112,10 @@ class Symbol(_Base, SymbolInfo):
         Returns:
              bool: True if successful, otherwise – False.
         """
-        return await self.mt5.market_book_add(self.name)
+        res = await self.mt5.market_book_add(self.name)
+        if res is False:
+            logger.debug("Could not add %s to market book", self.name)
+        return res
 
     @backoff_decorator
     async def book_get(self) -> tuple[BookInfo, ...]:
@@ -171,50 +170,41 @@ class Symbol(_Base, SymbolInfo):
         """
         return round_off(value=volume, step=self.volume_step, round_down=round_down)
 
-    async def check_amount(self, *, amount: float) -> float:
+    async def amount_in_quote_currency(self, *, amount: float) -> float:
+        """Convert the amount to the quote currency of the symbol."""
         if self.currency_profit != self.account.currency:
-            amount = await self.convert_currency(amount=amount, base=self.currency_profit, quote=self.account.currency)
+            amount = await self.convert_currency(amount=amount, from_currency=self.account.currency,
+                                                 to_currency=self.currency_profit)
         return amount
 
-    async def compute_volume(self, *args, **kwargs) -> float:
+    async def compute_volume(self) -> float:
         """Computes the volume required for a trade usually based on the amount and any other keyword arguments.
         This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
         that implements the computation of volume.
-
-        Keyword Args:
-            use_limits (bool): round up or round down the computed volume to the nearest volume limit i.e. volume_min
-                or volume_max
 
         Returns:
             float: Returns the volume of the trade
         """
         return self.volume_min
 
-    async def convert_currency(self, *, amount: float, base: str, quote: str) -> float:
-        """Convert from one currency to the other. Alias for currency_conversion"""
-        return await self.currency_conversion(amount=amount, base=base, quote=quote)
-
-    async def currency_conversion(self, *, amount: float, base: str, quote: str) -> float:
-        """Convert from one currency to the other.
-
+    async def convert_currency(self, *, amount: float, from_currency: str, to_currency: str) -> float:
+        """Convert a given amount from one currency to the other.
         Args:
-            amount: amount to convert given in terms of the quote currency
-            base: The base currency of the pair
-            quote: The quote currency of the pair
-
-        Returns:
-            float: Amount in terms of the quote currency
+            amount: Amount to convert
+            from_currency: Currency to convert from
+            to_currency: Currency to convert to
         """
+        base, quote = to_currency, from_currency
         try:
-            pair = f'{base}{quote}'
-            tick = await self.info_tick(name=pair)
-            if tick is not None:
-                return amount / tick.ask
-
             pair = f'{quote}{base}'
             tick = await self.info_tick(name=pair)
             if tick is not None:
-                return amount * tick.bid
+                return round(amount * tick.bid, 2)
+
+            pair = f'{base}{quote}'
+            tick = await self.info_tick(name=pair)
+            if tick is not None:
+                return round(amount / tick.ask, 2)
         except Exception as err:
             logger.warning(f'{err}: Currency conversion failed: Unable to convert {amount} in {quote} to {base}')
 

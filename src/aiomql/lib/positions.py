@@ -40,7 +40,7 @@ class Positions:
         if positions is not None:
             self.positions = tuple(TradePosition(**pos._asdict()) for pos in positions)
             return self.positions
-        logger.warning('Failed to get open positions for')
+        logger.warning('Failed to get open positions')
         return ()
 
     async def get_position_by_ticket(self, *, ticket: int) -> TradePosition | None:
@@ -83,9 +83,11 @@ class Positions:
                       type=order_type.opposite)
         return await order.send()
 
-    @staticmethod
-    async def close_by(*, position: TradePosition) -> OrderSendResult:
-        """Close an open position for the trading account."""
+    async def close_position_by_ticket(self, *, ticket: int) -> OrderSendResult | None:
+        """Close an open position using the ticket."""
+        position = await self.get_position_by_ticket(ticket=ticket)
+        if position is None:
+            return None
         order = Order(position=position.ticket, symbol=position.symbol, volume=position.volume,
                       type=position.type.opposite, price=position.price_current, action=TradeAction.DEAL)
         return await order.send()

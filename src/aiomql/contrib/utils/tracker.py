@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from ...core.constants import OrderType
+from aiomql.core.constants import OrderType
 
 
 @dataclass
@@ -14,6 +14,8 @@ class Tracker:
     snooze: float = 0
     trend_time: float = 0
     entry_time: float = 0
+    last_trend_price: float = 0
+    last_entry_price: float = 0
     new: bool = True
     order_type: OrderType = None
     sl: float = 0

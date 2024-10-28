@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 from logging import getLogger
 from typing import Literal
+from pathlib import Path
 
 import numpy as np
 from MetaTrader5 import (BookInfo, SymbolInfo, AccountInfo, Tick, TerminalInfo, TradeOrder, TradeDeal,
@@ -101,6 +102,7 @@ class MetaTrader(MetaCore):
         """
         async with asyncio.Lock() as _:
             path = self.config.path if path is None else path
+            path = "" if Path(path).exists() is False else path
             args = (str(path),) if path else ()
             acc = self.config.account_info()
             kwargs = {key: value for key, value in (('login', login or acc.get('login')),
@@ -118,14 +120,9 @@ class MetaTrader(MetaCore):
             return res
 
     async def shutdown(self) -> None:
+        """Closes the connection to the MetaTrader terminal.
         """
-        Closes the connection to the MetaTrader terminal.
-
-        Returns:
-            None: None
-        """
-        res = await asyncio.to_thread(self._shutdown)
-        return res
+        self._shutdown()
 
     async def last_error(self) -> tuple[int, str]:
         try:

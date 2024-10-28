@@ -28,7 +28,7 @@ class MetaBackTester(MetaTrader):
 
     @backtest_engine.setter
     def backtest_engine(self, value: BackTestEngine):
-        if BackTestEngine is not None:
+        if value is not None:
             self.config.backtest_engine = value
 
     async def last_error(self) -> tuple[int, str]:

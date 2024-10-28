@@ -25,5 +25,5 @@ class TestConfig:
         assert 'server' in account_info
 
     def test_load_config(self, config):
-        config.load_config(file='tests/configs/test2.json')
+        config.load_config(file='tests/live/configs/test2.json')
         assert config.filename == 'test2.json'

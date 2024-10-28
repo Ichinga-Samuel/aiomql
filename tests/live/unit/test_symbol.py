@@ -13,7 +13,7 @@ class TestSymbol:
         symbol = Symbol(name='BTCUSD')
         select = getattr(symbol, 'select', False)
         if select is False:
-            await symbol.init()
+            await symbol.initialize()
         return symbol
 
     async def test_symbol_attributes(self, btc):

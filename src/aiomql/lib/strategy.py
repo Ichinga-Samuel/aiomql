@@ -48,7 +48,7 @@ class Strategy(ABC):
             symbol (Symbol): The Financial instrument
             params (Dict): Trading strategy parameters
         """
-        self.parameters = self.parameters | (params or {})
+        self.parameters = {**self.parameters} | (params or {})
         self.symbol = symbol
         self.name = name or self.__class__.__name__
         self.parameters["symbol"] = symbol.name
@@ -56,7 +56,7 @@ class Strategy(ABC):
         self.running = True
         self.sessions = sessions or Sessions(sessions=[Session(start=0, end=dtime(hour=23, minute=59, second=59))])
         self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode == 'live' else MetaBackTester()
+        self.mt5 = MetaTrader() if self.config.mode != 'backtest' else MetaBackTester()
         self.event_manager = EventManager()
 
     def __repr__(self):
@@ -74,6 +74,7 @@ class Strategy(ABC):
 
     async def __aenter__(self):
         await self.sessions.check()
+        self.running = True
         self.current_session = self.sessions.current_session
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -94,7 +95,7 @@ class Strategy(ABC):
         """
         mod = time() % secs
         secs = secs - mod if mod != 0 else mod
-        await asyncio.sleep(secs + 0.2)
+        await asyncio.sleep(secs + 0.1)
 
     async def sleep(self, *, secs: float):
         """Sleep for the needed amount of seconds in between requests to the terminal.
@@ -104,26 +105,35 @@ class Strategy(ABC):
         Args:
             secs (float): The time in seconds. Usually the timeframe you are trading on.
         """
-        if self.config.mode == 'live':
-            await self.live_sleep(secs=secs)
-        elif self.config.mode == 'backtest':
+        if self.config.mode == 'backtest':
             await self.backtest_sleep(secs=secs)
+        else:
+            await self.live_sleep(secs=secs)
 
     async def backtest_sleep(self, *, secs: float):
-        _time = self.config.backtest_engine.cursor.time
-        mod = _time % secs
-        secs = secs - mod if mod != 0 else mod
-
-        if self.event_manager.num_main_tasks == 1:
-            self.config.backtest_engine.fast_forward(secs)
-            await self.event_manager.wait()
-
-        elif self.event_manager.num_main_tasks > 1:
-            _time = self.config.backtest_engine.cursor.time + secs
-            while _time > self.config.backtest_engine.cursor.time:
+        # print(f"Sleeping for {secs} seconds")
+        try:
+            _time = self.config.backtest_engine.cursor.time
+            mod = _time % secs
+            # print('mod', mod)
+            secs = secs - mod if mod != 0 else mod
+            # print('secs', secs)
+            if self.event_manager.num_main_tasks == 1:
+                self.config.backtest_engine.fast_forward(steps=int(secs))
                 await self.event_manager.wait()
-        else:
-            await self.event_manager.wait()
+
+            elif self.event_manager.num_main_tasks > 1:
+                _time = self.config.backtest_engine.cursor.time + secs
+                # print(_time, self.config.backtest_engine.cursor.time)
+                while _time > self.config.backtest_engine.cursor.time:
+                    print(f"Time in sleep {self.symbol}: {self.config.backtest_engine.cursor.time}")
+                    await self.event_manager.wait()
+
+                # await self.event_manager.wait()
+            else:
+                await self.event_manager.wait()
+        except Exception as err:
+            logger.error(f"Error: {err} in backtest_sleep")
 
     async def run_strategy(self):
         """Run the strategy."""
@@ -134,19 +144,22 @@ class Strategy(ABC):
 
     async def live_strategy(self):
         """Run the strategy."""
-        while self.running:
-            async with self as _:
+        async with self as _:
+            while self.running:
                 await self.sessions.check()
                 await self.trade()
 
     async def backtest_strategy(self):
         """Backtest the strategy."""
-        async with self as _:
-            while self.running:
-                async with self.event_manager.condition:
-                    await self.sessions.check()
-                    await self.event_manager.wait()
-                    await self.trade()
+        try:
+            async with self as _:
+                while self.running:
+                    async with self.event_manager.condition:
+                        await self.sessions.check()
+                        await self.event_manager.wait()
+                        await self.test()
+        except Exception as err:
+            logger.error(f"Error: {err} in backtest_strategy")
 
     @abstractmethod
     async def trade(self):

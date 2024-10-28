@@ -1,9 +1,7 @@
 import asyncio
-from datetime import time, timedelta, datetime
+from datetime import time, timedelta, datetime, UTC
 from typing import Literal, Callable, Iterable, NamedTuple
 from logging import getLogger
-
-import pytz
 
 from ..core.models import OrderSendResult, TradePosition
 from ..core.config import Config
@@ -29,7 +27,7 @@ def delta(obj: time) -> timedelta:
 
 
 async def backtest_sleep(secs):
-    """A custom function to call when the session starts."""
+    """An async sleep function for use during backtesting."""
     em = EventManager()
     config = Config()
     sleep = config.backtest_engine.cursor.time + secs
@@ -67,8 +65,8 @@ class Session:
             custom_end (Callable): A custom function to call when the session ends. Default is None.
             name (str): A name for the session. Default is a combination of start and end.
         """
-        self.start = start if isinstance(start, time) else time(hour=start, tzinfo=pytz.UTC)
-        self.end = end if isinstance(end, time) else time(hour=end, tzinfo=pytz.UTC)
+        self.start = start.replace(tzinfo=UTC) if isinstance(start, time) else time(hour=start, tzinfo=UTC)
+        self.end = end if isinstance(end, time) else time(hour=end, tzinfo=UTC)
         self.on_start = on_start
         self.on_end = on_end
         self.custom_start = custom_start
@@ -93,8 +91,8 @@ class Session:
     
     def in_session(self) -> bool:
         """Check if the current time is within the session."""
-        now = datetime.now(tz=pytz.UTC).time() if self.config.mode == 'live'\
-            else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=pytz.UTC).time()
+        now = datetime.now(tz=UTC).time() if self.config.mode == 'live'\
+            else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
         return now in self
     
     async def begin(self):
@@ -169,10 +167,10 @@ class Session:
     def until(self):
         """Get the seconds until the session starts from the current time in seconds."""
         if self.config.mode == 'backtest':
-            now = datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=pytz.UTC).time()
+            now = datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
             secs = (delta(self.start) - delta(now)).seconds
         else:
-            secs = (delta(self.start) - delta(datetime.now(tz=pytz.UTC).time())).seconds
+            secs = (delta(self.start) - delta(datetime.now(tz=UTC).time())).seconds
         return secs
 
 
@@ -207,8 +205,8 @@ class Sessions:
         Returns:
             Session | None: A Session object or None if not found.
         """
-        moment = moment or datetime.now(tz=pytz.UTC).time() if self.config.mode == 'live' else (
-            datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=pytz.UTC).time())
+        moment = moment or datetime.now(tz=UTC).time() if self.config.mode == 'live' else (
+            datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time())
         for session in self.sessions:
             if moment in session:
                 return session
@@ -223,8 +221,8 @@ class Sessions:
         Returns:
             Session: A Session object.
         """
-        moment = moment or datetime.now(tz=pytz.UTC).time() if self.config.mode == 'live' else (
-            datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=pytz.UTC).time())
+        moment = moment or datetime.now(tz=UTC).time() if self.config.mode == 'live' else (
+            datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time())
         for session in self.sessions:
             if delta(moment) < delta(session.start):
                 return session
@@ -246,9 +244,9 @@ class Sessions:
             return
         
         if self.config.mode == 'backtest':
-            now = datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=pytz.UTC).time()
+            now = datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
         else:
-            now = datetime.now(tz=pytz.UTC).time()
+            now = datetime.now(tz=UTC).time()
 
         next_session = self.find(moment=now)
 

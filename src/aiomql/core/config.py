@@ -60,10 +60,12 @@ class Config:
     _instance: Self
     mode: Literal['backtest', 'live']
     use_terminal_for_backtesting: bool
+    shutdown: bool
+    force_shutdown: bool
     _defaults = {"timeout": 60000, "record_trades": True, "trade_record_mode": "csv", "mode": "live",
-                'filename': "aiomql.json", "records_dir_name": "trade_records", "backtest_dir_name": "backtester",
+                'filename': "aiomql.json", "records_dir_name": "trade_records", "backtest_dir_name": "backtesting",
                 "use_terminal_for_backtesting": True, 'path': '', 'login': 0, 'password': '',
-                 'server': '', 'records_dir': None}
+                 'server': '', 'records_dir': None, 'shutdown': False, 'force_shutdown': False}
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
@@ -166,7 +168,7 @@ class Config:
             self.records_dir = self.root / self.records_dir_name
             self.records_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.mode == "backtest" and not hasattr(self, "backtest_dir"):
+        if not hasattr(self, "backtest_dir"):
             self.backtest_dir = self.root / self.backtest_dir_name
             self.backtest_dir.mkdir(parents=True, exist_ok=True)
 

@@ -25,13 +25,17 @@ class EventManager:
     def __init__(self, *, num_tasks: int = 0):
         self.num_main_tasks = num_tasks or self.num_main_tasks
 
+    @property
+    def backtest_engine(self):
+        return self.config.backtest_engine
+
     def add_tasks(self, *tasks: Task):
         self.tasks.extend(tasks)
 
     def sigint_handler(self, sig, frame):
         for task in self.tasks:
             task.cancel()
-        self.config.backtest_engine.wrap_up()
+        self.backtest_engine.wrap_up()
 
     async def acquire(self):
         await self.condition.acquire()
@@ -40,16 +44,21 @@ class EventManager:
         self.condition.notify_all()
 
     async def event_monitor(self):
+        self.backtest_engine.next()
         while True:
             async with self.condition:
                 if self.task_tracker == self.num_main_tasks: # all main tasks have been completed in the current cycle
                     self.task_tracker = 0
-                    await self.config.backtest_engine.tracker()
-                    self.config.backtest_engine.next()
+                    await self.backtest_engine.tracker()
+                    self.backtest_engine.next()
                     self.condition.notify_all()
-                    if ((timestamp := self.config.backtest_engine.cursor.time) % int(60 * 60 * 24)) == 0:
-                        print(f"if Time: {datetime.fromtimestamp(timestamp)}")
-                    await asyncio.sleep(0)
+                    # print(f"Time: {self.backtest_engine.cursor.time}")
+                    if self.backtest_engine.cursor.time % 3600 == 0:
+                        print(datetime.strftime(self.backtest_engine.cursor.time, "%Y-%m-%d %H:%M:%S"))
+                if self.backtest_engine.stop_testing:
+                    break
+                await asyncio.sleep(0)
+        self.backtest_engine.wrap_up()
 
     async def wait(self):
         self.task_tracker += 1
