@@ -3,7 +3,7 @@ from datetime import datetime, UTC
 from aiomql import TimeFrame
 from aiomql.contrib.backtesting import BackTestEngine
 from aiomql.contrib.backtesting.get_data import GetData
-from aiomql._utils import round_down
+from aiomql._utils import round_down, round_up
 from aiomql.core.constants import OrderType, TradeAction
 
 import pytest
@@ -136,8 +136,8 @@ class TestBackTestEngine:
         tf = TimeFrame.H2
         start_pos = 2
         rates = await self.bte.get_rates_from_pos(symbol='BTCUSD', timeframe=tf, start_pos=start_pos, count=24)
-        assert int(rates[-1][0]) == round_down(int(now.replace(hour=7).timestamp()), tf.seconds)
         assert len(rates) == 24
+        assert int(rates[-1][0]) == round_down(int(now.replace(hour = now.hour - start_pos).timestamp()), tf.seconds)
 
     async def test_get_rates_from_pos2(self, bte2):
         now = datetime(2024, 2, 4, 12, 15, tzinfo=UTC)

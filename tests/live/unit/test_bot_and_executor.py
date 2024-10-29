@@ -41,9 +41,8 @@ class TestBotFactoryAndExecutor:
             await asyncio.sleep(1)
 
     def test_add_workers(self):
-        assert len(self.bot.executor.coroutines) == 2
-        # exit function already added
-        assert len(self.bot.executor.functions) == 2
+        assert len(self.bot.executor.coroutines) == 3
+        assert len(self.bot.executor.functions) == 1
         # task_queue already added coroutine_thread
         assert len(self.bot.executor.coroutine_threads) == 2
 

@@ -8,7 +8,7 @@ from ...core.constants import AccountTradeMode, AccountMarginMode, AccountStopOu
 class BackTestAccount:
     login: int = 0
     trade_mode: AccountTradeMode = AccountTradeMode.DEMO
-    leverage: float = 0
+    leverage: float = 1
     limit_orders: float = 0
     margin_so_mode: AccountStopOutMode = AccountStopOutMode.PERCENT
     trade_allowed: bool = True
