@@ -27,13 +27,13 @@ class RAM:
         """
         self.account = Account()
         self.positions = Positions()
-        self.risk_to_reward = kwargs.get('risk_to_reward', 2)
-        self.risk = kwargs.get('risk', 1)
-        self.min_amount = kwargs.get('min_amount', 0)
-        self.max_amount = kwargs.get('max_amount', 0)
-        self.loss_limit = kwargs.get('loss_limit', 3)
-        self.open_limit = kwargs.get('open_limit', 3)
-        self.fixed_amount = kwargs.get('fixed_amount', None)
+        self.risk_to_reward = kwargs.get("risk_to_reward", 2)
+        self.risk = kwargs.get("risk", 1)
+        self.min_amount = kwargs.get("min_amount", 0)
+        self.max_amount = kwargs.get("max_amount", 0)
+        self.loss_limit = kwargs.get("loss_limit", 3)
+        self.open_limit = kwargs.get("open_limit", 3)
+        self.fixed_amount = kwargs.get("fixed_amount", None)
 
     async def get_amount(self) -> float:
         """Calculate the amount to risk per trade as a percentage of margin_free.
@@ -44,7 +44,7 @@ class RAM:
         if self.fixed_amount:
             return self.fixed_amount
         await self.account.refresh()
-        amount = self.account.margin_free * (self.risk/100)
+        amount = self.account.margin_free * (self.risk / 100)
         if self.min_amount and self.max_amount:
             return max(self.min_amount, min(self.max_amount, amount))
         return amount

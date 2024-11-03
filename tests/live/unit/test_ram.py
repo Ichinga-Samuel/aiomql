@@ -11,7 +11,7 @@ class TestRAM:
         assert self.ram.min_amount <= res <= self.ram.max_amount
 
     async def test_checks(self, buy_order, sell_order, mt):
-        for i in range(self.ram.open_limit+1):
+        for i in range(self.ram.open_limit + 1):
             if i % 2 == 0:
                 await mt.order_send(buy_order)
             else:

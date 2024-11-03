@@ -25,7 +25,12 @@ class Order(_Base, TradeRequest):
             type_time (OrderTime.DAY): Order time
             type_filling (OrderFilling.FOK): Order filling
         """
-        kwargs = {'action': TradeAction.DEAL, 'type_time': OrderTime.DAY, 'type_filling': OrderFilling.FOK, **kwargs}
+        kwargs = {
+            "action": TradeAction.DEAL,
+            "type_time": OrderTime.DAY,
+            "type_filling": OrderFilling.FOK,
+            **kwargs,
+        }
         super().__init__(**kwargs)
 
     async def orders_total(self):
@@ -52,7 +57,9 @@ class Order(_Base, TradeRequest):
                 return TradeOrder(**order_._asdict())
         return order
 
-    async def get_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '') -> tuple[TradeOrder, ...]:
+    async def get_orders(
+        self, *, ticket: int = 0, symbol: str = "", group: str = ""
+    ) -> tuple[TradeOrder, ...]:
         """Get the list of active pending orders for the current symbol.
 
         Keyword Args:
@@ -80,7 +87,7 @@ class Order(_Base, TradeRequest):
         req = self.request | kwargs
         res = await self.mt5.order_check(req)
         if res is None:
-            raise OrderError(f'Order check failed for {self.symbol}')
+            raise OrderError(f"Order check failed for {self.symbol}")
         return OrderCheckResult(**res._asdict())
 
     @backoff_decorator
@@ -95,7 +102,7 @@ class Order(_Base, TradeRequest):
         """
         res = await self.mt5.order_send(self.request)
         if res is None:
-            raise OrderError(f'Failed to send order {self.symbol}')
+            raise OrderError(f"Failed to send order {self.symbol}")
         return OrderSendResult(**res._asdict())
 
     @error_handler(log_error_msg=False)
@@ -105,7 +112,9 @@ class Order(_Base, TradeRequest):
         Returns:
             float: Returns float value if successful
         """
-        res = await self.mt5.order_calc_margin(self.type, self.symbol, self.volume, self.price)
+        res = await self.mt5.order_calc_margin(
+            self.type, self.symbol, self.volume, self.price
+        )
         return res
 
     @error_handler(response=0, log_error_msg=False)
@@ -116,8 +125,16 @@ class Order(_Base, TradeRequest):
             float: Returns float value if successful
             None: If not successful
         """
-        action, symbol, volume, price_open, price_close = self.type, self.symbol, self.volume, self.price, self.tp
-        res = await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
+        action, symbol, volume, price_open, price_close = (
+            self.type,
+            self.symbol,
+            self.volume,
+            self.price,
+            self.tp,
+        )
+        res = await self.mt5.order_calc_profit(
+            action, symbol, volume, price_open, price_close
+        )
         return res
 
     @error_handler(response=0, log_error_msg=False)
@@ -128,11 +145,23 @@ class Order(_Base, TradeRequest):
             float: Returns float value if successful
             None: If not successful
         """
-        action, symbol, volume, price_open, price_close = self.type, self.symbol, self.volume, self.price, self.sl
-        res = await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
+        action, symbol, volume, price_open, price_close = (
+            self.type,
+            self.symbol,
+            self.volume,
+            self.price,
+            self.sl,
+        )
+        res = await self.mt5.order_calc_profit(
+            action, symbol, volume, price_open, price_close
+        )
         return res
 
     @property
     def request(self) -> dict:
         """Return the order request as a dictionary."""
-        return {key: value for key, value in self.dict.items() if key in self.mt5.TradeRequest.__match_args__}
+        return {
+            key: value
+            for key, value in self.dict.items()
+            if key in self.mt5.TradeRequest.__match_args__
+        }

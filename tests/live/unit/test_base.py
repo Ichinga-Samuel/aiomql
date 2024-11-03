@@ -20,22 +20,22 @@ class TestBaseClass:
         assert "attr2=test" in repr_str
 
     def test_set_attributes(self, child):
-        child.set_attributes(attr3=3.14, attr2='str')
-        assert child.attr2 == 'str'
-        assert getattr(child, 'attr3', None) is None
+        child.set_attributes(attr3=3.14, attr2="str")
+        assert child.attr2 == "str"
+        assert getattr(child, "attr3", None) is None
 
     def test_annotations(self, child):
         annotations = child.annotations
         assert isinstance(annotations, dict)
 
     def test_get_dict(self, child):
-        child.set_attributes(attr2='test')
+        child.set_attributes(attr2="test")
         result = child.get_dict()
         assert result["attr"] == 1
         assert result["attr2"] == "test"
 
     def test_get_dict_with_exclude(self, child):
-        child.set_attributes(attr2='test')
+        child.set_attributes(attr2="test")
         result = child.get_dict(exclude={"attr"})
         assert "attr" not in result
         assert result["attr2"] == "test"
@@ -49,8 +49,8 @@ class TestBaseClass:
     def test_class_vars(self, child):
         class_vars = child.class_vars
         assert isinstance(class_vars, dict)
-        assert 'cls_attr' in class_vars
-        assert 'attr' not in class_vars
+        assert "cls_attr" in class_vars
+        assert "attr" not in class_vars
 
     def test_dict_property(self, child):
         child.set_attributes(attr2="test")

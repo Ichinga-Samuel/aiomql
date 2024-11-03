@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from ...core.constants import AccountTradeMode, AccountMarginMode, AccountStopOutMode
+from ..constants import AccountTradeMode, AccountMarginMode, AccountStopOutMode
 
 
 @dataclass
@@ -30,12 +30,17 @@ class BackTestAccount:
     assets: float = 0
     liabilities: float = 0
     commission_blocked: float = 0
-    name: str = ''
-    server: str = ''
+    name: str = ""
+    server: str = ""
     currency: str = "USD"
-    company: str = ''
+    company: str = ""
 
     __match_args__: ClassVar[tuple]
+
+    def get_dict(self, exclude: set = None, include: set = None):
+        exclude, include = exclude or set(), include or set()
+        filter_ = include or set(self.__match_args__).difference(exclude)
+        return {key: value for key, value in self.asdict().items() if key in filter_}
 
     def asdict(self):
         res = {key: getattr(self, key) for key in self.__match_args__}

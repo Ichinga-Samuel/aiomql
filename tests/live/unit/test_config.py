@@ -1,10 +1,10 @@
 from aiomql.core.config import Config
-from aiomql.contrib.backtesting import BackTestEngine
+from aiomql.core.backtesting import BackTestEngine
 
 
 class TestConfig:
     def test_singleton(self, config):
-        config2 = Config(filename='test.json')
+        config2 = Config(filename="test.json")
         assert config is config2
 
     def test_set_attributes(self, config):
@@ -20,10 +20,10 @@ class TestConfig:
     def test_account_info(self, config):
         account_info = config.account_info()
         assert isinstance(account_info, dict)
-        assert 'login' in account_info
-        assert 'password' in account_info
-        assert 'server' in account_info
+        assert "login" in account_info
+        assert "password" in account_info
+        assert "server" in account_info
 
     def test_load_config(self, config):
-        config.load_config(file='tests/live/configs/test2.json')
-        assert config.filename == 'test2.json'
+        config.load_config(file="tests/live/configs/test2.json")
+        assert config.filename == "test2.json"

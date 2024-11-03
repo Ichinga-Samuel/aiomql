@@ -23,7 +23,7 @@ class Repr:
 
 class TradeAction(Repr, IntEnum):
     """TRADE_REQUEST_ACTION Enum.
-    
+
     Attributes:
         DEAL (int): Delete the pending order placed previously Place a trade order for an immediate execution with the
             specified parameters (market order).
@@ -31,8 +31,9 @@ class TradeAction(Repr, IntEnum):
         SLTP (int): Modify Stop Loss and Take Profit values of an opened position
         MODIFY (int): Modify the parameters of the order placed previously
         REMOVE (int): Delete the pending order placed previously
-        CLOSE_BY (int): Close a position by an opposite one 
+        CLOSE_BY (int): Close a position by an opposite one
     """
+
     __enum_name__ = "TRADE_ACTION"
     DEAL = mt5.TRADE_ACTION_DEAL
     PENDING = mt5.TRADE_ACTION_PENDING
@@ -44,7 +45,7 @@ class TradeAction(Repr, IntEnum):
 
 class OrderFilling(Repr, IntEnum):
     """ORDER_TYPE_FILLING Enum.
-    
+
     Attributes:
         FOK (int): This execution policy means that an order can be executed only in the specified volume.
             If the necessary amount of a financial instrument is currently unavailable in the market, the order will
@@ -61,6 +62,7 @@ class OrderFilling(Repr, IntEnum):
             During activation of the ORDER_TYPE_BUY_STOP_LIMIT and ORDER_TYPE_SELL_STOP_LIMIT orders, an appropriate
             limit order ORDER_TYPE_BUY_LIMIT/ORDER_TYPE_SELL_LIMIT with the ORDER_FILLING_RETURN type is created.
     """
+
     __enum_name__ = "ORDER_FILLING"
     FOK = mt5.ORDER_FILLING_FOK
     IOC = mt5.ORDER_FILLING_IOC
@@ -69,14 +71,15 @@ class OrderFilling(Repr, IntEnum):
 
 class OrderTime(Repr, IntEnum):
     """ORDER_TIME Enum.
-    
+
     Attributes:
-        GTC (int): Good till cancel order 
-        DAY (int): Good till current trade day order 
-        SPECIFIED (int): The order is active until the specified date 
+        GTC (int): Good till cancel order
+        DAY (int): Good till current trade day order
+        SPECIFIED (int): The order is active until the specified date
         SPECIFIED_DAY (int): The order is active until 23:59:59 of the specified day. If this time appears to be out of
             a trading session, the expiration is processed at the nearest trading time.
     """
+
     __enum_name__ = "ORDER_TIME"
     GTC = mt5.ORDER_TIME_GTC
     DAY = mt5.ORDER_TIME_DAY
@@ -86,21 +89,22 @@ class OrderTime(Repr, IntEnum):
 
 class OrderType(Repr, IntEnum):
     """ORDER_TYPE Enum.
-    
+
     Attributes:
-        BUY (int): Market buy order 
-        SELL (int): Market sell order 
-        BUY_LIMIT (int): Buy Limit pending order 
-        SELL_LIMIT (int): Sell Limit pending order 
-        BUY_STOP (int): Buy Stop pending order 
-        SELL_STOP (int): Sell Stop pending order 
-        BUY_STOP_LIMIT (int): Upon reaching the order price, Buy Limit pending order is placed at StopLimit price 
-        SELL_STOP_LIMIT (int): Upon reaching the order price, Sell Limit pending order is placed at StopLimit price 
-        CLOSE_BY (int): Order for closing a position by an opposite one 
+        BUY (int): Market buy order
+        SELL (int): Market sell order
+        BUY_LIMIT (int): Buy Limit pending order
+        SELL_LIMIT (int): Sell Limit pending order
+        BUY_STOP (int): Buy Stop pending order
+        SELL_STOP (int): Sell Stop pending order
+        BUY_STOP_LIMIT (int): Upon reaching the order price, Buy Limit pending order is placed at StopLimit price
+        SELL_STOP_LIMIT (int): Upon reaching the order price, Sell Limit pending order is placed at StopLimit price
+        CLOSE_BY (int): Order for closing a position by an opposite one
 
     Properties:
         opposite (int): Gets the opposite of an order type
     """
+
     __enum_name__ = "ORDER_TYPE"
     BUY = mt5.ORDER_TYPE_BUY
     SELL = mt5.ORDER_TYPE_SELL
@@ -126,11 +130,12 @@ class BookType(Repr, IntEnum):
     """BOOK_TYPE Enum.
 
     Attributes:
-        SELL (int): Sell order (Offer) 
-        BUY (int): Buy order (Bid) 
-        SELL_MARKET (int): Sell order by Market 
-        BUY_MARKET (int): Buy order by Market 
+        SELL (int): Sell order (Offer)
+        BUY (int): Buy order (Bid)
+        SELL_MARKET (int): Sell order by Market
+        BUY_MARKET (int): Buy order by Market
     """
+
     __enum_name__ = "BOOK_TYPE"
     SELL = mt5.BOOK_TYPE_SELL
     BUY = mt5.BOOK_TYPE_BUY
@@ -168,6 +173,7 @@ class TimeFrame(Repr, IntEnum):
     Methods:
         get: get a timeframe object from a time value in seconds
     """
+
     __enum_name__ = "TIMEFRAME"
     M1 = mt5.TIMEFRAME_M1
     M2 = mt5.TIMEFRAME_M2
@@ -202,25 +208,82 @@ class TimeFrame(Repr, IntEnum):
             >>> print(t.seconds)
             3600
         """
-        seconds = {1: 60, 2: 120, 3: 180, 4: 240, 5: 300, 6: 360, 10: 600, 15: 900, 20: 1200, 30: 1800, 16385: 3600,
-                 16386: 7200, 16387: 10800, 16388: 14400, 16390: 21600, 16392: 28800, 16396: 43200, 16408: 86400,
-                 32769: 604800, 49153: 2592000}
+        seconds = {
+            1: 60,
+            2: 120,
+            3: 180,
+            4: 240,
+            5: 300,
+            6: 360,
+            10: 600,
+            15: 900,
+            20: 1200,
+            30: 1800,
+            16385: 3600,
+            16386: 7200,
+            16387: 10800,
+            16388: 14400,
+            16390: 21600,
+            16392: 28800,
+            16396: 43200,
+            16408: 86400,
+            32769: 604800,
+            49153: 2592000,
+        }
         return seconds[self]
 
     @classmethod
-    def get_timeframe(cls, time: int) -> 'TimeFrame':
+    def get_timeframe(cls, time: int) -> "TimeFrame":
         """Get a timeframe object from a time value in seconds"""
-        time_frames = {60: 1, 120: 2, 180: 3, 240: 4, 300: 5, 360: 6, 600: 10, 900: 15, 1200: 20, 1800: 30, 3600: 16385,
-                 7200: 16386, 10800: 16387, 14400: 16388, 21600: 16390, 28800: 16392, 43200: 16396, 86400: 16408,
-                 604800: 32769, 2592000: 49153}
+        time_frames = {
+            60: 1,
+            120: 2,
+            180: 3,
+            240: 4,
+            300: 5,
+            360: 6,
+            600: 10,
+            900: 15,
+            1200: 20,
+            1800: 30,
+            3600: 16385,
+            7200: 16386,
+            10800: 16387,
+            14400: 16388,
+            21600: 16390,
+            28800: 16392,
+            43200: 16396,
+            86400: 16408,
+            604800: 32769,
+            2592000: 49153,
+        }
         return TimeFrame(time_frames[time])
 
     @classmethod
     @property
-    def all(cls) -> tuple['TimeFrame', ...]:
-        return (TimeFrame.M1, TimeFrame.M2, TimeFrame.M3, TimeFrame.M4, TimeFrame.M5, TimeFrame.M6, TimeFrame.M10,
-                TimeFrame.M15, TimeFrame.M20, TimeFrame.M30, TimeFrame.H1, TimeFrame.H2, TimeFrame.H3, TimeFrame.H4,
-                TimeFrame.H6, TimeFrame.H8, TimeFrame.H12, TimeFrame.D1, TimeFrame.W1, TimeFrame.MN1)
+    def all(cls) -> tuple["TimeFrame", ...]:
+        return (
+            TimeFrame.M1,
+            TimeFrame.M2,
+            TimeFrame.M3,
+            TimeFrame.M4,
+            TimeFrame.M5,
+            TimeFrame.M6,
+            TimeFrame.M10,
+            TimeFrame.M15,
+            TimeFrame.M20,
+            TimeFrame.M30,
+            TimeFrame.H1,
+            TimeFrame.H2,
+            TimeFrame.H3,
+            TimeFrame.H4,
+            TimeFrame.H6,
+            TimeFrame.H8,
+            TimeFrame.H12,
+            TimeFrame.D1,
+            TimeFrame.W1,
+            TimeFrame.MN1,
+        )
 
 
 class CopyTicks(Repr, IntEnum):
@@ -228,10 +291,11 @@ class CopyTicks(Repr, IntEnum):
     copy_ticks_range() functions.
 
     Attributes:
-        ALL (int): All ticks 
-        INFO (int): Ticks containing Bid and/or Ask price changes 
-        TRADE (int): Ticks containing Last and/or Volume price changes 
+        ALL (int): All ticks
+        INFO (int): Ticks containing Bid and/or Ask price changes
+        TRADE (int): Ticks containing Last and/or Volume price changes
     """
+
     __enum_name__ = "COPY_TICKS"
     ALL = mt5.COPY_TICKS_ALL
     INFO = mt5.COPY_TICKS_INFO
@@ -242,9 +306,10 @@ class PositionType(Repr, IntEnum):
     """POSITION_TYPE Enum. Direction of an open position (buy or sell)
 
     Attributes:
-        BUY (int): Buy 
+        BUY (int): Buy
         SELL (int): Sell
     """
+
     __enum_name__ = "POSITION_TYPE"
     BUY = mt5.POSITION_TYPE_BUY
     SELL = mt5.POSITION_TYPE_SELL
@@ -260,6 +325,7 @@ class PositionReason(Repr, IntEnum):
        EXPERT (int): The position was opened as a result of activation of an order placed from an MQL5 program,
            i.e. an Expert Advisor or a script
     """
+
     __enum_name__ = "POSITION_REASON"
     CLIENT = mt5.POSITION_REASON_CLIENT
     MOBILE = mt5.POSITION_REASON_MOBILE
@@ -298,6 +364,7 @@ class DealType(Repr, IntEnum):
             DEAL_TYPE_SELL_CANCELED, and its profit/loss is zeroized. Previously obtained profit/loss is
             charged/withdrawn using a separated balance operation.
     """
+
     __enum_name__ = "DEAL_TYPE"
     BUY = mt5.DEAL_TYPE_BUY
     SELL = mt5.DEAL_TYPE_SELL
@@ -319,7 +386,7 @@ class DealType(Repr, IntEnum):
     DEAL_TAX = mt5.DEAL_TAX
 
     def __str__(self):
-        if self.name in ('DEAL_DIVIDEND', 'DEAL_DIVIDEND_FRANKED', 'DEAL_TAX'):
+        if self.name in ("DEAL_DIVIDEND", "DEAL_DIVIDEND_FRANKED", "DEAL_TAX"):
             return self.name
         return super().__str__()
 
@@ -336,6 +403,7 @@ class DealEntry(Repr, IntEnum):
         INOUT (int): Reverse
         OUT_BY (int): Close a position by an opposite one
     """
+
     __enum_name__ = "DEAL_ENTRY"
     IN = mt5.DEAL_ENTRY_IN
     OUT = mt5.DEAL_ENTRY_OUT
@@ -362,6 +430,7 @@ class DealReason(Repr, IntEnum):
         SPLIT (int): The deal was executed after the split (price reduction) of an instrument, which had an open
             position during split announcement
     """
+
     __enum_name__ = "DEAL_REASON"
     CLIENT = mt5.DEAL_REASON_CLIENT
     MOBILE = mt5.DEAL_REASON_MOBILE
@@ -387,6 +456,7 @@ class OrderReason(Repr, IntEnum):
         TP (int): The order was placed as a result of Take Profit activation
         SO (int): The order was placed as a result of the Stop Out event
     """
+
     __enum_name__ = "ORDER_REASON"
     CLIENT = mt5.ORDER_REASON_CLIENT
     MOBILE = mt5.ORDER_REASON_MOBILE
@@ -406,6 +476,7 @@ class SymbolChartMode(Repr, IntEnum):
         BID (int): Bars are based on Bid prices
         LAST (int): Bars are based on last prices
     """
+
     __enum_name__ = "SYMBOL_CHART_MODE"
     BID = mt5.SYMBOL_CHART_MODE_BID
     LAST = mt5.SYMBOL_CHART_MODE_LAST
@@ -437,6 +508,7 @@ class SymbolCalcMode(Repr, IntEnum):
             and liquidity ratio. The value is included into Assets, which are added to Equity. Open positions of such
             symbols increase the Free Margin amount and are used as additional margin (collateral) for open positions
     """
+
     __enum_name__ = "SYMBOL_CALC_MODE"
     FOREX = mt5.SYMBOL_CALC_MODE_FOREX
     FOREX_NO_LEVERAGE = mt5.SYMBOL_CALC_MODE_FOREX_NO_LEVERAGE
@@ -530,6 +602,7 @@ class SymbolSwapMode(Repr, IntEnum):
             Next day it is reopened by the current Bid price +/- specified number of
             points (parameters SYMBOL_SWAP_LONG and SYMBOL_SWAP_SHORT)
     """
+
     __enum_name__ = "SYMBOL_SWAP_MODE"
     DISABLED = mt5.SYMBOL_SWAP_MODE_DISABLED
     POINTS = mt5.SYMBOL_SWAP_MODE_POINTS
@@ -554,6 +627,7 @@ class DayOfWeek(Repr, IntEnum):
         FRIDAY (int): Friday
         SATURDAY (int): Saturday
     """
+
     __enum__name__ = "DAY_OF_WEEK"
     SUNDAY = mt5.DAY_OF_WEEK_SUNDAY
     MONDAY = mt5.DAY_OF_WEEK_MONDAY
@@ -579,6 +653,7 @@ class SymbolOrderGTCMode(Repr, IntEnum):
         DAILY_NO_STOPS (int): When a trade day changes, only pending orders are deleted,
             while Stop Loss and Take Profit levels are preserved
     """
+
     __enum_name__ = "SYMBOL_ORDERS"
     GTC = mt5.SYMBOL_ORDERS_GTC
     DAILY = mt5.SYMBOL_ORDERS_DAILY
@@ -594,6 +669,7 @@ class SymbolOptionRight(Repr, IntEnum):
         CALL (int): A call option gives you the right to buy an asset at a specified price.
         PUT (int): A put option gives you the right to sell an asset at a specified price.
     """
+
     __enum_name__ = "SYMBOL_OPTION_RIGHT"
     CALL = mt5.SYMBOL_OPTION_RIGHT_CALL
     PUT = mt5.SYMBOL_OPTION_RIGHT_PUT
@@ -608,6 +684,7 @@ class SymbolOptionMode(Repr, IntEnum):
         AMERICAN (int): American option may be exercised on any trading day or before expiry. The period within which
         a buyer can exercise the option is specified for it.
     """
+
     __enum_name__ = "SYMBOL_OPTION_MODE"
     EUROPEAN = mt5.SYMBOL_OPTION_MODE_EUROPEAN
     AMERICAN = mt5.SYMBOL_OPTION_MODE_AMERICAN
@@ -623,6 +700,7 @@ class AccountTradeMode(Repr, IntEnum):
         CONTEST: Contest account
         REAL: Real Account
     """
+
     __enum_name__ = "ACCOUNT_TRADE_MODE"
     DEMO = mt5.ACCOUNT_TRADE_MODE_DEMO
     CONTEST = mt5.ACCOUNT_TRADE_MODE_CONTEST
@@ -640,7 +718,8 @@ class TickFlag(Repr, IntFlag):
         VOLUME (int): Volume changed
         BUY (int): last Buy price changed
         SELL (int): last Sell price changed
-        """
+    """
+
     __enum_name__ = "TICK_FLAG"
     BID = mt5.TICK_FLAG_BID
     ASK = mt5.TICK_FLAG_ASK
@@ -718,6 +797,7 @@ class TradeRetcode(Repr, IntEnum):
         FIFO_CLOSE (int): The request is rejected, because "Position closing is allowed only by FIFO rule" flag is set
             for the trading account (ACCOUNT_FIFO_CLOSE=true)
     """
+
     __enum_name__ = "TRADE_RETCODE"
     REQUOTE = mt5.TRADE_RETCODE_REQUOTE
     REJECT = mt5.TRADE_RETCODE_REJECT
@@ -789,6 +869,7 @@ class AccountMarginMode(Repr, IntEnum):
             (hedging, multiple positions can exist for one symbol). The margin is calculated based on the symbol
             type (SYMBOL_TRADE_CALC_MODE) taking into account the hedged margin (SYMBOL_MARGIN_HEDGED).
     """
+
     __enum_name__ = "ACCOUNT_MARGIN_MODE"
     RETAIL_NETTING = mt5.ACCOUNT_MARGIN_MODE_RETAIL_NETTING
     EXCHANGE = mt5.ACCOUNT_MARGIN_MODE_EXCHANGE

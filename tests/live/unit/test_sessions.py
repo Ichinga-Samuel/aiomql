@@ -6,25 +6,27 @@ from aiomql.lib.sessions import Session, Sessions, delta
 
 
 class TestSessions:
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def make_sessions(self, make_session):
         london, all_day, over_night = make_session
         return Sessions(sessions=[london, all_day, over_night])
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def make_session(self):
-        end = time(hour=16, minute=59, second=59, microsecond=999_999,  tzinfo=UTC)
-        london = Session(start=8, end=end, name='London', on_end='close_all')
-        start, end = time(hour=0, tzinfo=UTC), time(hour=23, minute=59, second=59, tzinfo=UTC)
-        all_day = Session(start=start, end=end, name='AllDay', on_end='close_all')
+        end = time(hour=16, minute=59, second=59, microsecond=999_999, tzinfo=UTC)
+        london = Session(start=8, end=end, name="London", on_end="close_all")
+        start, end = time(hour=0, tzinfo=UTC), time(
+            hour=23, minute=59, second=59, tzinfo=UTC
+        )
+        all_day = Session(start=start, end=end, name="AllDay", on_end="close_all")
         end = time(hour=6, minute=59, second=59, microsecond=999_999, tzinfo=UTC)
-        over_night = Session(start=18, end=end, name='OverNight', on_end='close_all')
+        over_night = Session(start=18, end=end, name="OverNight", on_end="close_all")
         return london, all_day, over_night
 
     def test_session_attributes(self, make_session):
         london, all_day, over_night = make_session
         period = over_night.duration()
-        assert london.name == 'London'
+        assert london.name == "London"
         assert london.start == time(hour=8, tzinfo=UTC)
         assert london.end.hour == 16
         assert period.hours == 12
@@ -55,13 +57,13 @@ class TestSessions:
         no_sess = sessions.find(moment=time(hour=17, tzinfo=UTC))
         mid_nite_sess = sessions.find(moment=mid_nite)
         current_sess = sessions.find(moment=now)
-        assert current_sess.name == 'OverNight'
-        assert noon_sess.name == 'London'
+        assert current_sess.name == "OverNight"
+        assert noon_sess.name == "London"
         assert no_sess is None
-        assert next_sess.name == 'London'
-        assert mid_nite_sess.name == 'OverNight'
+        assert next_sess.name == "London"
+        assert mid_nite_sess.name == "OverNight"
         current = datetime.now(UTC).time()
         if current.hour not in (7, 17):
             await sessions.check()
             assert sessions.current_session is not None
-            assert sessions.current_session.name in ('London', 'OverNight')
+            assert sessions.current_session.name in ("London", "OverNight")

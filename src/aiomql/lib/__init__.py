@@ -1,5 +1,4 @@
 from .account import Account
-from .backtest_runner import BackTestRunner
 from .bot import Bot
 from .candle import Candle, Candles
 from .executor import Executor

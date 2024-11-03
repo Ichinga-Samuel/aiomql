@@ -7,3 +7,4 @@ from .base import Base, _Base
 from .errors import Error
 from .exceptions import *
 from .task_queue import TaskQueue
+from .backtesting import *

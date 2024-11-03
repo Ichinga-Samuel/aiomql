@@ -18,11 +18,12 @@ class Account(_Base, AccountInfo):
     Notes:
         Other Account properties are defined in the AccountInfo class.
     """
+
     _instance: Self
     connected: bool
-    
+
     def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, '_instance'):
+        if not hasattr(cls, "_instance"):
             cls._instance = super().__new__(cls)
             cls._instance.connected = False
         return cls._instance
@@ -40,7 +41,7 @@ class Account(_Base, AccountInfo):
         await self.mt5.initialize()
         self.connected = await self.mt5.login()
         if not self:
-            raise LoginError('Login failed')
+            raise LoginError("Login failed")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

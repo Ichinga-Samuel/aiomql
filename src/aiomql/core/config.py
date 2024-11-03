@@ -11,6 +11,7 @@ logger = getLogger(__name__)
 Bot = TypeVar("Bot")
 BackTestEngine = TypeVar("BackTestEngine")
 
+
 def func():
     stack = inspect.stack()
     calling_context = next(context for context in stack if context.filename != __file__)
@@ -40,8 +41,9 @@ class Config:
         or the load_config method.
         By passing reload=True to the load_config method, you can reload and search again for the config file.
     """
+
     login: int
-    trade_record_mode: Literal['csv', 'json']
+    trade_record_mode: Literal["csv", "json"]
     password: str
     server: str
     path: str | Path
@@ -58,14 +60,27 @@ class Config:
     _backtest_engine: BackTestEngine
     bot: Bot
     _instance: Self
-    mode: Literal['backtest', 'live']
+    mode: Literal["backtest", "live"]
     use_terminal_for_backtesting: bool
     shutdown: bool
     force_shutdown: bool
-    _defaults = {"timeout": 60000, "record_trades": True, "trade_record_mode": "csv", "mode": "live",
-                'filename': "aiomql.json", "records_dir_name": "trade_records", "backtest_dir_name": "backtesting",
-                "use_terminal_for_backtesting": True, 'path': '', 'login': 0, 'password': '',
-                 'server': '', 'records_dir': None, 'shutdown': False, 'force_shutdown': False}
+    _defaults = {
+        "timeout": 60000,
+        "record_trades": True,
+        "trade_record_mode": "csv",
+        "mode": "live",
+        "filename": "aiomql.json",
+        "records_dir_name": "trade_records",
+        "backtest_dir_name": "backtesting",
+        "use_terminal_for_backtesting": True,
+        "path": "",
+        "login": 0,
+        "password": "",
+        "server": "",
+        "records_dir": None,
+        "shutdown": False,
+        "force_shutdown": False,
+    }
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
@@ -78,7 +93,11 @@ class Config:
         return cls._instance
 
     def __init__(self, **kwargs):
-        self.set_attributes(**kwargs)
+        root = kwargs.pop("root", None)
+        if root is not None:
+            self.load_config(root=root, **kwargs)
+        else:
+            self.set_attributes(**kwargs)
 
     @property
     def backtest_engine(self):
@@ -94,8 +113,10 @@ class Config:
         Keyword Args:
             **kwargs: Object attributes and values as keyword arguments
         """
-        if kwargs.pop('root', None) is not None:
-            logger.warning('Tried setting root from set_attributes. Use load_config to change project root')
+        if kwargs.pop("root", None) is not None:
+            logger.warning(
+                "Tried setting root from set_attributes. Use load_config to change project root"
+            )
         [setattr(self, key, value) for key, value in kwargs.items()]
 
     @staticmethod
@@ -124,7 +145,14 @@ class Config:
             logger.debug(f"Error finding config file: {err}")
             return
 
-    def load_config(self, *, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Self:
+    def load_config(
+        self,
+        *,
+        file: str | Path = None,
+        filename: str = None,
+        root: str | Path = None,
+        **kwargs,
+    ) -> Self:
         """Load configuration settings from a file.
 
         Keyword Args:
@@ -138,7 +166,7 @@ class Config:
             root.mkdir(parents=True, exist_ok=True) if not root.exists() else ...
             self.root = root
         else:
-            self.root = self.root if hasattr(self, 'root') else Path.cwd()
+            self.root = self.root if hasattr(self, "root") else Path.cwd()
         if file is not None:
             file = Path(file).resolve()
             if not file.exists():
@@ -162,13 +190,21 @@ class Config:
         self.set_attributes(**data)
 
         if self.path:
-            self.path = self.root / self.path if not Path(self.path).resolve().exists() else self.path
+            self.path = (
+                self.root / self.path
+                if not Path(self.path).resolve().exists()
+                else self.path
+            )
 
-        if self.record_trades and (hasattr(self, "records_dir") is False or self.records_dir is None):
+        if self.record_trades and (
+            hasattr(self, "records_dir") is False
+            or self.records_dir is None
+            or root is not None
+        ):
             self.records_dir = self.root / self.records_dir_name
             self.records_dir.mkdir(parents=True, exist_ok=True)
 
-        if not hasattr(self, "backtest_dir"):
+        if not hasattr(self, "backtest_dir") or root is not None:
             self.backtest_dir = self.root / self.backtest_dir_name
             self.backtest_dir.mkdir(parents=True, exist_ok=True)
 
@@ -180,4 +216,4 @@ class Config:
         Returns:
             dict: A dictionary of login details
         """
-        return {'login': self.login, 'password': self.password, 'server': self.server}
+        return {"login": self.login, "password": self.password, "server": self.server}

@@ -7,7 +7,9 @@ logger = getLogger(__name__)
 
 
 class SimpleTrader(Trader):
-    async def place_trade(self, *, order_type: OrderType, sl: float, parameters: dict = None):
+    async def place_trade(
+        self, *, order_type: OrderType, sl: float, parameters: dict = None
+    ):
         """Places a trade based on the order_type and a given stop_loss
 
         Args:
@@ -20,7 +22,9 @@ class SimpleTrader(Trader):
             await self.create_order_with_sl(order_type=order_type, sl=sl)
             if not await self.check_order():
                 return
-            self.order.comment = self.parameters.get('name', self.__class__.__name__)
+            self.order.comment = self.parameters.get("name", self.__class__.__name__)
             await self.send_order()
         except Exception as err:
-            logger.error(f"{err} in {self.__class__.__name__}.place_trade for {self.symbol.name}")
+            logger.error(
+                f"{err} in {self.__class__.__name__}.place_trade for {self.symbol.name}"
+            )

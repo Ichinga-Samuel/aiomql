@@ -10,7 +10,7 @@ class TestBotFactoryAndExecutor:
     def setup_class(cls):
         cls.bot = Bot()
 
-    @pytest.fixture(scope='class', autouse=True)
+    @pytest.fixture(scope="class", autouse=True)
     async def initialize(self):
         self.bot.add_coroutine(coroutine=self.coro_one)
         self.bot.add_coroutine(coroutine=self.coro_two)
@@ -20,24 +20,24 @@ class TestBotFactoryAndExecutor:
 
     @staticmethod
     def fun_one():
-        print('function one')
+        print("function one")
 
     @staticmethod
     async def coro_thread():
         while True:
-            print('coroutine thread')
+            print("coroutine thread")
             await asyncio.sleep(1)
 
     @staticmethod
     async def coro_one():
         while True:
-            print('coroutine one')
+            print("coroutine one")
             await asyncio.sleep(1)
 
     @staticmethod
     async def coro_two():
         while True:
-            print('coroutine two')
+            print("coroutine two")
             await asyncio.sleep(1)
 
     def test_add_workers(self):
@@ -45,6 +45,5 @@ class TestBotFactoryAndExecutor:
         assert len(self.bot.executor.functions) == 1
         # task_queue already added coroutine_thread
         assert len(self.bot.executor.coroutine_threads) == 2
-
 
     # def

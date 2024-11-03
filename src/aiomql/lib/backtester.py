@@ -1,18 +1,19 @@
 import asyncio
-from concurrent.futures import ProcessPoolExecutor
 from typing import Type, Iterable, Callable, Coroutine
 import logging
 
 from .executor import Executor
 from ..core.config import Config
-from ..core.meta_trader import MetaTrader
+from ..core.backtesting.backtest_controller import BackTestController
+from ..core.meta_backtester import MetaBackTester
+from ..core.backtesting.backtest_engine import BackTestEngine
 from .symbol import Symbol as Symbol
 from .strategy import Strategy as Strategy
 
 logger = logging.getLogger(__name__)
 
 
-class Bot:
+class BackTester:
     """The bot class. Create a bot instance to run your strategies.
 
     Attributes:
@@ -24,27 +25,18 @@ class Bot:
 
     config: Config
     executor: Executor
-    mt: MetaTrader
+    mt: MetaBackTester
+    backtest_engine: BackTestEngine
+    backtest_controller: BackTestController
     strategies: list[Strategy]
 
-    def __init__(self):
-        self.config = Config(bot=self)
+    def __init__(self, *, backtest_engine: BackTestEngine):
+        self.config = Config()
         self.executor = Executor()
-        self.mt = MetaTrader()
+        self.mt = MetaBackTester()
+        self.backtest_engine = backtest_engine
+        self.backtest_controller = BackTestController()
         self.strategies = []
-
-    @classmethod
-    def run_bots(cls, funcs: dict[Callable:dict] = None, num_workers: int = None):
-        """Run multiple scripts or bots in parallel with different accounts.
-
-        Args:
-            funcs (dict): A dictionary of functions to run with their respective keyword arguments as a dictionary
-            num_workers (int): Number of workers to run the functions
-        """
-        num_workers = num_workers or len(funcs)
-        with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            for bot, kwargs in funcs.items():
-                executor.submit(bot, **kwargs)
 
     async def initialize(self):
         """Prepares the bot by signing in to the trading account and initializing the symbols for the trading session.
@@ -57,29 +49,28 @@ class Bot:
             await self.mt.initialize()
             login = await self.mt.login()
             if not login:
-                logger.critical("Unable to sign in to MetaTrder 5 Terminal")
+                logger.critical(f"Unable to sign in to MetaTrder 5 Terminal")
                 raise Exception("Unable to sign in to MetaTrader 5 Terminal")
             logger.info("Login Successful")
             await self.init_strategies()
+            self.config.task_queue.worker_timeout = 5
             self.add_coroutine(
                 coroutine=self.config.task_queue.run, on_separate_thread=True
             )
             self.add_coroutine(coroutine=self.executor.exit)
-
-            if len(self.executor.strategy_runners) == 0:
-                logger.warning("No strategies were added to the bot")
+            self.add_coroutine(
+                coroutine=self.backtest_controller.control, on_separate_thread=True
+            )
+            if (strategies := len(self.executor.strategy_runners)) == 0:
+                logger.warning(
+                    "No strategies were added to the backtester. Exiting ..."
+                )
+                raise Exception("No strategies added to the backtester")
+            parties = strategies + 1
+            self.backtest_controller.set_parties(parties=parties)
         except Exception as err:
-            logger.error("%s: Bot initialization failed", err)
+            logger.error(f"{err}. Backtester initialization failed")
             raise SystemExit
-
-    def add_function(self, *, function: Callable[..., ...], **kwargs: dict):
-        """Add a function to the executor.
-
-        Args:
-            function (Callable): A function to be executed
-            **kwargs (dict): Keyword arguments for the function
-        """
-        self.executor.add_function(function=function, kwargs=kwargs)
 
     def add_coroutine(
         self,

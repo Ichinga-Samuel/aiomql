@@ -4,7 +4,7 @@ from aiomql.lib.positions import Positions
 
 
 class TestPositions:
-    @pytest.fixture(scope='class', autouse=True)
+    @pytest.fixture(scope="class", autouse=True)
     async def init(self, make_buy_sell_orders):
         await self.positions.get_positions()
 

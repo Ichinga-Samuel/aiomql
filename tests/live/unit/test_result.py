@@ -7,12 +7,11 @@ from aiomql.core.models import OrderSendResult
 
 
 class TestResult:
-
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def parameters(self):
-        return {'name': 'test_trades', 'ema': 20, 'rsi': 14}
+        return {"name": "test_trades", "ema": 20, "rsi": 14}
 
-    @pytest.fixture(scope='function')
+    @pytest.fixture(scope="function")
     async def order_results(self, mt, sell_order, buy_order, parameters):
         res1 = await mt.order_send(sell_order)
         res2 = await mt.order_send(buy_order)
@@ -24,10 +23,9 @@ class TestResult:
         res1, res2 = order_results
         data1 = res1.get_data()
         data2 = res2.get_data()
-        assert data1['actual_profit'] == data2['actual_profit'] == 0
-        assert data1['closed'] == data2['closed'] == False
-        assert data1['win'] == data2['win'] == False
-
+        assert data1["actual_profit"] == data2["actual_profit"] == 0
+        assert data1["closed"] == data2["closed"] == False
+        assert data1["win"] == data2["win"] == False
 
     async def test_csv(self, order_results):
         res1, res2 = order_results
@@ -38,7 +36,9 @@ class TestResult:
 
     async def test_json(self, order_results):
         res1, res2 = order_results
-        await asyncio.gather(res1.save(trade_record_mode='json'), res2.save(trade_record_mode='json'))
+        await asyncio.gather(
+            res1.save(trade_record_mode="json"), res2.save(trade_record_mode="json")
+        )
         assert res1.config.records_dir.exists()
         record = res1.config.records_dir / f"{res1.name}.json"
         assert record.exists()

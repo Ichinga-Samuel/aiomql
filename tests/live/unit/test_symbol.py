@@ -8,16 +8,16 @@ from aiomql.lib.ticks import Ticks
 
 
 class TestSymbol:
-    @pytest.fixture(scope='class', autouse=True)
+    @pytest.fixture(scope="class", autouse=True)
     async def btc(self):
-        symbol = Symbol(name='BTCUSD')
-        select = getattr(symbol, 'select', False)
+        symbol = Symbol(name="BTCUSD")
+        select = getattr(symbol, "select", False)
         if select is False:
             await symbol.initialize()
         return symbol
 
     async def test_symbol_attributes(self, btc):
-        assert btc.name == 'BTCUSD'
+        assert btc.name == "BTCUSD"
         assert btc.select is True
         assert btc.tick is not None
 
@@ -35,13 +35,19 @@ class TestSymbol:
     async def test_rates(self, btc):
         start = datetime(year=2023, month=10, day=5)
         end = start + timedelta(hours=9)
-        rates_from = await btc.copy_rates_from(timeframe=btc.mt5.TIMEFRAME_H1, date_from=start, count=10)
+        rates_from = await btc.copy_rates_from(
+            timeframe=btc.mt5.TIMEFRAME_H1, date_from=start, count=10
+        )
         assert isinstance(rates_from, Candles)
         assert len(rates_from) == 10
-        rates_from_pos = await btc.copy_rates_from_pos(timeframe=btc.mt5.TIMEFRAME_H1, count=10, start_position=0)
+        rates_from_pos = await btc.copy_rates_from_pos(
+            timeframe=btc.mt5.TIMEFRAME_H1, count=10, start_position=0
+        )
         assert isinstance(rates_from_pos, Candles)
         assert len(rates_from_pos) == 10
-        rates_range = await btc.copy_rates_range(timeframe=btc.mt5.TIMEFRAME_H1, date_from=start, date_to=end)
+        rates_range = await btc.copy_rates_range(
+            timeframe=btc.mt5.TIMEFRAME_H1, date_from=start, date_to=end
+        )
         assert isinstance(rates_range, Candles)
         assert len(rates_range) == 10
         ticks_from = await btc.copy_ticks_from(date_from=start, count=10)

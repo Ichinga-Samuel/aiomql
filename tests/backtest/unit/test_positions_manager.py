@@ -10,7 +10,7 @@ async def test_positions_manager(backtest_engine, sell_order, buy_order):
     so_positions = backtest_engine.positions.positions_get(ticket=so.order)
     so_position = so_positions[0]
     assert so_position.ticket == so.order
-    btc_positions = backtest_engine.positions.positions_get(symbol='BTCUSD')
+    btc_positions = backtest_engine.positions.positions_get(symbol="BTCUSD")
     assert len(btc_positions) == 2
     assert backtest_engine.positions.positions_total() == 2
     backtest_engine.positions.close(ticket=bo.order)

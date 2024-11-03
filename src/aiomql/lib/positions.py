@@ -4,7 +4,7 @@ from logging import getLogger
 
 from ..core.meta_trader import MetaTrader
 from ..core.models import TradePosition, OrderSendResult
-from ..core.constants import  OrderType, TradeAction
+from ..core.constants import OrderType, TradeAction
 from ..core.config import Config
 from .._utils import backoff_decorator
 from ..core.meta_backtester import MetaBackTester
@@ -20,13 +20,14 @@ class Positions:
     Attributes:
         mt5 (MetaTrader): MetaTrader instance.
     """
+
     mt5: MetaTrader | MetaBackTester
     positions: tuple[TradePosition, ...]
 
     def __init__(self):
         """Get Open Positions"""
         self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode != 'backtest' else MetaBackTester()
+        self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
         self.positions = ()
 
     @backoff_decorator
@@ -40,7 +41,7 @@ class Positions:
         if positions is not None:
             self.positions = tuple(TradePosition(**pos._asdict()) for pos in positions)
             return self.positions
-        logger.warning('Failed to get open positions')
+        logger.warning("Failed to get open positions")
         return ()
 
     async def get_position_by_ticket(self, *, ticket: int) -> TradePosition | None:
@@ -69,7 +70,9 @@ class Positions:
         return tuple(TradePosition(**pos._asdict()) for pos in (positions or ()))
 
     @staticmethod
-    async def close(*, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType) -> OrderSendResult:
+    async def close(
+        *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType
+    ) -> OrderSendResult:
         """Close an open position for the trading account using the ticket and other parameters.
 
         Args:
@@ -79,8 +82,14 @@ class Positions:
             volume (float): Volume to close.
             order_type (OrderType): Order type.
         """
-        order = Order(action=TradeAction.DEAL, price=price, position=ticket, symbol=symbol, volume=volume,
-                      type=order_type.opposite)
+        order = Order(
+            action=TradeAction.DEAL,
+            price=price,
+            position=ticket,
+            symbol=symbol,
+            volume=volume,
+            type=order_type.opposite,
+        )
         return await order.send()
 
     async def close_position_by_ticket(self, *, ticket: int) -> OrderSendResult | None:
@@ -88,15 +97,27 @@ class Positions:
         position = await self.get_position_by_ticket(ticket=ticket)
         if position is None:
             return None
-        order = Order(position=position.ticket, symbol=position.symbol, volume=position.volume,
-                      type=position.type.opposite, price=position.price_current, action=TradeAction.DEAL)
+        order = Order(
+            position=position.ticket,
+            symbol=position.symbol,
+            volume=position.volume,
+            type=position.type.opposite,
+            price=position.price_current,
+            action=TradeAction.DEAL,
+        )
         return await order.send()
 
     @staticmethod
     async def close_position(*, position: TradePosition):
         """Close an open position for the trading account. Using a position object."""
-        order = Order(position=position.ticket, symbol=position.symbol, volume=position.volume,
-                      type=position.type.opposite, price=position.price_current, action=TradeAction.DEAL)
+        order = Order(
+            position=position.ticket,
+            symbol=position.symbol,
+            volume=position.volume,
+            type=position.type.opposite,
+            price=position.price_current,
+            action=TradeAction.DEAL,
+        )
         return await order.send()
 
     async def close_all(self) -> int:
@@ -106,6 +127,14 @@ class Positions:
             int: Return number of positions closed.
         """
         positions = self.positions or await self.get_positions()
-        results = await asyncio.gather(*(self.close_position(position=position) for position in positions),
-                                       return_exceptions=True)
-        return len([res for res in results if (isinstance(res, OrderSendResult) and res.retcode == 10009)])
+        results = await asyncio.gather(
+            *(self.close_position(position=position) for position in positions),
+            return_exceptions=True,
+        )
+        return len(
+            [
+                res
+                for res in results
+                if (isinstance(res, OrderSendResult) and res.retcode == 10009)
+            ]
+        )

@@ -28,6 +28,7 @@ class Candle:
         spread (float): Spread
         Index (int): Custom attribute representing the position of the candle in a sequence.
     """
+
     time: float
     open: float
     high: float
@@ -45,19 +46,30 @@ class Candle:
         Keyword Args:
             **kwargs: Candle attributes and values as keyword arguments.
         """
-        if not all(i in kwargs for i in ['open', 'high', 'low', 'close']):
-            raise ValueError("Candle must be instantiated with open, high, low and close prices")
-        self.time = kwargs.pop('time', time.monotonic_ns())
-        self.Index = kwargs.pop('Index', 0)
-        self.real_volume = kwargs.pop('real_volume', 0)
-        self.spread = kwargs.pop('spread', 0)
-        self.tick_volume = kwargs.pop('tick_volume', 0)
+        if not all(i in kwargs for i in ["open", "high", "low", "close"]):
+            raise ValueError(
+                "Candle must be instantiated with open, high, low and close prices"
+            )
+        self.time = kwargs.pop("time", time.monotonic_ns())
+        self.Index = kwargs.pop("Index", 0)
+        self.real_volume = kwargs.pop("real_volume", 0)
+        self.spread = kwargs.pop("spread", 0)
+        self.tick_volume = kwargs.pop("tick_volume", 0)
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        return ("%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s)"
-                % {"class": self.__class__.__name__, "open": self.open, "high": self.high,
-                   "low": self.low, "close": self.close, "time": self.time, 'Index': self.Index})
+        return (
+            "%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s)"
+            % {
+                "class": self.__class__.__name__,
+                "open": self.open,
+                "high": self.high,
+                "low": self.low,
+                "close": self.close,
+                "time": self.time,
+                "Index": self.Index,
+            }
+        )
 
     def __eq__(self, other: Self):
         return self.time == other.time
@@ -146,6 +158,7 @@ class Candles:
         The candle class can be customized by subclassing the Candle class and passing the subclass as the candle
          keyword argument, or defining it on the class body as a class attribute.
     """
+
     Index: Series
     time: Series
     open: Series
@@ -159,7 +172,13 @@ class Candles:
     timeframe: TimeFrame
     _data: DataFrame
 
-    def __init__(self, *, data: DataFrame | Self | Iterable, flip=False, candle_class: Candle = None):
+    def __init__(
+        self,
+        *,
+        data: DataFrame | Self | Iterable,
+        flip=False,
+        candle_class: Candle = None,
+    ):
         """A container class of Candle objects in chronological order.
 
         Args:
@@ -198,7 +217,7 @@ class Candles:
             return cls(data=data)
 
         elif isinstance(index, str):
-            if index == 'Index':
+            if index == "Index":
                 return Series(self._data.index)
             return self._data[index]
 
@@ -217,9 +236,11 @@ class Candles:
         if item in self._data.columns:
             return self._data[item]
 
-        if item == 'Index':
+        if item == "Index":
             return Series(self._data.index)
-        raise AttributeError(f"Attribute {item} not defined on class {self.__class__.__name__}")
+        raise AttributeError(
+            f"Attribute {item} not defined on class {self.__class__.__name__}"
+        )
 
     def __iter__(self):
         return (self.Candle(**row._asdict()) for row in self._data.itertuples())
@@ -280,11 +301,21 @@ class Candles:
         """
         columns = columns or []
         data = self._data[-count:]
-        data.index = pd.to_datetime(data['time'], unit='s')
+        data.index = pd.to_datetime(data["time"], unit="s")
         return mplt.make_addplot(data[columns], **kwargs)
 
-    def visualize(self, *, count: int = 50, _type='candle', savefig: str | dict = None, addplot: dict = None,
-                  style: str = 'charles', ylabel: str = 'Price', title: str = 'Chart', **kwargs):
+    def visualize(
+        self,
+        *,
+        count: int = 50,
+        _type="candle",
+        savefig: str | dict = None,
+        addplot: dict = None,
+        style: str = "charles",
+        ylabel: str = "Price",
+        title: str = "Chart",
+        **kwargs,
+    ):
         """Visualize the candles using the mplfinance library.
         Args:
             count (int): The number of candles to visualize, counting from behind, i.e the most recent candles.
@@ -298,8 +329,18 @@ class Candles:
             title (str): The title of the chart. Defaults to 'Chart'.
             kwargs: valid kwargs for the plot function.
         """
-        kwargs |= {key: arg for key, arg in (('savefig', savefig), ('addplot', addplot), ('style', style),
-                                             ('ylabel', ylabel), ('title', title), ('type', _type)) if arg}
+        kwargs |= {
+            key: arg
+            for key, arg in (
+                ("savefig", savefig),
+                ("addplot", addplot),
+                ("style", style),
+                ("ylabel", ylabel),
+                ("title", title),
+                ("type", _type),
+            )
+            if arg
+        }
         data = self._data[-count:]
-        data.index = pd.to_datetime(data['time'], unit='s')
+        data.index = pd.to_datetime(data["time"], unit="s")
         mplt.plot(data, **kwargs)

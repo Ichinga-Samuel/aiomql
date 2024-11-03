@@ -1,10 +1,29 @@
 import MetaTrader5 as mt5
 
-from .constants import BookType, TradeAction, OrderType, OrderTime, OrderFilling, PositionReason, DealType, DealEntry, \
-    DealReason, SymbolChartMode, SymbolTradeMode, SymbolCalcMode, SymbolOptionMode, SymbolOrderGTCMode, \
-    SymbolOptionRight, \
-    SymbolTradeExecution, SymbolSwapMode, DayOfWeek, AccountTradeMode, AccountStopOutMode, AccountMarginMode, \
-    OrderReason
+from .constants import (
+    BookType,
+    TradeAction,
+    OrderType,
+    OrderTime,
+    OrderFilling,
+    PositionReason,
+    DealType,
+    DealEntry,
+    DealReason,
+    SymbolChartMode,
+    SymbolTradeMode,
+    SymbolCalcMode,
+    SymbolOptionMode,
+    SymbolOrderGTCMode,
+    SymbolOptionRight,
+    SymbolTradeExecution,
+    SymbolSwapMode,
+    DayOfWeek,
+    AccountTradeMode,
+    AccountStopOutMode,
+    AccountMarginMode,
+    OrderReason,
+)
 
 from .base import Base
 
@@ -49,8 +68,9 @@ class AccountInfo(Base):
         name: str
         company: str
     """
+
     login: int = 0
-    server: str = ''
+    server: str = ""
     trade_mode: AccountTradeMode
     balance: float
     leverage: float
@@ -108,6 +128,7 @@ class TerminalInfo(Base):
         data_path: str
         commondata_path: str
     """
+
     community_account: bool
     community_connection: bool
     connected: bool
@@ -234,6 +255,7 @@ class SymbolInfo(Base):
         page: str
         path: str
     """
+
     custom: bool
     chart_mode: SymbolChartMode
     select: bool
@@ -329,10 +351,13 @@ class SymbolInfo(Base):
     isin: str
     page: str
     path: str
-    name: str = ''
+    name: str = ""
 
     def __repr__(self):
-        return '%(class)s(name=%(name)s)' % {'class': self.__class__.__name__, 'name': self.name}
+        return "%(class)s(name=%(name)s)" % {
+            "class": self.__class__.__name__,
+            "name": self.name,
+        }
 
     def __str__(self):
         return self.name
@@ -354,6 +379,7 @@ class BookInfo(Base):
         volume: float
         volume_dbl: float
     """
+
     type: BookType
     price: float
     volume: float
@@ -389,6 +415,7 @@ class TradeOrder(Base):
         comment: str
         external_id: str
     """
+
     ticket: int
     time_setup: int
     time_setup_msc: int
@@ -439,6 +466,7 @@ class TradeRequest(Base):
         deviation: int
         comment: str
     """
+
     action: TradeAction
     type: OrderType
     order: int
@@ -474,6 +502,7 @@ class OrderCheckResult(Base):
         comment: str
         request: TradeRequest
     """
+
     retcode: int
     balance: float
     equity: float
@@ -503,6 +532,7 @@ class OrderSendResult(Base):
         request_id: int
         retcode_external: int
     """
+
     retcode: int
     deal: int
     order: int
@@ -516,6 +546,7 @@ class OrderSendResult(Base):
     retcode_external: int
     profit: float = None
     loss: float = None
+
 
 class TradePosition(Base):
     """Trade Position
@@ -541,6 +572,7 @@ class TradePosition(Base):
         comment: str
         external_id: str
     """
+
     ticket: int
     time: int
     time_msc: int
@@ -587,6 +619,7 @@ class TradeDeal(Base):
         comment: str
         external_id: str
     """
+
     ticket: int
     order: int
     time: int

@@ -25,6 +25,7 @@ class Tick:
         volume_real (float): Volume for the current Last price
         Index (int): Custom attribute representing the position of the tick in a sequence.
     """
+
     time: float
     bid: float
     ask: float
@@ -38,17 +39,28 @@ class Tick:
     def __init__(self, **kwargs):
         """Initialize the Tick class. Set attributes from keyword arguments. bid, ask, last and volume must be
         present"""
-        if not all(key in kwargs for key in ['bid', 'ask', 'last', 'volume']):
-            raise ValueError("bid, ask, last and volume, time must be present in the keyword arguments")
-        self.Index = kwargs.pop('Index', 0)
-        self.time = kwargs.pop('time', time.monotonic())
+        if not all(key in kwargs for key in ["bid", "ask", "last", "volume"]):
+            raise ValueError(
+                "bid, ask, last and volume, time must be present in the keyword arguments"
+            )
+        self.Index = kwargs.pop("Index", 0)
+        self.time = kwargs.pop("time", time.monotonic())
         self.time_msc = int(self.time * 1000)
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        return ("%(class)s(Index=%(Index)s, time=%(time)s, bid=%(bid)s, ask=%(ask)s, last=%(last)s, volume=%(volume)s)"
-                % {"class": self.__class__.__name__, "time": self.time, "bid": self.bid,
-                   "ask": self.ask, "last": self.last, "volume": self.volume, 'Index': self.Index})
+        return (
+            "%(class)s(Index=%(Index)s, time=%(time)s, bid=%(bid)s, ask=%(ask)s, last=%(last)s, volume=%(volume)s)"
+            % {
+                "class": self.__class__.__name__,
+                "time": self.time,
+                "bid": self.bid,
+                "ask": self.ask,
+                "last": self.last,
+                "volume": self.volume,
+                "Index": self.Index,
+            }
+        )
 
     def __eq__(self, other: Self):
         return self.time == other.time
@@ -97,6 +109,7 @@ class Tick:
 
 class Ticks:
     """Container class for price ticks. Arrange in chronological order. Supports iteration, slicing and assignment"""
+
     time: Series
     bid: Series
     ask: Series
@@ -122,7 +135,7 @@ class Ticks:
         elif isinstance(data, Iterable):
             data = DataFrame(data)
         else:
-            raise ValueError(f'Cannot create DataFrame from object of {type(data)}')
+            raise ValueError(f"Cannot create DataFrame from object of {type(data)}")
         self._data = data.iloc[::-1] if flip else data
 
     def __repr__(self):
@@ -137,7 +150,9 @@ class Ticks:
     def __getattr__(self, item):
         if item in list(self._data.columns.values):
             return self._data[item]
-        raise AttributeError(f'Attribute {item} not defined on class {self.__class__.__name__}')
+        raise AttributeError(
+            f"Attribute {item} not defined on class {self.__class__.__name__}"
+        )
 
     def __getitem__(self, index) -> Tick | Self:
         if isinstance(index, slice):
@@ -156,7 +171,7 @@ class Ticks:
         if isinstance(value, Series):
             self._data[index] = value
             return
-        raise TypeError(f'Expected Series got {type(value)}')
+        raise TypeError(f"Expected Series got {type(value)}")
 
     def __iter__(self):
         return (Tick(**row._asdict()) for row in self._data.itertuples())
@@ -176,7 +191,7 @@ class Ticks:
 
         Returns:
             ta: The ta library
-            """
+        """
         return ta
 
     @property
@@ -209,11 +224,21 @@ class Ticks:
         """
         columns = columns or []
         data = self._data[-count:]
-        data.index = pd.to_datetime(data['time'], unit='s')
+        data.index = pd.to_datetime(data["time"], unit="s")
         return mplt.make_addplot(data[columns], **kwargs)
 
-    def visualize(self, *, count: int = 50, _type='candle', savefig: str | dict = None, addplot: dict = None,
-                  style: str = 'charles', ylabel: str = 'Price', title: str = 'Chart', **kwargs):
+    def visualize(
+        self,
+        *,
+        count: int = 50,
+        _type="candle",
+        savefig: str | dict = None,
+        addplot: dict = None,
+        style: str = "charles",
+        ylabel: str = "Price",
+        title: str = "Chart",
+        **kwargs,
+    ):
         """Visualize the candles using the mplfinance library.
         Args:
             count (int): The number of candles to visualize, counting from behind, i.e the most recent candles.
@@ -227,8 +252,18 @@ class Ticks:
             title (str): The title of the chart. Defaults to 'Chart'.
             kwargs: valid kwargs for the plot function.
         """
-        kwargs |= {key: arg for key, arg in (('savefig', savefig), ('addplot', addplot), ('style', style),
-                                             ('ylabel', ylabel), ('title', title), ('type', _type)) if arg}
+        kwargs |= {
+            key: arg
+            for key, arg in (
+                ("savefig", savefig),
+                ("addplot", addplot),
+                ("style", style),
+                ("ylabel", ylabel),
+                ("title", title),
+                ("type", _type),
+            )
+            if arg
+        }
         data = self._data[-count:]
-        data.index = pd.to_datetime(data['time'], unit='s')
+        data.index = pd.to_datetime(data["time"], unit="s")
         mplt.plot(data, **kwargs)

@@ -1,13 +1,13 @@
 import pytest
 from aiomql.lib.account import Account
 
-class TestAccount:
 
+class TestAccount:
     @classmethod
     def setup_class(cls):
         cls.account = Account()
 
-    @pytest.fixture(scope='class', autouse=True)
+    @pytest.fixture(scope="class", autouse=True)
     async def refresh(self):
         await self.account.refresh()
 

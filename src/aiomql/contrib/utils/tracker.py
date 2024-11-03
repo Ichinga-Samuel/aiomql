@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from aiomql.core.constants import OrderType
+from ...core.constants import OrderType
 
 
 @dataclass
 class Tracker:
     """Keeps track of a strategy's data and state"""
+
     trend: Literal["ranging", "bullish", "bearish"] = "ranging"
     bullish: bool = False
     bearish: bool = False
@@ -26,7 +27,7 @@ class Tracker:
         for key in kwargs:
             if key in fields:
                 setattr(self, key, kwargs[key])
-        if 'trend' in kwargs:
+        if "trend" in kwargs:
             match self.trend:
                 case "ranging":
                     self.ranging = True

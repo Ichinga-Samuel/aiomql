@@ -19,6 +19,7 @@ class Executor:
         coroutines (list[Coroutine]): A list of coroutines to run in the executor
         functions (dict[Callable, dict]): A dictionary of functions to run in the executor
     """
+
     executor: ThreadPoolExecutor
     tasks: list[asyncio.Task]
     config: Config
@@ -27,20 +28,27 @@ class Executor:
         self.strategy_runners: list[Strategy] = []
         self.coroutines: list[Coroutine] = []
         self.coroutine_threads: list[Coroutine] = []
-        self.functions: dict[Callable: dict] = {}
+        self.functions: dict[Callable:dict] = {}
         self.tasks = []
-        self.no_of_running_strategies = 0
         self.config = Config()
-        self.timeout = None # Timeout for the executor. For testing purposes only
+        self.timeout = None  # Timeout for the executor. For testing purposes only
 
     def add_function(self, *, function: Callable, kwargs: dict = None):
         kwargs = kwargs or {}
         self.functions[function] = kwargs
 
-    def add_coroutine(self, *, coroutine: Callable | Coroutine, kwargs: dict = None, on_separate_thread=False):
+    def add_coroutine(
+        self,
+        *,
+        coroutine: Callable | Coroutine,
+        kwargs: dict = None,
+        on_separate_thread=False,
+    ):
         kwargs = kwargs or {}
         coroutine = coroutine(**kwargs)
-        self.coroutines.append(coroutine) if on_separate_thread is False else self.coroutine_threads.append(coroutine)
+        self.coroutines.append(
+            coroutine
+        ) if on_separate_thread is False else self.coroutine_threads.append(coroutine)
 
     def add_strategies(self, *, strategies: tuple[Strategy]):
         """Add multiple strategies at once
@@ -61,7 +69,6 @@ class Executor:
     async def create_strategy_task(self, strategy: Strategy):
         task = asyncio.create_task(strategy.run_strategy())
         self.tasks.append(task)
-        self.no_of_running_strategies += 1
         await task
 
     def run_strategy(self, strategy: Strategy):
@@ -79,7 +86,9 @@ class Executor:
 
     async def create_coroutines_task(self):
         """"""
-        task = asyncio.create_task(asyncio.gather(*self.coroutines, return_exceptions=True))
+        task = asyncio.create_task(
+            asyncio.gather(*self.coroutines, return_exceptions=True)
+        )
         self.tasks.append(task)
         await task
 
@@ -101,17 +110,18 @@ class Executor:
         try:
             function(**kwargs)
         except Exception as err:
-            logger.error(f'Error: {err}. Unable to run function: {function.__name__}')
+            logger.error(f"Error: {err}. Unable to run function: {function.__name__}")
 
     async def exit(self):
         """Shutdown the executor"""
+        start = asyncio.get_event_loop().time()
         try:
             while self.config.shutdown is False and self.config.force_shutdown is False:
-                if self.timeout is not None and self.no_of_running_strategies == len(self.strategy_runners):
-                    self.timeout -= 1
-                    if self.timeout == 0:
-                        self.config.shutdown = True
-                continue
+                if self.timeout is not None and self.timeout < (
+                    asyncio.get_event_loop().time() - start
+                ):
+                    self.config.shutdown = True
+
             for strategy in self.strategy_runners:
                 strategy.running = False
             for task in self.tasks:
@@ -131,11 +141,25 @@ class Executor:
         Notes:
             No matter the number specified, the executor will always use a minimum of 5 workers.
         """
-        workers_ = sum([len(self.strategy_runners), len(self.functions), len(self.coroutines)])
+        workers_ = (
+            len(self.strategy_runners)
+            + len(self.functions)
+            + len(self.coroutine_threads)
+            + 2
+        )
         workers = max(workers, workers_)
         with ThreadPoolExecutor(max_workers=workers) as executor:
             self.executor = executor
+            [
+                self.executor.submit(self.run_strategy, strategy)
+                for strategy in self.strategy_runners
+            ]
+            [
+                self.executor.submit(function, **kwargs)
+                for function, kwargs in self.functions.items()
+            ]
+            [
+                self.executor.submit(self.run_coroutine_task, coroutine)
+                for coroutine in self.coroutine_threads
+            ]
             self.executor.submit(self.run_coroutine_tasks)
-            [self.executor.submit(self.run_coroutine_task, coroutine) for coroutine in self.coroutine_threads]
-            [self.executor.submit(self.run_strategy, strategy) for strategy in self.strategy_runners]
-            [self.executor.submit(function, **kwargs) for function, kwargs in self.functions.items()]

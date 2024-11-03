@@ -7,7 +7,9 @@ from ..core.base import _Base
 
 logger = getLogger(__name__)
 
-Version = NamedTuple("Version", (('version', str), ('build', int), ('release_date', str)))
+Version = NamedTuple(
+    "Version", (("version", str), ("build", int), ("release_date", str))
+)
 
 
 class Terminal(_Base, TerminalInfo):
@@ -17,6 +19,7 @@ class Terminal(_Base, TerminalInfo):
     Notes:
         Other attributes are defined in the TerminalInfo Class
     """
+
     version: Version | None = None
 
     async def initialize(self) -> bool:
@@ -31,7 +34,7 @@ class Terminal(_Base, TerminalInfo):
         self.connected = await self.mt5.initialize()
         if not self.connected:
             err = await self.mt5.last_error()
-            logger.warning(f'Failed to initialize Terminal. Error Code: {err}')
+            logger.warning(f"Failed to initialize Terminal. Error Code: {err}")
         info = await self.info()
         await self.get_version()
         return bool(self.connected and info and self.version)
@@ -45,7 +48,7 @@ class Terminal(_Base, TerminalInfo):
         """
         res = await self.mt5.version()
         if res is None:
-            logger.error('Failed to get terminal version')
+            logger.error("Failed to get terminal version")
             return None
         self.version = Version(*res)
         return self.version
