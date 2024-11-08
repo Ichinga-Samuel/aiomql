@@ -132,7 +132,7 @@ class Executor:
         except Exception as err:
             logger.error(f"Error: {err}. Unable to shutdown executor")
 
-    async def execute(self, *, workers: int = 5):
+    def execute(self, *, workers: int = 5):
         """Run the strategies with a threadpool executor.
 
         Args:

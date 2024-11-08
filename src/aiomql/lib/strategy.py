@@ -123,6 +123,7 @@ class Strategy(ABC):
             secs = secs - mod if mod != 0 else mod
             if self.backtest_controller.parties == 2:
                 steps = int(secs) // self.config.backtest_engine.speed
+                steps = max(steps, 1)
                 self.config.backtest_engine.fast_forward(steps=steps)
                 self.backtest_controller.wait()
 

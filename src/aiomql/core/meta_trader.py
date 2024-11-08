@@ -17,6 +17,7 @@ from MetaTrader5 import (
     OrderSendResult,
     OrderCheckResult,
 )
+import MetaTrader5 as mt5
 
 from .constants import OrderType, CopyTicks
 
@@ -102,6 +103,33 @@ class MetaTrader(MetaCore):
             self._login, login, password=password, server=server, timeout=timeout
         )
 
+    def login_sync(
+        self,
+        *,
+        login: int = 0,
+        password: str = "",
+        server: str = "",
+        timeout: int = 60000,
+    ) -> bool:
+        """
+        Connects to the MetaTrader terminal using the specified login, password and server.
+
+        Args:
+            login (int): The trading account number.
+            password (str): The trading account password.
+            server (str): The trading server name.
+            timeout (int): The timeout for the connection in seconds.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
+        acc_details = self.config.account_info()
+        login = login or acc_details.get("login", 0)
+        password = password or acc_details.get("password", "")
+        server = server or acc_details.get("server", "")
+        res = mt5.login(login, password=password, server=server, timeout=timeout)
+        return res
+
     async def initialize(
         self,
         path: str = None,
@@ -149,6 +177,52 @@ class MetaTrader(MetaCore):
                 err = await self.last_error()
                 self.error = Error(*err)
             return res
+
+    def initialize_sync(
+        self,
+        path: str = None,
+        login: int = 0,
+        password: str = "",
+        server: str = "",
+        timeout: int | None = None,
+        portable=False,
+    ) -> bool:
+        """
+        Initializes the connection to the MetaTrader terminal. All parameters are optional.
+
+        Keyword Args:
+            path (str): The path to the MetaTrader terminal executable.
+            login (int): The trading account number.
+            password (str): The trading account password.
+            server (str): The trading server name.
+            timeout (int): The timeout for the connection in milliseconds.
+            portable (bool): If True, the terminal will be launched in portable mode.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
+        path = self.config.path if path is None else path
+        path = "" if Path(path).exists() is False else path
+        args = (str(path),) if path else ()
+        acc = self.config.account_info()
+        kwargs = {
+            key: value
+            for key, value in (
+                ("login", login or acc.get("login")),
+                ("password", password or acc.get("password")),
+                ("server", server or acc.get("server")),
+                ("timeout", timeout or 60000),
+                ("portable", portable),
+            )
+            if key is not None
+        }
+        res = mt5.initialize(*args, **kwargs)
+        if res is False:
+            self._shutdown()
+        if not res:
+            err = self._last_error()
+            self.error = Error(*err)
+        return res
 
     async def shutdown(self) -> None:
         """Closes the connection to the MetaTrader terminal."""

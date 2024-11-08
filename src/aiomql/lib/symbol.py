@@ -41,7 +41,6 @@ class Symbol(_Base, SymbolInfo):
         super().__init__(**kwargs)
         self.account = Account()
 
-    # @backoff_decorator
     async def info_tick(self, *, name: str = "") -> Tick | None:
         """Get the current price tick of a financial instrument.
 
@@ -77,7 +76,6 @@ class Symbol(_Base, SymbolInfo):
         self.select = await self.mt5.symbol_select(self.name, enable)
         return self.select
 
-    # @backoff_decorator
     async def info(self) -> SymbolInfo | None:
         """Get data on the specified financial instrument and update the symbol object properties
 
@@ -104,7 +102,7 @@ class Symbol(_Base, SymbolInfo):
             info = await self.info()
             info_tick = await self.info_tick()
             await self.book_add()
-            if all((info is not None, info_tick is not None)):
+            if info is not None and info_tick is not None:
                 return True
             logger.warning("Unable to initialize %s", self.name)
             return False

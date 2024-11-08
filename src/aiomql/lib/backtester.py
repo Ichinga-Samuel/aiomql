@@ -100,7 +100,7 @@ class BackTester:
     async def start(self):
         """Initialize the bot and execute it. Similar to calling `execute` method but is a coroutine."""
         await self.initialize()
-        await self.executor.execute()
+        self.executor.execute()
 
     def add_strategy(self, *, strategy: Strategy):
         """Add a strategy to the list of strategies.

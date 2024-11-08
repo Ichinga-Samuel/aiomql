@@ -3,7 +3,6 @@ import asyncio
 import json
 from datetime import datetime, UTC
 from typing import Literal
-from itertools import zip_longest
 import random
 from functools import cached_property
 from logging import getLogger
@@ -60,7 +59,7 @@ class BackTestEngine:
     range: range
     speed: int
     cursor: Cursor
-    iter: zip_longest
+    iter: zip
     rates: dict[str, dict[int, DataFrame]]
     ticks: dict[str, DataFrame]
     prices: dict[str, DataFrame]
@@ -76,7 +75,6 @@ class BackTestEngine:
     preloaded_ticks: dict[str, DataFrame]
     preload: bool
     account_lock: RLock
-    use_termial_in_tracker: bool
 
     def __init__(
         self,
@@ -89,10 +87,9 @@ class BackTestEngine:
         use_terminal: bool = None,
         name: str = "",
         stop_time: float | datetime = None,
-        close_open_positions_on_exit: bool = False,
+        close_open_positions_on_exit: bool = True,
         preload=True,
         assign_to_config: bool = False,
-        use_termial_in_tracker: bool = False,
     ):
         self._data = data or BackTestData()
         self.mt5 = MetaTrader()
@@ -171,11 +168,14 @@ class BackTestEngine:
         self.speed = speed
         self.span = range(span_start, span_end, speed)
         self.range = range(0, span_end - span_start, speed)
-        self.iter = zip_longest(self.range, self.span)
+        self.iter = zip(self.range, self.span)
 
         if restart is False and self._data.cursor is not None:
             self.cursor = self._data.cursor
-            self.go_to(time=self.cursor.time)
+            new_range = range(self.range[self.cursor.index], self.range.stop)
+            new_span = range(self.span[self.cursor.index], self.span.stop)
+            self.iter = zip(new_range, new_span)
+            # self.go_to(time=self.cursor.time)
         else:
             self.cursor = Cursor(index=self.range.start, time=self.span.start)
 
@@ -220,7 +220,7 @@ class BackTestEngine:
         return self._data
 
     def reset(self, clear_data: bool = False):
-        self.iter = zip_longest(self.range, self.span)
+        self.iter = zip(self.range, self.span)
         self.cursor = Cursor(index=self.range.start, time=self.span.start)
         if clear_data:
             self.setup_data(restart=True)
@@ -234,6 +234,7 @@ class BackTestEngine:
         time = int(time.timestamp())
         steps = time - self.cursor.time
         steps = steps // self.speed
+        steps = max(steps, 1)
         if 0 <= steps < (len(self.range) - 1):
             self.fast_forward(steps=steps)
             return

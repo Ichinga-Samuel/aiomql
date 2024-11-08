@@ -9,6 +9,7 @@ class TestBotFactoryAndExecutor:
     @classmethod
     def setup_class(cls):
         cls.bot = Bot()
+        cls.sync_bot = Bot()
 
     @pytest.fixture(scope="class", autouse=True)
     async def initialize(self):
@@ -17,6 +18,14 @@ class TestBotFactoryAndExecutor:
         self.bot.add_function(function=self.fun_one)
         self.bot.add_coroutine(coroutine=self.coro_thread, on_separate_thread=True)
         await self.bot.initialize()
+
+    @pytest.fixture(scope="class", autouse=True)
+    def initialize_sync(self):
+        self.sync_bot.add_coroutine(coroutine=self.coro_one)
+        self.sync_bot.add_coroutine(coroutine=self.coro_two)
+        self.sync_bot.add_function(function=self.fun_one)
+        self.sync_bot.add_coroutine(coroutine=self.coro_thread, on_separate_thread=True)
+        self.sync_bot.initialize_sync()
 
     @staticmethod
     def fun_one():
@@ -46,4 +55,8 @@ class TestBotFactoryAndExecutor:
         # task_queue already added coroutine_thread
         assert len(self.bot.executor.coroutine_threads) == 2
 
-    # def
+    def test_sync_add_workers(self):
+        assert len(self.sync_bot.executor.coroutines) == 3
+        assert len(self.sync_bot.executor.functions) == 1
+        # task_queue already added coroutine_thread
+        assert len(self.sync_bot.executor.coroutine_threads) == 2

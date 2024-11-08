@@ -9,16 +9,12 @@ logger = getLogger(__name__)
 
 
 class Account(_Base, AccountInfo):
-    """A class for managing a trading account. A singleton class.
-    A subclass of AccountInfo. All AccountInfo attributes are available in this class.
+    """A singleton class for managing a trading account. A subclass of _Base and AccountInfo. It supports
+    Asynchronous context management protocol.
 
     Attributes:
         connected (bool): Status of connection to MetaTrader 5 Terminal
-
-    Notes:
-        Other Account properties are defined in the AccountInfo class.
     """
-
     _instance: Self
     connected: bool
 
