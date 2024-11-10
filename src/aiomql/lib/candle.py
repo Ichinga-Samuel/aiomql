@@ -4,9 +4,7 @@ from typing import Type, Self, Iterable
 from logging import getLogger
 
 from pandas import DataFrame, Series
-import pandas as pd
 import pandas_ta as ta
-import mplfinance as mplt
 
 from ..core.constants import TimeFrame
 

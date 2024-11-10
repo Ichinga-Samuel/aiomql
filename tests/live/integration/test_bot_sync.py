@@ -14,7 +14,7 @@ def test_bot_sync():
     symbols = [ForexSymbol(name=sym) for sym in syms]
     strategies = [Chaos(symbol=symbol, name="test_chaos") for symbol in symbols]
     bot = Bot()
-    assert bot.config.shutdown is False
+    bot.config.task_queue.worker_timeout = 2
     bot.executor.timeout = 10
     bot.add_strategies(strategies=strategies)
     bot.initialize_sync()

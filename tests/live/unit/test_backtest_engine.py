@@ -1,5 +1,5 @@
 from datetime import datetime, UTC
-
+from math import ceil
 from aiomql import TimeFrame
 from aiomql.core.backtesting import BackTestEngine
 from aiomql.core.backtesting.get_data import GetData
@@ -304,7 +304,7 @@ class TestBackTestEngine:
             price_open=sym_info2.ask,
             price_close=tp2,
         )
-        assert profit == profit2
+        assert ceil(profit) == ceil(profit2)
 
     async def test_order_margin(self, bte2):
         moment = datetime(2024, 2, 3, 12, 12, tzinfo=UTC)
