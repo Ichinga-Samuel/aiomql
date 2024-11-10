@@ -144,6 +144,12 @@ class TestBackTestEngine:
         assert acc.margin_free == 62.5
         assert acc.margin_level == 2600
 
+    def test_account_sync(self):
+        balance = 200
+        self.bte.setup_account_sync(balance=balance)
+        acc = self.bte.get_account_info()
+        assert acc.balance == balance
+
     async def test_bte2_init(self, bte2):
         assert bte2._data.fully_loaded is True
         assert bte2.span == self.bte.span

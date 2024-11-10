@@ -25,6 +25,6 @@ class TestPositions:
 
     async def test_get_position_by_symbol(self):
         symbol = self.positions.positions[0].symbol
-        positions = await self.positions.get_position_by_symbol(symbol=symbol)
+        positions = await self.positions.get_positions_by_symbol(symbol=symbol)
         assert len(positions) >= 0
         assert positions[0].symbol == symbol

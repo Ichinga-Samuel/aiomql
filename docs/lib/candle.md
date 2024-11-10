@@ -2,19 +2,20 @@
 Candle and Candles classes for handling bars from the MetaTrader 5 terminal.
 
 ## Table of Contents
-- [Candle](#candle)
+- [Candle](#candle.candle)
   - [\_\_init\_\_](#candle.__init__)
   - [set_attributes](#candle.set_attributes)
   - [is_bullish](#candle.is_bullish)
   - [is_bearish](#candle.is_bearish)
-- [Candles](#candles)
+  - [dict](#candle.dict)
+- [Candles](#candles.candles)
   - [\_\_init\_\_](#candles.__init__)
   - [ta](#candles.ta)
   - [ta_lib](#candles.ta_lib)
   - [data](#candles.data)
   - [rename](#candles.rename)
 
-<a id="candle"></a>
+<a id="candle.candle"></a>
 ### Candle
 ```python
 class Candle
@@ -91,18 +92,18 @@ def dict(self, exclude: set = None, include: set = None) -> Dict[str, Any]
 ```
 Return a dictionary representation of the Candle object.
 #### Parameters:
-| Name      | Type       | Description                                                                 |
-|-----------|------------|-----------------------------------------------------------------------------|
-| `exclude` | `set[str]` | A set of attributes to exclude from the dictionary.                        |
-| `include` | `set[str]` | A set of attributes to include in the dictionary.                          |
+| Name      | Type       | Description                                         |
+|-----------|------------|-----------------------------------------------------|
+| `exclude` | `set[str]` | A set of attributes to exclude from the dictionary. |
+| `include` | `set[str]` | A set of attributes to include in the dictionary.   |
 
 #### Returns:
-| Type          | Description                                      |
-|---------------|--------------------------------------------------|
-| `Dict[str, Any]` | A dictionary representation of the Candle object.|
+| Type             | Description                                       |
+|------------------|---------------------------------------------------|
+| `Dict[str, Any]` | A dictionary representation of the Candle object. |
 
 
-### <a id="candles"></a> Candles
+### <a id="candles.candles"></a> Candles
 ```python
 class Candles(Generic[_Candle])
 ```
@@ -111,10 +112,9 @@ object. All the data pulled from the chart is stored as a pandas DataFrame objec
 This class can be sliced, iterated over, and indexed like a sequence. It also has access to the pandas_ta library.
 Indexing it returns a Candle object. It can be sliced to return a new instance of the class with the sliced candles.
 This slices and resets the index of the underlying dataframe object. Key based indexing is also supported on the candles
-object for accessing the columns of the underlying data attribute. Add operations between two candles objects or between a
-candles object and a candle object are also supported.
+object for accessing the columns of the underlying data attribute.
 
-### Attributes
+### Attributes:
 The attributes of this class vary depending on the columns of underlying **data** attribute. i.e. each column of the **data**
 attribute is an attribute of the class.
 
@@ -203,40 +203,3 @@ Rename columns of the data object.
 | Type      | Description                                                               |
 |-----------|---------------------------------------------------------------------------|
 | `Candles` | A new instance of the class with the renamed columns if inplace is False. |
-
-
-<id="candles.visualize"></a>
-### visualize
-```python
-async def visualize(self, *, count: int = 50, type='candle', savefig: str | dict = None, addplot: dict = None,
-                  style: str = 'charles', ylabel: str = 'Price', title: str = 'Chart', **kwargs)
-```
-Visualize the candles using the mplfinance library.
-#### Parameters:
-| Name     | Type             | Description                                                                                   | Default |   
-|----------|------------------|-----------------------------------------------------------------------------------------------|---------|
-| `count`  | `int`            | The number of candles to visualize.                                                          | 50      |
-| `type`   | `str`            | The type of chart to plot.                                                                   | 'candle'|
-| `savefig`| `str` or `dict`  | The path to save the figure or a dictionary of keyword arguments to pass to the savefig method.| None   |
-| `addplot`| `dict`           | A dictionary of keyword arguments to pass to the addplot method.                             | None   |
-| `style`  | `str`            | The style of the chart.                                                                      | 'charles'|
-| `ylabel` | `str`            | The label of the y-axis.                                                                     | 'Price' |
-| `title`  | `str`            | The title of the chart.                                                                      | 'Chart' |
-| `kwargs` | `Any`            | Additional keyword arguments to pass to the plot method.                                      |         |
-
-<id="candles.make_addplot"></a>
-```python
-def make_addplot(self, *, count: int = 50, columns: list = None, **kwargs) -> dict
-```
-Make subplots for adding to the main plot.
-#### Parameters:
-| Name      | Type   | Description                                                                                   | Default |
-|-----------|--------|-----------------------------------------------------------------------------------------------|---------|
-| `count`   | `int`  | The number of candles to visualize.                                                          | 50      |
-| `columns` | `list` | The columns to plot.                                                                          | None    |
-| `kwargs`  | `Any`  | Additional keyword arguments to pass to the addplot method.                                   |         |
-
-#### Returns:
-| Type | Description     |
-|------|-----------------|
-| dict | A makeplot dict |

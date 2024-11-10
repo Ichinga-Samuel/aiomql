@@ -214,11 +214,6 @@ class Sessions:
     Attributes:
         sessions (list[Session]): A list of Session objects.
         current_session (Session): The current session.
-
-    Methods:
-        find: Find a session that contains a datetime.time object.
-        find_next: Find the next session that contains a datetime.time object.
-        check: Check if the current session has started and if not, wait until it starts.
     """
 
     sessions: list[Session]

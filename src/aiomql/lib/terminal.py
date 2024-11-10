@@ -15,9 +15,6 @@ Version = NamedTuple(
 class Terminal(_Base, TerminalInfo):
     """Terminal Class. Get information about the MetaTrader 5 terminal. The class is a subclass of the TerminalInfo
     class. It inherits all the attributes and methods of the TerminalInfo class and adds some useful methods.
-
-    Notes:
-        Other attributes are defined in the TerminalInfo Class
     """
 
     version: Version | None = None

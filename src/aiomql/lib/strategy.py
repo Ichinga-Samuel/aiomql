@@ -27,6 +27,10 @@ class Strategy(ABC):
         parameters (Dict): A dictionary of parameters for the strategy.
         sessions (Sessions): The sessions to use for the strategy.
         running (bool): A flag to indicate if the strategy is running.
+        backtest_controller (BackTestController): A controller for running the backtester.
+        current_session (Session): The current session.
+        mt5 (MetaTrader|MetaBackTester): The MetaTrader object.
+        config (Config): The config object.
 
     Notes:
         Define the name of a strategy as a class attribute. If not provided, the class name will be used as the name.

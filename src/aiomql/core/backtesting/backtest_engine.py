@@ -75,7 +75,7 @@ class BackTestEngine:
     preloaded_ticks: dict[str, DataFrame]
     preload: bool
     account_lock: RLock
-
+    account_info: dict
     def __init__(
         self,
         *,
@@ -89,7 +89,8 @@ class BackTestEngine:
         stop_time: float | datetime = None,
         close_open_positions_on_exit: bool = True,
         preload=True,
-        assign_to_config: bool = False,
+        assign_to_config: bool = True,
+        account_info: dict = None
     ):
         self._data = data or BackTestData()
         self.mt5 = MetaTrader()
@@ -127,6 +128,7 @@ class BackTestEngine:
         self.preload = preload
         self.preloaded_ticks = {}
         self.account_lock = RLock()
+        self.account_info = account_info or {}
 
     def __next__(self) -> Cursor:
         try:
@@ -152,7 +154,7 @@ class BackTestEngine:
     ):
         if self._data.span and self._data.range:
             start = start or self._data.span[0]
-            end = end or self._data.span[-1] + 1
+            end = end or self._data.span[-1] + speed
         start = (
             start.astimezone(tz=UTC)
             if isinstance(start, datetime)
@@ -172,8 +174,9 @@ class BackTestEngine:
 
         if restart is False and self._data.cursor is not None:
             self.cursor = self._data.cursor
-            new_range = range(self.range[self.cursor.index], self.range.stop)
-            new_span = range(self.span[self.cursor.index], self.span.stop)
+            index = self.cursor.index // speed
+            new_range = range(self.range[index], self.range.stop, speed)
+            new_span = range(self.span[index], self.span.stop, speed)
             self.iter = zip(new_range, new_span)
             # self.go_to(time=self.cursor.time)
         else:
@@ -647,6 +650,7 @@ class BackTestEngine:
 
     @error_handler
     async def setup_account(self, **kwargs):
+        kwargs = {**self.account_info, **kwargs}
         default = {
             "profit": self._account.profit,
             "margin": self._account.margin,
@@ -659,6 +663,26 @@ class BackTestEngine:
 
         if self.use_terminal:
             acc_info = await self.mt5.account_info()
+            default = {**acc_info._asdict(), **default}
+
+        self._account.set_attrs(**default)
+        self.update_account()
+
+    @error_handler_sync
+    def setup_account_sync(self, **kwargs):
+        kwargs = {**self.account_info, **kwargs}
+        default = {
+            "profit": self._account.profit,
+            "margin": self._account.margin,
+            "equity": self._account.equity,
+            "margin_free": self._account.margin_free,
+            "margin_level": self._account.margin_level,
+            "balance": self._account.balance,
+            **{k: v for k, v in kwargs.items() if k in self._account.__match_args__},
+        }
+
+        if self.use_terminal:
+            acc_info = self.mt5._account_info()
             default = {**acc_info._asdict(), **default}
 
         self._account.set_attrs(**default)

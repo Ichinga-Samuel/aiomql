@@ -19,7 +19,6 @@ class Executor:
         coroutines (list[Coroutine]): A list of coroutines to run in the executor
         functions (dict[Callable, dict]): A dictionary of functions to run in the executor
     """
-
     executor: ThreadPoolExecutor
     tasks: list[asyncio.Task]
     config: Config

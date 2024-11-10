@@ -30,13 +30,13 @@ async def back_tester():
     back_test_engine = BackTestEngine(
         start=start,
         end=end,
-        speed=300,
+        speed=3600,
         stop_time=stop_time,
         close_open_positions_on_exit=True,
         assign_to_config=True,
         preload=True,
+        account_info={'balance': 350}
     )
-    await back_test_engine.setup_account(balance=350)
     backtester = BackTester(backtest_engine=back_test_engine)
     backtester.add_strategies(strategies=strategies)
     await backtester.start()

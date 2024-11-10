@@ -69,7 +69,7 @@ class BackTestController:
                 if self.backtest_engine.stop_testing:
                     logger.info(
                         "Stop trading called in control at %s",
-                        self.backtest_engine.cursor.time,
+                        datetime.fromtimestamp(self.backtest_engine.cursor.time).strftime("%Y-%m-%d %H:%M:%S"),
                     )
                     break
             await self.backtest_engine.wrap_up()

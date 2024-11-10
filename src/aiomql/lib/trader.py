@@ -47,16 +47,17 @@ class Trader(ABC):
         self.order = Order(symbol=symbol.name)
         self.parameters = {}
 
-    def set_trade_stop_levels_pips(self, *, pips: float):
+    def set_trade_stop_levels_pips(self, *, pips: float, risk_to_reward: float = None):
         """Sets the stop loss and take profit for the order.
         This method uses pips as defined for forex instruments. It is assumed that order_type and price are already
         set before calling this method.
 
         Args:
             pips (float): Target pips
+            risk_to_reward (float): Optional risk to reward ratio
         """
         pips = pips * self.symbol.pip
-        sl, tp = pips, pips * self.ram.risk_to_reward
+        sl, tp = pips, pips * (risk_to_reward or self.ram.risk_to_reward)
         price = self.order.price
         if self.order.type == OrderType.BUY:
             self.order.sl, self.order.tp = round(price - sl, self.symbol.digits), round(
@@ -176,9 +177,7 @@ class Trader(ABC):
         self.order.volume = volume
         self.set_trade_stop_levels_points(points=points, risk_to_reward=risk_to_reward)
 
-    async def create_order_no_stops(
-        self, *, order_type: OrderType, volume: float = None
-    ):
+    async def create_order_no_stops(self, *, order_type: OrderType, volume: float = None):
         """Create an order without setting stop loss and take profit. Using minimum lot size.
 
         Args:

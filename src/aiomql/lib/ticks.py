@@ -5,8 +5,6 @@ import time
 
 from pandas import DataFrame, Series
 import pandas_ta as ta
-import mplfinance as mplt
-import pandas as pd
 
 from ..core.constants import TickFlag
 
@@ -212,58 +210,3 @@ class Ticks:
         """
         res = self._data.rename(columns=kwargs, inplace=inplace)
         return res if inplace else self.__class__(data=res)
-
-    def make_addplot(self, *, count: int = 50, columns: list = None, **kwargs) -> dict:
-        """
-        Make subplots for adding to the main plot
-
-        Args:
-            count (int): The numbers of candles to make the addplot for. Defaults to 50.
-            columns (list[str]): The columns to make the plot from. Defaults to None.
-            **kwargs: Valid arguments for the mplfinance make_addplot function
-        """
-        columns = columns or []
-        data = self._data[-count:]
-        data.index = pd.to_datetime(data["time"], unit="s")
-        return mplt.make_addplot(data[columns], **kwargs)
-
-    def visualize(
-        self,
-        *,
-        count: int = 50,
-        _type="candle",
-        savefig: str | dict = None,
-        addplot: dict = None,
-        style: str = "charles",
-        ylabel: str = "Price",
-        title: str = "Chart",
-        **kwargs,
-    ):
-        """Visualize the candles using the mplfinance library.
-        Args:
-            count (int): The number of candles to visualize, counting from behind, i.e the most recent candles.
-             Defaults to 50.
-            _type: Type of chart, defaults to candle
-            savefig (str|dict): The path to save the figure or a dictionary of parameters to pass to the savefig method.
-            addplot: Additional plots to add to the chart. Defaults to None. They should match the dimension of the
-              original data which is specified via the count parameter.
-            style (str): The style of the chart. Defaults to 'charles'.
-            ylabel (str): The label of the y-axis. Defaults to 'Price'.
-            title (str): The title of the chart. Defaults to 'Chart'.
-            kwargs: valid kwargs for the plot function.
-        """
-        kwargs |= {
-            key: arg
-            for key, arg in (
-                ("savefig", savefig),
-                ("addplot", addplot),
-                ("style", style),
-                ("ylabel", ylabel),
-                ("title", title),
-                ("type", _type),
-            )
-            if arg
-        }
-        data = self._data[-count:]
-        data.index = pd.to_datetime(data["time"], unit="s")
-        mplt.plot(data, **kwargs)

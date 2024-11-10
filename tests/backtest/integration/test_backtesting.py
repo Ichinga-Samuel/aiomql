@@ -150,10 +150,10 @@ async def test_wrapup(positions, buy_order, sell_order, backtest_engine, config)
     backtest_engine.fast_forward(steps=5000)
     await backtest_engine.tracker()
     await positions.close_position_by_ticket(ticket=bo.order)
+    await backtest_engine.wrap_up()
     last_balance = backtest_engine._account.balance
     last_equity = backtest_engine._account.equity
     last_profit = backtest_engine._account.profit
-    await backtest_engine.wrap_up()
     tdata = GetData.load_data(name=config.backtest_dir / f"{backtest_engine.name}.pkl")
     new_bte = BackTestEngine(
         data=tdata, restart=False, assign_to_config=False, preload=False

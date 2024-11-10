@@ -1,24 +1,26 @@
 # Order
 
 ## Table of contents
-- [Order](#Order)
-- [\_\_init\_\_](#__init__)
-- [orders_total](#orders_total)
-- [get_order](#get_order)
-- [get_orders](#get_orders)
-- [check](#check)
-- [send](#send)
-- [calc_margin](#calc_margin)
-- [calc_profit](#calc_profit)
+- [Order](#order.order)
+- [\_\_init\_\_](#order.__init__)
+- [orders_total](#order.orders_total)
+- [get_order](#order.get_pending_order)
+- [get_orders](#order.get_pending_orders)
+- [check](#order.check)
+- [send](#order.send)
+- [calc_margin](#order.calc_margin)
+- [calc_profit](#order.calc_profit)
+- [calc_loss](#order.calc_loss)
+- [request](#order.request)
 
-<a id="Order"></a>
+<a id="order.order"></a>
 ### Order
 ```python
-class Order(TradeRequest)
+class Order(_Base, TradeRequest)
 ```
 Trade order related functions and attributes. Subclass of TradeRequest.
 
-<a id="__init__"></a>
+<a id="order.__init__"></a>
 ### \_\_init\_\_
 ```python
 def __init__(**kwargs)
@@ -32,102 +34,129 @@ Provides default values for action, type_time and type_filling if not provided.
 | `type_time`    | `OrderTime`         | Order time                             | OrderTime.DAY    |
 | `type_filling` | `OrderFilling`      | Order filling                          | OrderFilling.FOK |
 
-<a id="orders_total"></a>
-### <a id=order.Order.orders_total> orders_total
+<a id="order.orders_total"></a>
 ```python
 async def orders_total()
 ```
-Get the total number of active orders.
+Get the total number of active pending orders.
 #### Returns
 | Type  | Description                   |
 |-------|-------------------------------|
 | `int` | total number of active orders |
 
-<a id="get_order"></a>
-### get_order
+<a id="order.get_pending_order"></a>
+### get_pending order
 ```python
-async def get_order(self, ticket: int) -> TradeOrder
+async def get_pending_order(self, ticket: int) -> TradeOrder
 ```
-Get an active trade order by ticket.
+Get an active pending trade order by ticket.
 
-<a id="get_orders"></a>
-### get_orders
+<a id="order.get_pending_orders"></a>
+### get_pending_orders
 ```python
-async def get_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '', retries=3) -> tuple[TradeOrder]:
+async def get_pending_orders(self, *, ticket: int = 0, symbol: str = '', group: str = '') -> tuple[TradeOrder, ...]:
 ```
 Get active trade orders. If ticket is provided, it will return the order with the specified ticket.
 If symbol is provided, it will return all orders for the specified symbol.
 If group is provided, it will return all orders for the specified group.
-#### Parameters
+
+#### Parameters:
 | Name     | Type   | Description                          | Default |
 |----------|--------|--------------------------------------|---------|
 | `ticket` | `int`  | Order ticket                         | 0       |
 | `symbol` | `str`  | Symbol name                          | ''      |
 | `group`  | `str`  | Group name                           | ''      |
-#### Returns
-| Type                | Description                                          |
-|---------------------|------------------------------------------------------|
-| `tuple[TradeOrder]` | A Tuple of active trade orders as TradeOrder objects |
 
-#### Raises
-| Exception    | Description       |
-|--------------|-------------------|
-| `OrderError` | If not successful |
+#### Returns:
+| Type                     | Description                                          |
+|--------------------------|------------------------------------------------------|
+| `tuple[TradeOrder, ...]` | A Tuple of active trade orders as TradeOrder objects |
 
-<a id="check"></a>
+<a id="order.check"></a>
 ### check
 ```python
-async def check() -> OrderCheckResult
+async def check(**kwargs) -> OrderCheckResult
 ```
-Check funds sufficiency for performing a required trading operation and the possibility of executing it at the current market price.
-#### Returns
+#### Parameters:
+| Type   | Description                                  |
+|--------|----------------------------------------------|
+| kwargs | Update the request dict with extra arguments |
+
+Check if an order is okay.
+
+#### Returns:
 | Type               | Description                |
 |--------------------|----------------------------|
 | `OrderCheckResult` | An OrderCheckResult object |
+
 #### Raises:
 | Exception    | Description       |
 |--------------|-------------------|
 | `OrderError` | If not successful |
 
-
-<a id="send"></a>
+<a id="order.send"></a>
 ### send
 ```python
 async def send() -> OrderSendResult
 ```
 Send a request to perform a trading operation from the terminal to the trade server.
-#### Returns
+
+#### Returns:
 | Type              | Description               |
 |-------------------|---------------------------|
 | `OrderSendResult` | An OrderSendResult object |
+
 #### Raises:
 | Exception    | Description       |
 |--------------|-------------------|
 | `OrderError` | If not successful |
 
-<a id="calc_margin"></a>
-### calc_margin
+<a id="order.calc_margin"></a>
+### calc_margin:
 ```python
 async def calc_margin() -> float
 ```
 Return the required margin in the account currency to perform a specified trading operation.
-#### Returns
+
+#### Returns:
 | Type    | Description                       |
 |---------|-----------------------------------|
 | `float` | Returns float value if successful |
-#### Raises
-| Exception    | Description       |
-|--------------|-------------------|
-| `OrderError` | If not successful |
 
-<a id="calc_profit"></a>
+<a id="order.calc_profit"></a>
 ### calc_profit
 ```python
 async def calc_profit() -> float
 ```
 Return profit in the account currency for a specified trading operation.
+
+#### Returns:
+| Type    | Description                       |
+|---------|-----------------------------------|
+| `float` | Returns float value if successful |
+| `None`  | If not successful                 |
+
+<a id="order.calc_loss"></a>
+### calc_profit
+```python
+async def calc_loss() -> float
+```
+Return loss in the account currency for a specified trading operation.
 #### Returns
 | Type    | Description                       |
 |---------|-----------------------------------|
 | `float` | Returns float value if successful |
 | `None`  | If not successful                 |
+
+<a id="order.request"></a>
+### request
+```python
+@property
+async def request() -> dict
+```
+Return the trade request object as a dict
+
+#### Returns
+| Type   | Description                      |
+|--------|----------------------------------|
+| `dict` | Returns the trade request object |

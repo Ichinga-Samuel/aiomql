@@ -1,12 +1,16 @@
 import asyncio
-from typing import Type, Iterable, Callable, Coroutine
 import logging
+from typing import Type, Iterable, Callable, Coroutine
+from datetime import datetime, UTC
+
+from MetaTrader5 import Tick
 
 from .executor import Executor
 from ..core.config import Config
 from ..core.backtesting.backtest_controller import BackTestController
 from ..core.meta_backtester import MetaBackTester
 from ..core.backtesting.backtest_engine import BackTestEngine
+from ..core.constants import CopyTicks
 from .symbol import Symbol as Symbol
 from .strategy import Strategy as Strategy
 
@@ -19,10 +23,8 @@ class BackTester:
     Attributes:
         executor: The default thread executor.
         config (Config): Config instance
-        mt (MetaTrader): MetaTrader instance
-
+        mt (MetaBackTester): MetaTrader instance
     """
-
     config: Config
     executor: Executor
     mt: MetaBackTester
@@ -38,6 +40,41 @@ class BackTester:
         self.backtest_controller = BackTestController()
         self.strategies = []
 
+    def initialize_sync(self):
+        """Prepares the bot by signing in to the trading account and initializing the symbols for the trading session.
+        Starts the global task queue.
+
+        Raises:
+            SystemExit if sign in was not successful
+        """
+        try:
+            self.mt.initialize_sync()
+            login = self.mt.login_sync()
+            if not login:
+                logger.critical(f"Unable to sign in to MetaTrder 5 Terminal")
+                raise Exception("Unable to sign in to MetaTrader 5 Terminal")
+            logger.info("Login Successful")
+            self.backtest_engine.setup_account_sync()
+            self.init_strategies_sync()
+            if (strategies := len(self.executor.strategy_runners)) == 0:
+                logger.warning(
+                    "No strategies were added to the backtester. Exiting ..."
+                )
+                raise Exception("No strategies added to the backtester")
+            self.config.task_queue.worker_timeout = 5
+            self.add_coroutine(
+                coroutine=self.config.task_queue.run, on_separate_thread=True
+            )
+            self.add_coroutine(coroutine=self.executor.exit)
+            self.add_coroutine(
+                coroutine=self.backtest_controller.control, on_separate_thread=True
+            )
+            parties = strategies + 1
+            self.backtest_controller.set_parties(parties=parties)
+        except Exception as err:
+            logger.error(f"{err}. Backtester initialization failed")
+            raise SystemExit
+
     async def initialize(self):
         """Prepares the bot by signing in to the trading account and initializing the symbols for the trading session.
         Starts the global task queue.
@@ -52,7 +89,13 @@ class BackTester:
                 logger.critical(f"Unable to sign in to MetaTrder 5 Terminal")
                 raise Exception("Unable to sign in to MetaTrader 5 Terminal")
             logger.info("Login Successful")
+            await self.backtest_engine.setup_account()
             await self.init_strategies()
+            if (strategies := len(self.executor.strategy_runners)) == 0:
+                logger.warning(
+                    "No strategies were added to the backtester. Exiting ..."
+                )
+                raise Exception("No strategies added to the backtester")
             self.config.task_queue.worker_timeout = 5
             self.add_coroutine(
                 coroutine=self.config.task_queue.run, on_separate_thread=True
@@ -61,11 +104,6 @@ class BackTester:
             self.add_coroutine(
                 coroutine=self.backtest_controller.control, on_separate_thread=True
             )
-            if (strategies := len(self.executor.strategy_runners)) == 0:
-                logger.warning(
-                    "No strategies were added to the backtester. Exiting ..."
-                )
-                raise Exception("No strategies added to the backtester")
             parties = strategies + 1
             self.backtest_controller.set_parties(parties=parties)
         except Exception as err:
@@ -95,7 +133,8 @@ class BackTester:
 
     def execute(self):
         """Execute the bot."""
-        asyncio.run(self.start())
+        self.initialize_sync()
+        self.executor.execute()
 
     async def start(self):
         """Initialize the bot and execute it. Similar to calling `execute` method but is a coroutine."""
@@ -150,7 +189,53 @@ class BackTester:
             self.executor.add_strategy(strategy=strategy)
         return res
 
+    def init_strategy_sync(self, *, strategy: Strategy) -> bool:
+        """Initialize a single strategy. This method is called internally by the bot."""
+        try:
+            if self.backtest_engine.use_terminal is False:
+                info = self.backtest_engine.symbols[strategy.symbol.name]
+                tick = self.backtest_engine.prices[strategy.symbol.name].loc[self.backtest_engine.cursor.time]
+                tick = Tick(tick)
+                info = info._asdict() | {
+                    "bid": tick.bid,
+                    "bidhigh": tick.bid,
+                    "bidlow": tick.bid,
+                    "ask": tick.ask,
+                    "askhigh": tick.ask,
+                    "asklow": tick.bid,
+                    "last": tick.last,
+                    "volume_real": tick.volume_real,
+                }
+                strategy.symbol.set_attributes(**info)
+                self.executor.add_strategy(strategy=strategy)
+                return True
+            else:
+                info = self.mt._symbol_info(strategy.symbol.name)
+                time = datetime.fromtimestamp(self.backtest_engine.cursor.time, tz=UTC)
+                tick = self.mt._copy_ticks_from(strategy.symbol.name, time, 1, CopyTicks.ALL)
+                tick = Tick(tick[-1]) if tick is not None else None
+                info = info._asdict() | {
+                    "bid": tick.bid,
+                    "bidhigh": tick.bid,
+                    "bidlow": tick.bid,
+                    "ask": tick.ask,
+                    "askhigh": tick.ask,
+                    "asklow": tick.bid,
+                    "last": tick.last,
+                    "volume_real": tick.volume_real,
+                }
+                strategy.symbol.set_attributes(**info)
+                self.executor.add_strategy(strategy=strategy)
+                return True
+        except Exception as err:
+            logger.error("%s: Unable to initialize strategy", err)
+            return False
+
     async def init_strategies(self):
         """Initialize the symbols for the current trading session. This method is called internally by the bot."""
         tasks = [self.init_strategy(strategy=strategy) for strategy in self.strategies]
         await asyncio.gather(*tasks)
+
+    def init_strategies_sync(self):
+        """Initialize the symbols for the current trading session. This method is called internally by the bot."""
+        [self.init_strategy_sync(strategy=strategy) for strategy in self.strategies]

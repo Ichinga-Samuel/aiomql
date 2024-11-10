@@ -1,5 +1,4 @@
 """Symbol class for handling a financial instrument."""
-import asyncio
 from datetime import datetime
 from logging import getLogger
 
@@ -41,6 +40,7 @@ class Symbol(_Base, SymbolInfo):
         super().__init__(**kwargs)
         self.account = Account()
 
+    @backoff_decorator
     async def info_tick(self, *, name: str = "") -> Tick | None:
         """Get the current price tick of a financial instrument.
 
@@ -127,14 +127,11 @@ class Symbol(_Base, SymbolInfo):
 
         Returns:
             tuple[BookInfo]: Returns the Market Depth contents as a tuples of BookInfo Objects
-
-        Raises:
-            ValueError: If request was unsuccessful and None was returned
         """
-        infos = await self.mt5.market_book_get(self.name)
+        book_info = await self.mt5.market_book_get(self.name)
 
-        if infos is not None:
-            book_infos = (BookInfo(**info._asdict()) for info in infos)
+        if book_info is not None:
+            book_infos = (BookInfo(**info._asdict()) for info in book_info)
             return tuple(book_infos)
 
         raise ValueError(f"Could not get book info for {self.name}")
@@ -147,7 +144,7 @@ class Symbol(_Base, SymbolInfo):
         """
         return await self.mt5.market_book_release(self.name)
 
-    def check_volume(self, *, volume) -> tuple[bool, float]:
+    def check_volume(self, *, volume: float) -> tuple[bool, float]:
         """Check if the volume is within the limits of the symbol. If not, return the nearest limit.
 
         Args:

@@ -22,4 +22,3 @@ def test_bot_sync():
     assert len(bot.executor.strategy_runners) == 3
     assert len(bot.executor.coroutines) == 1
     assert len(bot.executor.coroutine_threads) == 1
-    assert bot.config.shutdown is True

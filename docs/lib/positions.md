@@ -1,18 +1,17 @@
 # Positions
 
 ## Table of contents
-- [Positions](#positions)
-- [Attributes](#attributes)
-- [\_\_init\_\_](#__init__)
-- [positions_total](#positions_total)
-- [position_get](#position_get)
-- [positions_get](#positions_get)
-- [close](#close)
-- [close_by](#close_by)
-- [close_position](#close_position)
-- [close_all](#close_all)
+- [Positions](#positions.positions)
+- [\_\_init\_\_](#positions.__init__)
+- [get_positions](#positions.get_positions)
+- [get_position_by_ticket](#positions.get_position_by_ticket)
+- [get_positions_by_symbol](#positions.get_positions_by_symbol)
+- [close](#positions.close)
+- [close_position_by_ticket](#positions.close_position_by_ticket)
+- [close_position](#positions.close_position)
+- [close_all](#positions.close_all)
 
-<a id="positions"></a>
+<a id="positions.positions"></a>
 ### Positions
 ```python
 class Positions
@@ -20,116 +19,134 @@ class Positions
 Get and handle Open positions.
 
 #### Attributes
-| Name     | Type         | Description                                                                                                                                                                                     | Default |
-|----------|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| `symbol` | `str`        | Financial instrument name.                                                                                                                                                                      | ""      |
-| `group`  | `str`        | The filter for arranging a group of necessary symbols. Optional named parameter. If the group is specified, the function returns only positions meeting a specified criteria for a symbol name. | ""      |
-| `ticket` | `int`        | Position ticket.                                                                                                                                                                                | 0       |
-| `mt5`    | `MetaTrader` | MetaTrader instance.                                                                                                                                                                            | None    |
+| Name        | Type                        | Description                |
+|-------------|-----------------------------|----------------------------|
+| `positions` | `tuple[TradePosition, ...]` | Financial instrument name. |
+| `mt5`       | `MetaTrader`                | MetaTrader instance.       |
 
-<a id="__init__"></a>
+<a id="positions.__init__"></a>
 ### \_\_init\_\_
 ```python
-def __init__(*, symbol: str = "", group: str = "", ticket: int = 0)
+def __init__()
 ```
-Get Open Positions.
-#### Arguments
-| Name     | Type  | Description                                                                                                                                                                           | Default |
-|----------|-------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| `symbol` | `str` | Financial instrument name.                                                                                                                                                            | ""      |
-| `group`  | `str` | The filter for arranging a group of symbols. Optional named parameter. If the group is specified, the function returns only positions meeting a specified criteria for a symbol name. | ""      |
-| `ticket` | `int` | Position ticket.                                                                                                                                                                      | 0       |
+Initialize a position instance
 
-<a id="positions_total"></a>
-### positions_total
-```python
-async def positions_total() -> int
-```
-Get the number of open positions.
-#### Returns
-| Type  | Description                           |
-|-------|---------------------------------------|
-| `int` | Return total number of open positions |
 
-<a id="positions_get"></a> 
-### positions_get
+<a id="positions.get_position"></a> 
+### get_positions
 ```python
-async def positions_get(self, symbol: str = '', group: str = '', ticket: int = 0, retries=3) -> list[TradePosition]:
+async def get_positions(self) -> tuple[TradePosition, ...]:
 ```
-Get open positions with the ability to filter by symbol or ticket.
-#### Arguments
-| Name     | Type   | Description                                                                                                                                                                           | Default |
-|----------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| `symbol` | `str`  | Financial instrument name.                                                                                                                                                            | ""      |
-| `group`  | `str`  | The filter for arranging a group of symbols. Optional named parameter. If the group is specified, the function returns only positions meeting a specified criteria for a symbol name. | ""      |
-| `ticket` | `int`  | Position ticket.                                                                                                                                                                      | 0       |
+Get open positions
 
 #### Returns
-| Type                  | Description                    |
-|-----------------------|--------------------------------|
-| `list[TradePosition]` | A list of open trade positions |
+| Type                        | Description                    |
+|-----------------------------|--------------------------------|
+| `tuple[TradePosition, ...]` | A list of open trade positions |
 
-<a id="position_get"></a>
-### position_get
+
+<a id="positions.get_position_by_ticket"></a>
+### get_position_by_ticket
 ```python
-async def position_get(self, *, ticket: int) -> TradePosition
+async def get_position_by_ticket(self, *, ticket: int) -> TradePosition
 ```
-Get a position by ticket number.
-#### Arguments
+Get a position by ticket id.
+
+#### Parameters:
 | Name     | Type  | Description     |
 |----------|-------|-----------------|
 | `ticket` | `int` | Position ticket |
 
-#### Returns
+#### Returns:
 | Type            | Description    |
 |-----------------|----------------|
 | `TradePosition` | Trade position |
 
-<a id="close"></a>
+
+<a id="positions.get_positions_by_symbol"></a>
+### get_positions_by_symbol
+```python
+async def get_positions_by_symbol(self, *, symbol: str) -> tuple[TradePosition, ...]
+```
+Filter positions by symbols
+
+#### Parameters:
+| Name     | Type  | Description |
+|----------|-------|-------------|
+| `symbol` | `str` | Symbol      |
+
+#### Returns:
+| Type                        | Description    |
+|-----------------------------|----------------|
+| `tuple[TradePosition, ...]` | Trade position |
+
+
+<a id="positions.close"></a>
 ### close
 ```python
-async def close(self, *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType):
+async def close(self, *, ticket: int, symbol: str, price: float, volume: float, order_type: OrderType) -> OrderSendResult:
 ```
-Close a position by ticket number.
-#### Arguments
-| Name         | Type        | Description                | Default |
-|--------------|-------------|----------------------------|---------|
-| `ticket`     | `int`       | Position ticket.           |         |
-| `symbol`     | `str`       | Financial instrument name. |         |
-| `price`      | `float`     | Closing price.             |         |
-| `volume`     | `float`     | Volume to close.           |         |
-| `order_type` | `OrderType` | Order type.                |         |
+Close a position using its details.
 
-<a id="close_by"></a>
-### close_by
-```python
-async def close_by(self, pos: TradePosition):
-```
+#### Parameters:
+| Name         | Type        | Description                |
+|--------------|-------------|----------------------------|
+| `ticket`     | `int`       | Position ticket.           |
+| `symbol`     | `str`       | Financial instrument name. |
+| `price`      | `float`     | Closing price.             |
+| `volume`     | `float`     | Volume to close.           |
+| `order_type` | `OrderType` | Order type.                |
 
-Close a position by position object.
-#### Arguments
-| Name  | Type            | Description     |
-|-------|-----------------|-----------------|
-| `pos` | `TradePosition` | Position object |
+#### Returns:
+| Type               | Description                                        |
+|--------------------|----------------------------------------------------|
+| `OrderSendResult ` | The result of the order sent to close the position |
 
-<a id='close_position'></a>
+
+<a id="positions.close_position"></a>
 ### close_position
 ```python
-async def close_position(self, *, position: TradePosition):
+async def close_position(self, *, position: TradePosition) -> OrderSendResult:
 ```
 Close a position by position object.
-#### Arguments
+
+#### Parameters:
 | Name       | Type            | Description     |
 |------------|-----------------|-----------------|
 | `position` | `TradePosition` | Position object |
 
-<a id="close_all"></a>
+#### Returns:
+| Type              | Description                                        |
+|-------------------|----------------------------------------------------|
+| `OrderSendResult` | The result of the order sent to close the position |
+
+
+<a id='positions.close_position_by_ticket'></a>
+### close_position_by_ticket
+```python
+async def close_position_by_ticket(self, *, position: TradePosition) -> OrderSendResult:
+```
+Close a position by position object.
+
+#### Parameters:
+| Name       | Type            | Description     |
+|------------|-----------------|-----------------|
+| `position` | `TradePosition` | Position object |
+
+#### Returns:
+| Type              | Description                                        |
+|-------------------|----------------------------------------------------|
+| `OrderSendResult` | The result of the order sent to close the position |
+
+
+<a id="positions.close_all"></a>
 ### close_all
 ```python
 async def close_all() -> int
 ```
 Close all open positions for the trading account.
-#### Returns
+
+#### Returns:
 | Type  | Description                          |
 |-------|--------------------------------------|
 | `int` | Return total number of closed trades |

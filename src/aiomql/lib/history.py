@@ -3,11 +3,9 @@ from datetime import datetime
 from logging import getLogger
 
 import pytz
-from pandas import DataFrame
-import pandas as pd
 
 from ..core.config import Config
-from ..core.meta_trader import MetaTrader, CopyTicks, OrderType
+from ..core.meta_trader import MetaTrader
 from ..core.models import TradeDeal, TradeOrder
 from ..core.meta_backtester import MetaBackTester
 from .._utils import backoff_decorator
@@ -30,21 +28,26 @@ class History:
 
     mt5: MetaTrader | MetaBackTester
     config: Config
+    deals: tuple[TradeDeal, ...]
+    orders: tuple[TradeOrder, ...]
+    total_deals: int
+    total_orders: int
+    group: str
 
     def __init__(
         self,
         *,
-        date_from: datetime | int,
-        date_to: datetime | int,
+        date_from: datetime | float,
+        date_to: datetime | float,
         group: str = "",
         use_utc: bool = True,
     ):
         """
         Args:
-            date_from (datetime, int): Date the orders are requested from. Set by the 'datetime' object or as a
+            date_from (datetime, float): Date the orders are requested from. Set by the 'datetime' object or as a
                 number of seconds elapsed since 1970.01.01. Defaults to twenty-four hours from the current time in 'utc'
 
-            date_to (datetime, int): Date up to which the orders are requested. Set by the 'datetime' object or as a
+            date_to (datetime, float): Date up to which the orders are requested. Set by the 'datetime' object or as a
                 number of seconds elapsed since 1970.01.01. Defaults to the current time in "utc"
 
             group (str): Filter for selecting history by symbols. Defaults to an empty string
@@ -73,7 +76,7 @@ class History:
         """Get history deals and orders"""
         deals, orders = await asyncio.gather(
             self.get_deals(), self.get_orders(), return_exceptions=True
-        )
+)
         self.deals = deals if isinstance(deals, tuple) else ()
         self.orders = orders if isinstance(orders, tuple) else ()
         self.total_deals = len(self.deals)
@@ -82,8 +85,9 @@ class History:
     @backoff_decorator
     async def get_deals(self) -> tuple[TradeDeal, ...]:
         """Get deals from trading history using the parameters set in the constructor.
+
         Returns:
-            tuple[TradeDeal]: A list of trade deals
+            tuple[TradeDeal, ...]: A list of trade deals
         """
         deals = await self.mt5.history_deals_get(
             date_from=self.date_from, date_to=self.date_to, group=self.group
@@ -160,52 +164,3 @@ class History:
                 key=lambda x: x.time_done_msc,
             )
         )
-
-    async def track_order(
-        self, *, position: int = None, end_time: datetime = None
-    ) -> DataFrame:
-        """
-        Track an order from the time it was opened to the time it was closed or any given time.
-         The tracking is done by getting the ticks
-        for the order symbol from the time the order was opened to the time it was closed. The profit for each tick is
-        calculated using the order type, symbol, initial volume, open price and the bid or ask price of the tick
-        depending on the order type.
-        Args:
-            end_time (datetime): The time to stop tracking the order. If not provided, the tracking will continue until
-                the order is closed.
-            position (int): The position ticket
-            end_time (int): The time to stop tracking the order in seconds. If not provided, the tracking will continue
-             until the order is closed.
-        Returns:
-            DataFrame: A pandas DataFrame of the ticks and profit for the order.
-        """
-        orders = self.get_orders_by_position(position=position)
-        deals = self.get_deals_by_position(position=position)
-        open_order = orders[0]
-        open_deal = deals[0]
-        close_deal = deals[-1]
-        time_done = (
-            datetime.timestamp(end_time) if end_time is not None else close_deal.time
-        )
-        time_done_msc = int(time_done * 1000)
-        open_order.set_attributes(
-            time_done_msc=time_done_msc, time_done=time_done, price_open=open_deal.price
-        )
-        ticks = await self.mt5.copy_ticks_range(
-            open_order.symbol,
-            open_order.time_setup,
-            open_order.time_done,
-            CopyTicks.ALL,
-        )
-        data = pd.DataFrame(ticks)
-        profit = lambda x: self.mt5._order_calc_profit(
-            open_order.type,
-            open_order.symbol,
-            open_order.volume_initial,
-            open_order.price_open,
-            x.ask if open_order.type == OrderType.BUY else x.bid,
-        )
-        data["profits"] = data.apply(profit, axis=1)
-        data["time"] = pd.to_datetime(data["time"], unit="s")
-        data.set_index("time", inplace=True)
-        return data

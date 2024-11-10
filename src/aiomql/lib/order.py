@@ -37,11 +37,11 @@ class Order(_Base, TradeRequest):
         """Get the number of active pending orders.
 
         Returns:
-            (int): total number of active orders
+            (int): total number of active pending orders
         """
         return await self.mt5.orders_total()
 
-    async def get_order(self, *, ticket: int) -> TradeOrder | None:
+    async def get_pending_order(self, *, ticket: int) -> TradeOrder | None:
         """
         Get a pending order by ticket number.
 
@@ -57,17 +57,16 @@ class Order(_Base, TradeRequest):
                 return TradeOrder(**order_._asdict())
         return order
 
-    async def get_orders(
-        self, *, ticket: int = 0, symbol: str = "", group: str = ""
-    ) -> tuple[TradeOrder, ...]:
+    async def get_pending_orders(self, *, ticket: int = 0, symbol: str = "", group: str = "") -> tuple[TradeOrder, ...]:
         """Get the list of active pending orders for the current symbol.
 
-        Keyword Args:
+        Args:
             ticket (int): Order ticket number
             symbol (str): Symbol name
             group (str): Group name
+
         Returns:
-            tuple[TradeOrder]: A Tuple of active trade orders as TradeOrder objects
+            tuple[TradeOrder, ...]: A Tuple of active pending trade orders as TradeOrder objects
         """
         orders = await self.mt5.orders_get(symbol=symbol, ticket=ticket, group=group)
         if orders is not None:

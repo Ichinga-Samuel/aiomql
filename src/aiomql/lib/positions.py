@@ -58,7 +58,7 @@ class Positions:
             return None
         return TradePosition(**position._asdict())
 
-    async def get_position_by_symbol(self, *, symbol: str) -> tuple[TradePosition, ...]:
+    async def get_positions_by_symbol(self, *, symbol: str) -> tuple[TradePosition, ...]:
         """Get open positions by symbol.
         Args:
             symbol (str): Financial instrument name.

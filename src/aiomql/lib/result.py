@@ -12,7 +12,6 @@ logger = getLogger(__name__)
 
 class Result:
     """A base class for handling trade results and strategy parameters for record keeping and reference purpose.
-    The data property must be implemented in the subclass
 
     Attributes:
         config (Config): The configuration object
@@ -22,9 +21,7 @@ class Result:
     config: Config
     lock = Lock()
 
-    def __init__(
-        self, *, result: OrderSendResult, parameters: dict = None, name: str = ""
-    ):
+    def __init__(self, *, result: OrderSendResult, parameters: dict = None, name: str = ""):
         """
         Prepare result data
         Args:

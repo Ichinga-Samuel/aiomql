@@ -1,27 +1,27 @@
 # Terminal
 
 ## Table of Contents
-- [Terminal](#terminal)
-- [initialize](#initialize)
-- [version](#version)
-- [info](#info)
-- [symbols_total](#symbols_total)
+- [Terminal](#terminal.terminal)
+- [initialize](#terminal.initialize)
+- [version](#terminal.version)
+- [info](#terminal.info)
+- [symbols_total](#terminal.symbols_total)
 
-<a id="terminal"></a>
+<a id="terminal.terminal"></a>
 ### Terminal
 ```python
-class Terminal(TerminalInfo)
+class Terminal(_Base, TerminalInfo)
 ```
 Terminal Class. Get information about the MetaTrader 5 terminal. The class is a subclass of the TerminalInfo
 class. It inherits all the attributes and methods of the TerminalInfo class and adds some useful methods.
-#### Attributes
-| Name          | Type         | Description                                                                  | Default |
-|---------------|--------------|------------------------------------------------------------------------------|---------|
-| `initialized` | `bool`       | check if initial request has been sent to the terminal to get terminal info. | False   |
-| `mt5`         | `MetaTrader` | MetaTrader instance                                                          | None    |
-| `config`      | `Config`     | Config instance                                                              | None    |
 
-<a id="initialize"></a>
+#### Attributes:
+| Name      | Type         | Description                   | Default |
+|-----------|--------------|-------------------------------|---------|
+| `version` | `Version`    | MetaTrader5 Terminal Version. | None    |
+
+
+<a id="terminal.initialize"></a>
 ### initialize
 ```python
 async def initialize() -> bool
@@ -30,28 +30,33 @@ Establish a connection with the MetaTrader 5 terminal. There are three call opti
 The terminal for connection is found automatically. Call specifying the path to the MetaTrader 5 terminal we
 want to connect to. word path as a keyword argument Call specifying the trading account path and parameters
 i.e. login, password, server, as keyword arguments, path can be omitted.
-#### Returns
+
+#### Returns:
 | Type   | Description                   |
 |--------|-------------------------------|
 | `bool` | True if successful else False |
 
-<a id="version"></a>
+
+<a id="terminal.version"></a>
 ### version
 ```python
 async def version()
 ```
 Get the MetaTrader 5 terminal version. This method returns the terminal version, build and release date as
 a tuple of three values
-#### Returns
+
+#### Returns:
 | Type      | Description                        |
 |-----------|------------------------------------|
 | `Version` | version of tuple as Version object |
-#### Raises
+
+#### Raises:
 | Exception    | Description                                |
 |--------------|--------------------------------------------|
 | `ValueError` | If the terminal version cannot be obtained |
 
-<a id="info"></a>
+
+<a id="terminal.info"></a>
 ### info
 ```python
 async def info()
@@ -59,19 +64,21 @@ async def info()
 Get the connected MetaTrader 5 client terminal status and settings. gets terminal info in the form of a
 named tuple structure (namedtuple). Return None in case of an error. The info on the error can be
 obtained using last_error().
-#### Returns
+
+#### Returns:
 | Type           | Description                                        |
 |----------------|----------------------------------------------------|
 | `TerminalInfo` | Terminal status and settings as a terminal object. |
 
 
-<a id="symbols_total"></a>
-### symbols\_total
+<a id="terminal.symbols_total"></a>
+### symbols_total
 ```python
 async def symbols_total() -> int
 ```
 Get the number of all financial instruments in the MetaTrader 5 terminal.
-#### Returns
+
+#### Returns:
 | Type  | Description                       |
 |-------|-----------------------------------|
 | `int` | Total number of available symbols |

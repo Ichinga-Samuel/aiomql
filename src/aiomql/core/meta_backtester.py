@@ -43,7 +43,10 @@ class MetaBackTester(MetaTrader):
             self.config.backtest_engine = value
 
     async def last_error(self) -> tuple[int, str]:
-        return -1, ""
+        if self.config.use_terminal_for_backtesting is False:
+            return -1, ""
+        else:
+            return await super().last_error()
 
     async def initialize(
         self,
@@ -64,6 +67,41 @@ class MetaBackTester(MetaTrader):
                 timeout=timeout,
             )
 
+        return True
+
+    def initialize_sync(
+        self,
+        *,
+        path: str = "",
+        login: int = 0,
+        password: str = "",
+        server: str = "",
+        timeout: int | None = None,
+        portable=False,
+    ) -> bool:
+        if self.config.use_terminal_for_backtesting:
+            return super().initialize_sync(
+                path=path,
+                login=login,
+                password=password,
+                server=server,
+                timeout=timeout,
+            )
+
+        return True
+
+    def login_sync(
+        self,
+        *,
+        login: int = 0,
+        password: str = "",
+        server: str = "",
+        timeout: int = 60000,
+    ) -> bool:
+        if self.config.use_terminal_for_backtesting:
+            return super().login_sync(
+                login=login, password=password, server=server, timeout=timeout
+            )
         return True
 
     async def login(
