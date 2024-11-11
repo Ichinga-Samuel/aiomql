@@ -52,24 +52,14 @@ class BackTestController:
             self.backtest_engine.next()
             while True:
                 pending = self.wait()
-                if (
-                    pending == 0
-                ):  # all main tasks have been completed in the current cycle
+                if pending == 0:  # all main tasks have been completed in the current cycle
                     await self.backtest_engine.tracker()
                     self.backtest_engine.next()
                     if self.backtest_engine.cursor.time % 3600 == 0:
-                        logger.info(
-                            datetime.strftime(
-                                datetime.fromtimestamp(
-                                    self.backtest_engine.cursor.time
-                                ),
-                                "%Y-%m-%d %H:%M:%S",
-                            )
-                        )
+                        logger.info(datetime.strftime(datetime.fromtimestamp(self.backtest_engine.cursor.time), "%Y-%m-%d %H:%M:%S"))
                 if self.backtest_engine.stop_testing:
                     logger.info(
-                        "Stop trading called in control at %s",
-                        datetime.fromtimestamp(self.backtest_engine.cursor.time).strftime("%Y-%m-%d %H:%M:%S"),
+                        "Stop trading called in control at %s", datetime.fromtimestamp(self.backtest_engine.cursor.time).strftime("%Y-%m-%d %H:%M:%S")
                     )
                     break
             await self.backtest_engine.wrap_up()

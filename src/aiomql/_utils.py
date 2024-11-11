@@ -1,4 +1,5 @@
 """Utility functions for aiomql."""
+
 import decimal
 import random
 from functools import wraps, partial
@@ -26,13 +27,9 @@ def dict_to_string(data: dict, multi=False) -> str:
     return f"{sep}".join(f"{key}: {value}" for key, value in data.items())
 
 
-def backoff_decorator(
-    func=None, *, max_retries: int = 2, retries: int = 0, error=""
-) -> callable:
+def backoff_decorator(func=None, *, max_retries: int = 2, retries: int = 0, error="") -> callable:
     if func is None:
-        return partial(
-            backoff_decorator, max_retries=max_retries, retries=retries, error=error
-        )
+        return partial(backoff_decorator, max_retries=max_retries, retries=retries, error=error)
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -57,17 +54,9 @@ def backoff_decorator(
     return wrapper
 
 
-def error_handler(
-    func=None, *, msg="", exe=Exception, response=None, log_error_msg=True
-):
+def error_handler(func=None, *, msg="", exe=Exception, response=None, log_error_msg=True):
     if func is None:
-        return partial(
-            error_handler,
-            msg=msg,
-            exe=exe,
-            response=response,
-            log_error_msg=log_error_msg,
-        )
+        return partial(error_handler, msg=msg, exe=exe, response=response, log_error_msg=log_error_msg)
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -82,17 +71,9 @@ def error_handler(
     return wrapper
 
 
-def error_handler_sync(
-    func=None, *, msg="", exe=Exception, response=None, log_error_msg=True
-):
+def error_handler_sync(func=None, *, msg="", exe=Exception, response=None, log_error_msg=True):
     if func is None:
-        return partial(
-            error_handler,
-            msg=msg,
-            exe=exe,
-            response=response,
-            log_error_msg=log_error_msg,
-        )
+        return partial(error_handler, msg=msg, exe=exe, response=response, log_error_msg=log_error_msg)
 
     @wraps(func)
     def wrapper(*args, **kwargs):

@@ -294,21 +294,9 @@ types = (
 class BaseMeta(type):
     def __new__(mcs, cls_name, bases, cls_dict):
         defaults: dict = getattr(MetaTrader5, "__dict__", {})
-        callables = {
-            f"_{key}": value
-            for key in core_mt5_functions
-            if (value := defaults.get(key, None)) is not None
-        }
-        consts = {
-            key: value
-            for key in constants
-            if (value := defaults.get(key, None)) is not None
-        }
-        types_ = {
-            key: value
-            for key in types
-            if (value := defaults.get(key, None)) is not None
-        }
+        callables = {f"_{key}": value for key in core_mt5_functions if (value := defaults.get(key, None)) is not None}
+        consts = {key: value for key in constants if (value := defaults.get(key, None)) is not None}
+        types_ = {key: value for key in types if (value := defaults.get(key, None)) is not None}
         cls_dict |= callables
         cls_dict |= consts
         cls_dict |= types_

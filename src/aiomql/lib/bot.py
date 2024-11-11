@@ -21,6 +21,7 @@ class Bot:
         config (Config): Config instance
         mt (MetaTrader): MetaTrader instance
     """
+
     config: Config
     executor: Executor
     mt: MetaTrader
@@ -61,9 +62,7 @@ class Bot:
                 raise Exception("Unable to sign in to MetaTrader 5 Terminal")
             logger.info("Login Successful")
             await self.init_strategies()
-            self.add_coroutine(
-                coroutine=self.config.task_queue.run, on_separate_thread=True
-            )
+            self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
             self.add_coroutine(coroutine=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
@@ -87,9 +86,7 @@ class Bot:
                 raise Exception("Unable to sign in to MetaTrader 5 Terminal")
             logger.info("Login Successful")
             self.init_strategies_sync()
-            self.add_coroutine(
-                coroutine=self.config.task_queue.run, on_separate_thread=True
-            )
+            self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
             self.add_coroutine(coroutine=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
@@ -107,13 +104,7 @@ class Bot:
         """
         self.executor.add_function(function=function, kwargs=kwargs)
 
-    def add_coroutine(
-        self,
-        *,
-        coroutine: Callable[..., ...] | Coroutine,
-        on_separate_thread=False,
-        **kwargs,
-    ):
+    def add_coroutine(self, *, coroutine: Callable[..., ...] | Coroutine, on_separate_thread=False, **kwargs):
         """Add a coroutine to the executor.
 
         Args:
@@ -124,9 +115,7 @@ class Bot:
         Returns:
 
         """
-        self.executor.add_coroutine(
-            coroutine=coroutine, kwargs=kwargs, on_separate_thread=on_separate_thread
-        )
+        self.executor.add_coroutine(coroutine=coroutine, kwargs=kwargs, on_separate_thread=on_separate_thread)
 
     def execute(self):
         """Execute the bot using asyncio.run"""
@@ -157,14 +146,7 @@ class Bot:
         """
         [self.add_strategy(strategy=strategy) for strategy in strategies]
 
-    def add_strategy_all(
-        self,
-        *,
-        strategy: Type[Strategy],
-        params: dict | None = None,
-        symbols: list[Symbol] = None,
-        **kwargs,
-    ):
+    def add_strategy_all(self, *, strategy: Type[Strategy], params: dict | None = None, symbols: list[Symbol] = None, **kwargs):
         """Use this to run a single strategy on multiple symbols with the same parameters and keyword arguments.
 
         Keyword Args:
@@ -173,10 +155,7 @@ class Bot:
             symbols (list): A list of symbols to run the strategy on
             **kwargs: Additional keyword arguments for the strategy
         """
-        [
-            self.add_strategy(strategy=strategy(symbol=symbol, params=params, **kwargs))
-            for symbol in symbols
-        ]
+        [self.add_strategy(strategy=strategy(symbol=symbol, params=params, **kwargs)) for symbol in symbols]
 
     async def init_strategy(self, *, strategy: Strategy) -> bool:
         """Initialize a single strategy. This method is called internally by the bot."""
@@ -200,7 +179,7 @@ class Bot:
             if info is not None and tick is not None:
                 info = info._asdict()
                 info["swap_rollover3days"] = info.get("swap_rollover3days", 0) % 7
-                info['select'] = select
+                info["select"] = select
                 tick = Tick(**tick._asdict())
                 strategy.symbol.tick = tick
                 strategy.symbol.set_attributes(**info)

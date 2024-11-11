@@ -29,11 +29,7 @@ async def close_all_positions():
         positions = await mt.positions_get()
         tasks = []
         for position in positions:
-            order_type = (
-                mt.ORDER_TYPE_BUY
-                if position.type == mt.ORDER_TYPE_SELL
-                else mt.ORDER_TYPE_SELL
-            )
+            order_type = mt.ORDER_TYPE_BUY if position.type == mt.ORDER_TYPE_SELL else mt.ORDER_TYPE_SELL
             req = {
                 "action": mt.TRADE_ACTION_DEAL,
                 "symbol": position.symbol,
@@ -51,9 +47,7 @@ async def close_all_positions():
 @pytest.fixture(scope="package", autouse=True)
 async def config(request):
     Path("tests/live/configs").mkdir(exist_ok=True)
-    with open("aiomql.json", "r") as fh, open(
-        "tests/live/configs/test2.json", "w"
-    ) as fh1, open("tests/live/test.json", "w") as fh2:
+    with open("aiomql.json", "r") as fh, open("tests/live/configs/test2.json", "w") as fh1, open("tests/live/test.json", "w") as fh2:
         data = json.load(fh)
         json.dump(data, fh1, indent=2)
         json.dump(data, fh2, indent=2)

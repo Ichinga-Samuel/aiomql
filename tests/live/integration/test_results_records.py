@@ -36,13 +36,7 @@ class TestRecordsAndResults:
     async def sell(self, mt):
         sym = "BTCUSD"
         sym_info = await mt.symbol_info(sym)
-        return {
-            "action": mt.TRADE_ACTION_DEAL,
-            "symbol": sym,
-            "volume": sym_info.volume_min,
-            "type": mt.ORDER_TYPE_SELL,
-            "price": sym_info.bid,
-        }
+        return {"action": mt.TRADE_ACTION_DEAL, "symbol": sym, "volume": sym_info.volume_min, "type": mt.ORDER_TYPE_SELL, "price": sym_info.bid}
 
     @pytest.fixture(scope="class", autouse=True)
     async def setup(self, sell, buy, mt):
@@ -50,24 +44,11 @@ class TestRecordsAndResults:
         buy_res_2 = await mt.order_send(buy)
         sell_res = await mt.order_send(sell)
         sell_res_2 = await mt.order_send(sell)
-        buy_res = Result(
-            result=OrderSendResult(**buy_res._asdict()), name="test_result"
-        )
-        sell_res = Result(
-            result=OrderSendResult(**sell_res._asdict()), name="test_result"
-        )
-        sell_res_2 = Result(
-            result=OrderSendResult(**sell_res_2._asdict()), name="test_result"
-        )
-        buy_res_2 = Result(
-            result=OrderSendResult(**buy_res_2._asdict()), name="test_result"
-        )
-        await asyncio.gather(
-            buy_res.save(),
-            sell_res.save(),
-            buy_res_2.save(trade_record_mode="json"),
-            sell_res_2.save(trade_record_mode="json"),
-        )
+        buy_res = Result(result=OrderSendResult(**buy_res._asdict()), name="test_result")
+        sell_res = Result(result=OrderSendResult(**sell_res._asdict()), name="test_result")
+        sell_res_2 = Result(result=OrderSendResult(**sell_res_2._asdict()), name="test_result")
+        buy_res_2 = Result(result=OrderSendResult(**buy_res_2._asdict()), name="test_result")
+        await asyncio.gather(buy_res.save(), sell_res.save(), buy_res_2.save(trade_record_mode="json"), sell_res_2.save(trade_record_mode="json"))
         await Positions().close_all()
 
     def test_records_dir(self):
@@ -90,9 +71,7 @@ class TestRecordsAndResults:
 
     async def test_json_records(self):
         json_records = self.trade_records.get_json_records()
-        matched_recs = [
-            record for record in json_records if record.match("test_result.json")
-        ]
+        matched_recs = [record for record in json_records if record.match("test_result.json")]
         assert len(matched_recs) == 1
         record = matched_recs[0]
         record_data = json.load(record.open())
@@ -106,9 +85,7 @@ class TestRecordsAndResults:
 
     async def test_csv_records(self):
         csv_records = self.trade_records.get_csv_records()
-        matched_recs = [
-            record for record in csv_records if record.match("test_result.csv")
-        ]
+        matched_recs = [record for record in csv_records if record.match("test_result.csv")]
         assert len(matched_recs) == 1
         record = matched_recs[0]
         record_data = DictReader(record.open())

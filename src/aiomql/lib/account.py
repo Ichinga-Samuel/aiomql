@@ -15,6 +15,7 @@ class Account(_Base, AccountInfo):
     Attributes:
         connected (bool): Status of connection to MetaTrader 5 Terminal
     """
+
     _instance: Self
     connected: bool
 

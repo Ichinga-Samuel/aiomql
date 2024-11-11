@@ -38,27 +38,22 @@ class Tick:
         """Initialize the Tick class. Set attributes from keyword arguments. bid, ask, last and volume must be
         present"""
         if not all(key in kwargs for key in ["bid", "ask", "last", "volume"]):
-            raise ValueError(
-                "bid, ask, last and volume, time must be present in the keyword arguments"
-            )
+            raise ValueError("bid, ask, last and volume, time must be present in the keyword arguments")
         self.Index = kwargs.pop("Index", 0)
         self.time = kwargs.pop("time", time.monotonic())
         self.time_msc = int(self.time * 1000)
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        return (
-            "%(class)s(Index=%(Index)s, time=%(time)s, bid=%(bid)s, ask=%(ask)s, last=%(last)s, volume=%(volume)s)"
-            % {
-                "class": self.__class__.__name__,
-                "time": self.time,
-                "bid": self.bid,
-                "ask": self.ask,
-                "last": self.last,
-                "volume": self.volume,
-                "Index": self.Index,
-            }
-        )
+        return "%(class)s(Index=%(Index)s, time=%(time)s, bid=%(bid)s, ask=%(ask)s, last=%(last)s, volume=%(volume)s)" % {
+            "class": self.__class__.__name__,
+            "time": self.time,
+            "bid": self.bid,
+            "ask": self.ask,
+            "last": self.last,
+            "volume": self.volume,
+            "Index": self.Index,
+        }
 
     def __eq__(self, other: Self):
         return self.time == other.time
@@ -148,9 +143,7 @@ class Ticks:
     def __getattr__(self, item):
         if item in list(self._data.columns.values):
             return self._data[item]
-        raise AttributeError(
-            f"Attribute {item} not defined on class {self.__class__.__name__}"
-        )
+        raise AttributeError(f"Attribute {item} not defined on class {self.__class__.__name__}")
 
     def __getitem__(self, index) -> Tick | Self:
         if isinstance(index, slice):

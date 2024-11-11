@@ -1,4 +1,5 @@
 """Candle and Candles classes for handling bars from the MetaTrader 5 terminal."""
+
 import time
 from typing import Type, Self, Iterable
 from logging import getLogger
@@ -45,9 +46,7 @@ class Candle:
             **kwargs: Candle attributes and values as keyword arguments.
         """
         if not all(i in kwargs for i in ["open", "high", "low", "close"]):
-            raise ValueError(
-                "Candle must be instantiated with open, high, low and close prices"
-            )
+            raise ValueError("Candle must be instantiated with open, high, low and close prices")
         self.time = kwargs.pop("time", time.monotonic_ns())
         self.Index = kwargs.pop("Index", 0)
         self.real_volume = kwargs.pop("real_volume", 0)
@@ -56,18 +55,15 @@ class Candle:
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        return (
-            "%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s)"
-            % {
-                "class": self.__class__.__name__,
-                "open": self.open,
-                "high": self.high,
-                "low": self.low,
-                "close": self.close,
-                "time": self.time,
-                "Index": self.Index,
-            }
-        )
+        return "%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s)" % {
+            "class": self.__class__.__name__,
+            "open": self.open,
+            "high": self.high,
+            "low": self.low,
+            "close": self.close,
+            "time": self.time,
+            "Index": self.Index,
+        }
 
     def __eq__(self, other: Self):
         return self.time == other.time
@@ -170,13 +166,7 @@ class Candles:
     timeframe: TimeFrame
     _data: DataFrame
 
-    def __init__(
-        self,
-        *,
-        data: DataFrame | Self | Iterable,
-        flip=False,
-        candle_class: Candle = None,
-    ):
+    def __init__(self, *, data: DataFrame | Self | Iterable, flip=False, candle_class: Candle = None):
         """A container class of Candle objects in chronological order.
 
         Args:
@@ -236,9 +226,7 @@ class Candles:
 
         if item == "Index":
             return Series(self._data.index)
-        raise AttributeError(
-            f"Attribute {item} not defined on class {self.__class__.__name__}"
-        )
+        raise AttributeError(f"Attribute {item} not defined on class {self.__class__.__name__}")
 
     def __iter__(self):
         return (self.Candle(**row._asdict()) for row in self._data.itertuples())

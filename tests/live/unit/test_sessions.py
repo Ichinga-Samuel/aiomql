@@ -15,9 +15,7 @@ class TestSessions:
     def make_session(self):
         end = time(hour=16, minute=59, second=59, microsecond=999_999, tzinfo=UTC)
         london = Session(start=8, end=end, name="London", on_end="close_all")
-        start, end = time(hour=0, tzinfo=UTC), time(
-            hour=23, minute=59, second=59, tzinfo=UTC
-        )
+        start, end = time(hour=0, tzinfo=UTC), time(hour=23, minute=59, second=59, tzinfo=UTC)
         all_day = Session(start=start, end=end, name="AllDay", on_end="close_all")
         end = time(hour=6, minute=59, second=59, microsecond=999_999, tzinfo=UTC)
         over_night = Session(start=18, end=end, name="OverNight", on_end="close_all")

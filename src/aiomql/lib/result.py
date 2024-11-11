@@ -35,12 +35,8 @@ class Result:
         self.name = name or self.parameters.get("name", "Trades")
 
     def get_data(self) -> dict:
-        res = self.result.get_dict(
-            exclude={"retcode", "comment", "retcode_external", "request_id", "request"}
-        )
-        return (
-            self.parameters | res | {"actual_profit": 0, "closed": False, "win": False}
-        )
+        res = self.result.get_dict(exclude={"retcode", "comment", "retcode_external", "request_id", "request"})
+        return self.parameters | res | {"actual_profit": 0, "closed": False, "win": False}
 
     async def save(self, *, trade_record_mode: Literal["csv", "json"] = None):
         """Record trade results as a csv or json file
@@ -71,9 +67,7 @@ class Result:
             headers.update(data.keys())
             read_file.close()
             with file.open("w", newline="") as write_file:
-                writer = csv.DictWriter(
-                    write_file, fieldnames=headers, restval=None, extrasaction="ignore"
-                )
+                writer = csv.DictWriter(write_file, fieldnames=headers, restval=None, extrasaction="ignore")
                 writer.writeheader()
                 writer.writerows(rows)
         except Exception as err:

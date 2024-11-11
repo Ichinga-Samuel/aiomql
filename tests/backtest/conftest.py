@@ -32,11 +32,7 @@ async def close_all_positions():
         positions = await mt.positions_get()
         tasks = []
         for position in positions:
-            order_type = (
-                mt.ORDER_TYPE_BUY
-                if position.type == mt.ORDER_TYPE_SELL
-                else mt.ORDER_TYPE_SELL
-            )
+            order_type = mt.ORDER_TYPE_BUY if position.type == mt.ORDER_TYPE_SELL else mt.ORDER_TYPE_SELL
             req = {
                 "action": mt.TRADE_ACTION_DEAL,
                 "symbol": position.symbol,
@@ -54,9 +50,7 @@ async def close_all_positions():
 @pytest.fixture(scope="package", autouse=True)
 async def config(request):
     Path("tests/backtest/configs").mkdir(exist_ok=True)
-    with open("aiomql.json", "r") as fh, open(
-        "tests/backtest/configs/test2.json", "w"
-    ) as fh1, open("tests/backtest/test.json", "w") as fh2:
+    with open("aiomql.json", "r") as fh, open("tests/backtest/configs/test2.json", "w") as fh1, open("tests/backtest/test.json", "w") as fh2:
         data = json.load(fh)
         data["mode"] = "backtest"
         json.dump(data, fh1, indent=2)
@@ -77,19 +71,14 @@ async def mt():
 
 @pytest.fixture(scope="package")
 async def period():
-    return {
-        "start": datetime(2024, 2, 1, hour=8, tzinfo=UTC),
-        "end": datetime(2024, 2, 7, hour=16, tzinfo=UTC),
-    }
+    return {"start": datetime(2024, 2, 1, hour=8, tzinfo=UTC), "end": datetime(2024, 2, 7, hour=16, tzinfo=UTC)}
 
 
 @pytest.fixture(scope="package")
 async def backtest_engine(period):
     start = period["start"]
     end = period["end"]
-    return BackTestEngine(
-        start=start, end=end, name="backtest_data", assign_to_config=True, preload=False
-    )
+    return BackTestEngine(start=start, end=end, name="backtest_data", assign_to_config=True, preload=False)
 
 
 @pytest.fixture(scope="function")

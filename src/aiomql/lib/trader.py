@@ -60,17 +60,11 @@ class Trader(ABC):
         sl, tp = pips, pips * (risk_to_reward or self.ram.risk_to_reward)
         price = self.order.price
         if self.order.type == OrderType.BUY:
-            self.order.sl, self.order.tp = round(price - sl, self.symbol.digits), round(
-                price + tp, self.symbol.digits
-            )
+            self.order.sl, self.order.tp = round(price - sl, self.symbol.digits), round(price + tp, self.symbol.digits)
         elif self.order.type == OrderType.SELL:
-            self.order.sl, self.order.tp = round(price + sl, self.symbol.digits), round(
-                price - tp, self.symbol.digits
-            )
+            self.order.sl, self.order.tp = round(price + sl, self.symbol.digits), round(price - tp, self.symbol.digits)
 
-    def set_trade_stop_levels_points(
-        self, *, points: float, risk_to_reward: float = None
-    ):
+    def set_trade_stop_levels_points(self, *, points: float, risk_to_reward: float = None):
         """Set the stop loss and take profit levels of the order based on the points and the risk to reward ratio.
            It is assumed that order_type and price are already set before calling this method.
 
@@ -83,23 +77,12 @@ class Trader(ABC):
         price, digits = self.order.price, self.symbol.digits
 
         if self.order.type == OrderType.BUY:
-            self.order.sl, self.order.tp = round(price - sl, self.symbol.digits), round(
-                price + tp, digits
-            )
+            self.order.sl, self.order.tp = round(price - sl, self.symbol.digits), round(price + tp, digits)
 
         elif self.order.type == OrderType.SELL:
-            self.order.sl, self.order.tp = round(price + sl, self.symbol.digits), round(
-                price - tp, digits
-            )
+            self.order.sl, self.order.tp = round(price + sl, self.symbol.digits), round(price - tp, digits)
 
-    async def create_order_with_stops(
-        self,
-        *,
-        order_type: OrderType,
-        sl: float,
-        tp: float,
-        amount_to_risk: float = None,
-    ):
+    async def create_order_with_stops(self, *, order_type: OrderType, sl: float, tp: float, amount_to_risk: float = None):
         """Create an order with stop loss and take profit levels. Use the amount to risk per trade to
         calculate the volume.
 
@@ -115,18 +98,9 @@ class Trader(ABC):
         tick = await self.symbol.info_tick()
         price = tick.ask if order_type == OrderType.BUY else tick.bid
         volume = await self.symbol.compute_volume_sl(amount=amount, price=price, sl=sl)
-        self.order.set_attributes(
-            sl=sl, tp=tp, volume=volume, price=price, type=order_type
-        )
+        self.order.set_attributes(sl=sl, tp=tp, volume=volume, price=price, type=order_type)
 
-    async def create_order_with_sl(
-        self,
-        *,
-        order_type: OrderType,
-        sl: float,
-        amount_to_risk: float = None,
-        risk_to_reward: float = None,
-    ):
+    async def create_order_with_sl(self, *, order_type: OrderType, sl: float, amount_to_risk: float = None, risk_to_reward: float = None):
         """
         Create an order with a given stop_loss level. Use the amount to risk per trade to calculate the volume.
 
@@ -146,18 +120,9 @@ class Trader(ABC):
         dtp = dsl * (risk_to_reward or self.ram.risk_to_reward)
         tp = price + dtp if order_type == OrderType.BUY else price - dtp
         volume = await self.symbol.compute_volume_sl(amount=amount, price=price, sl=sl)
-        self.order.set_attributes(
-            sl=sl, tp=tp, volume=volume, price=price, type=order_type
-        )
+        self.order.set_attributes(sl=sl, tp=tp, volume=volume, price=price, type=order_type)
 
-    async def create_order_with_points(
-        self,
-        *,
-        order_type: OrderType,
-        points: float,
-        amount_to_risk: float = None,
-        risk_to_reward: float = None,
-    ):
+    async def create_order_with_points(self, *, order_type: OrderType, points: float, amount_to_risk: float = None, risk_to_reward: float = None):
         """Create an order with specific points to risk. Use the amount to risk per trade to calculate the volume.
 
         Args:
@@ -218,9 +183,7 @@ class Trader(ABC):
         return result
 
     @error_handler
-    async def record_trade(
-        self, *, result: OrderSendResult, parameters: dict = None, name: str = ""
-    ):
+    async def record_trade(self, *, result: OrderSendResult, parameters: dict = None, name: str = ""):
         """Record the trade in csv or json.
         Args:
             result (OrderSendResult): Result of the order send
@@ -232,11 +195,7 @@ class Trader(ABC):
         params = {**parameters} or {}
         profit = await self.order.calc_profit()
         params["expected_profit"] = profit
-        date = (
-            datetime.now(tz=UTC)
-            if self.config.mode == "live"
-            else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC)
-        )
+        date = datetime.now(tz=UTC) if self.config.mode == "live" else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC)
         params["date"] = date.strftime("%Y-%m-%d %H:%M:%S.%f")
         res = Result(result=result, parameters=params, name=name)
         self.config.task_queue.add(item=QueueItem(res.save), must_complete=True)

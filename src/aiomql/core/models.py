@@ -354,10 +354,7 @@ class SymbolInfo(Base):
     name: str = ""
 
     def __repr__(self):
-        return "%(class)s(name=%(name)s)" % {
-            "class": self.__class__.__name__,
-            "name": self.name,
-        }
+        return "%(class)s(name=%(name)s)" % {"class": self.__class__.__name__, "name": self.name}
 
     def __str__(self):
         return self.name

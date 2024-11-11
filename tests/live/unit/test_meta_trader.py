@@ -111,19 +111,13 @@ class TestMetaTrader:
         assert res.shape[0] == 10
 
     async def test_copy_ticks_from(self):
-        res = await self.mt.copy_ticks_from(
-            self.symbol, self.start, 10, self.mt.COPY_TICKS_ALL
-        )
+        res = await self.mt.copy_ticks_from(self.symbol, self.start, 10, self.mt.COPY_TICKS_ALL)
         assert res is not None
         assert res.shape[0] == 10
 
     async def test_copy_ticks_range(self):
-        res = await self.mt.copy_ticks_range(
-            self.symbol, self.start, self.end, self.mt.COPY_TICKS_ALL
-        )
-        res2 = self.mt5.copy_ticks_range(
-            self.symbol, self.start, self.end, self.mt5.COPY_TICKS_ALL
-        )
+        res = await self.mt.copy_ticks_range(self.symbol, self.start, self.end, self.mt.COPY_TICKS_ALL)
+        res2 = self.mt5.copy_ticks_range(self.symbol, self.start, self.end, self.mt5.COPY_TICKS_ALL)
         assert res is not None
         assert res.shape[0] == res2.shape[0]
 
@@ -149,9 +143,7 @@ class TestMetaTrader:
         price_open = buy_order["price"]
         price_close = buy_order["tp"]
         type_ = buy_order["type"]
-        res = await self.mt.order_calc_profit(
-            type_, self.symbol, volume, price_open, price_close
-        )
+        res = await self.mt.order_calc_profit(type_, self.symbol, volume, price_open, price_close)
         assert isinstance(res, float)
 
     async def test_order_check(self, buy_order):

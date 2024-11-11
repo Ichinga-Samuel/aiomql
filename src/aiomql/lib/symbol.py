@@ -1,4 +1,5 @@
 """Symbol class for handling a financial instrument."""
+
 from datetime import datetime
 from logging import getLogger
 
@@ -157,10 +158,7 @@ class Symbol(_Base, SymbolInfo):
         if check := self.volume_min <= volume <= self.volume_max:
             return check, volume
         else:
-            return (
-                check,
-                self.volume_min if volume <= self.volume_min else self.volume_max,
-            )
+            return (check, self.volume_min if volume <= self.volume_min else self.volume_max)
 
     def round_off_volume(self, *, volume: float, round_down: bool = False) -> float:
         """Round off the volume to the nearest volume step.
@@ -177,11 +175,7 @@ class Symbol(_Base, SymbolInfo):
     async def amount_in_quote_currency(self, *, amount: float) -> float:
         """Convert the amount to the quote currency of the symbol."""
         if self.currency_profit != self.account.currency:
-            amount = await self.convert_currency(
-                amount=amount,
-                from_currency=self.account.currency,
-                to_currency=self.currency_profit,
-            )
+            amount = await self.convert_currency(amount=amount, from_currency=self.account.currency, to_currency=self.currency_profit)
         return amount
 
     async def compute_volume(self) -> float:
@@ -194,9 +188,7 @@ class Symbol(_Base, SymbolInfo):
         """
         return self.volume_min
 
-    async def convert_currency(
-        self, *, amount: float, from_currency: str, to_currency: str
-    ) -> float:
+    async def convert_currency(self, *, amount: float, from_currency: str, to_currency: str) -> float:
         """Convert a given amount from one currency to the other.
         Args:
             amount: Amount to convert
@@ -215,14 +207,10 @@ class Symbol(_Base, SymbolInfo):
             if tick is not None:
                 return round(amount / tick.ask, 2)
         except Exception as err:
-            logger.warning(
-                f"{err}: Currency conversion failed: Unable to convert {amount} in {quote} to {base}"
-            )
+            logger.warning(f"{err}: Currency conversion failed: Unable to convert {amount} in {quote} to {base}")
 
     @backoff_decorator
-    async def copy_rates_from(
-        self, *, timeframe: TimeFrame, date_from: datetime | int, count: int = 500
-    ) -> Candles:
+    async def copy_rates_from(self, *, timeframe: TimeFrame, date_from: datetime | int, count: int = 500) -> Candles:
         """
         Get bars from the MetaTrader 5 terminal starting from the specified date.
 
@@ -246,9 +234,7 @@ class Symbol(_Base, SymbolInfo):
         raise ValueError(f"Could not get rates for {self.name}.")
 
     @backoff_decorator
-    async def copy_rates_from_pos(
-        self, *, timeframe: TimeFrame, count: int = 500, start_position: int = 0
-    ) -> Candles:
+    async def copy_rates_from_pos(self, *, timeframe: TimeFrame, count: int = 500, start_position: int = 0) -> Candles:
         """Get bars from the MetaTrader 5 terminal starting from the specified index.
 
         Args:
@@ -265,21 +251,13 @@ class Symbol(_Base, SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        rates = await self.mt5.copy_rates_from_pos(
-            self.name, timeframe, start_position, count
-        )
+        rates = await self.mt5.copy_rates_from_pos(self.name, timeframe, start_position, count)
         if rates is not None:
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
     @backoff_decorator
-    async def copy_rates_range(
-        self,
-        *,
-        timeframe: TimeFrame,
-        date_from: datetime | int,
-        date_to: datetime | int,
-    ) -> Candles:
+    async def copy_rates_range(self, *, timeframe: TimeFrame, date_from: datetime | int, date_to: datetime | int) -> Candles:
         """Get bars in the specified date range from the MetaTrader 5 terminal.
 
         Args:
@@ -299,21 +277,13 @@ class Symbol(_Base, SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        rates = await self.mt5.copy_rates_range(
-            symbol=self.name, timeframe=timeframe, date_from=date_from, date_to=date_to
-        )
+        rates = await self.mt5.copy_rates_range(symbol=self.name, timeframe=timeframe, date_from=date_from, date_to=date_to)
         if rates is not None:
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
     @backoff_decorator
-    async def copy_ticks_from(
-        self,
-        *,
-        date_from: datetime | int,
-        count: int = 100,
-        flags: CopyTicks = CopyTicks.ALL,
-    ) -> Ticks:
+    async def copy_ticks_from(self, *, date_from: datetime | int, count: int = 100, flags: CopyTicks = CopyTicks.ALL) -> Ticks:
         """
         Get ticks from the MetaTrader 5 terminal starting from the specified date.
 
@@ -336,13 +306,7 @@ class Symbol(_Base, SymbolInfo):
         raise ValueError(f"Could not get ticks for {self.name}.")
 
     @backoff_decorator
-    async def copy_ticks_range(
-        self,
-        *,
-        date_from: datetime | int,
-        date_to: datetime | int,
-        flags: CopyTicks = CopyTicks.ALL,
-    ) -> Ticks:
+    async def copy_ticks_range(self, *, date_from: datetime | int, date_to: datetime | int, flags: CopyTicks = CopyTicks.ALL) -> Ticks:
         """Get ticks for the specified date range from the MetaTrader 5 terminal.
 
         Args:

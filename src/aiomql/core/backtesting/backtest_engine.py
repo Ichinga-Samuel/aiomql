@@ -25,26 +25,9 @@ from MetaTrader5 import (
 )
 
 from ..meta_trader import MetaTrader
-from ..constants import (
-    TimeFrame,
-    OrderType,
-    TradeAction,
-    AccountStopOutMode,
-    PositionReason,
-    DealType,
-    DealReason,
-    DealEntry,
-    OrderReason,
-    CopyTicks,
-)
+from ..constants import TimeFrame, OrderType, TradeAction, AccountStopOutMode, PositionReason, DealType, DealReason, DealEntry, OrderReason, CopyTicks
 
-from ..._utils import (
-    round_down,
-    round_up,
-    error_handler,
-    error_handler_sync,
-    async_cache,
-)
+from ..._utils import round_down, round_up, error_handler, error_handler_sync, async_cache
 
 from .get_data import BackTestData, GetData, Cursor
 from .backtest_account import BackTestAccount
@@ -76,6 +59,7 @@ class BackTestEngine:
     preload: bool
     account_lock: RLock
     account_info: dict
+
     def __init__(
         self,
         *,
@@ -90,7 +74,7 @@ class BackTestEngine:
         close_open_positions_on_exit: bool = True,
         preload=True,
         assign_to_config: bool = True,
-        account_info: dict = None
+        account_info: dict = None,
     ):
         self._data = data or BackTestData()
         self.mt5 = MetaTrader()
@@ -99,30 +83,14 @@ class BackTestEngine:
             self.config.backtest_engine = self
         self.setup_test_range(start=start, end=end, speed=speed, restart=restart)
         self.setup_data(restart=restart)
-        start, end = (
-            (self.span[0], self.span[-1])
-            if len(self.span) >= 2
-            else ((now := datetime.now(UTC).timestamp()), now)
-        )
-        start, end = datetime.fromtimestamp(start, tz=UTC), datetime.fromtimestamp(
-            end, tz=UTC
-        )
-        self.name = (
-            name or self._data.name or f"backtest_data_{start:%d_%m_%y}_{end:%d_%m_%y}"
-        )
+        start, end = (self.span[0], self.span[-1]) if len(self.span) >= 2 else ((now := datetime.now(UTC).timestamp()), now)
+        start, end = datetime.fromtimestamp(start, tz=UTC), datetime.fromtimestamp(end, tz=UTC)
+        self.name = name or self._data.name or f"backtest_data_{start:%d_%m_%y}_{end:%d_%m_%y}"
         self.stop_testing = False
-        self.use_terminal = (
-            self.config.use_terminal_for_backtesting
-            if use_terminal is None
-            else use_terminal
-        )
+        self.use_terminal = self.config.use_terminal_for_backtesting if use_terminal is None else use_terminal
         self.close_open_positions_on_exit = close_open_positions_on_exit
         if stop_time is not None:
-            val = (
-                stop_time.astimezone(tz=UTC)
-                if isinstance(stop_time, datetime)
-                else datetime.fromtimestamp(stop_time, tz=UTC)
-            )
+            val = stop_time.astimezone(tz=UTC) if isinstance(stop_time, datetime) else datetime.fromtimestamp(stop_time, tz=UTC)
             stop_time = int(val.timestamp())
         self.stop_time = stop_time
         self.preload = preload
@@ -144,27 +112,12 @@ class BackTestEngine:
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
-    def setup_test_range(
-        self,
-        *,
-        start: float | datetime = None,
-        end: float | datetime = None,
-        speed: int = 60,
-        restart: bool = True,
-    ):
+    def setup_test_range(self, *, start: float | datetime = None, end: float | datetime = None, speed: int = 60, restart: bool = True):
         if self._data.span and self._data.range:
             start = start or self._data.span[0]
             end = end or self._data.span[-1] + speed
-        start = (
-            start.astimezone(tz=UTC)
-            if isinstance(start, datetime)
-            else datetime.fromtimestamp(start, tz=UTC)
-        )
-        end = (
-            end.astimezone(tz=UTC)
-            if isinstance(end, datetime)
-            else datetime.fromtimestamp(end, tz=UTC)
-        )
+        start = start.astimezone(tz=UTC) if isinstance(start, datetime) else datetime.fromtimestamp(start, tz=UTC)
+        end = end.astimezone(tz=UTC) if isinstance(end, datetime) else datetime.fromtimestamp(end, tz=UTC)
         span_start = int(start.timestamp())
         span_end = int(end.timestamp())
         self.speed = speed
@@ -192,21 +145,13 @@ class BackTestEngine:
 
         orders = {}
         for ticket, order in self._data.orders.items():
-            orders[ticket] = TradeOrder(
-                (order.get(k) for k in TradeOrder.__match_args__)
-            )
+            orders[ticket] = TradeOrder((order.get(k) for k in TradeOrder.__match_args__))
         self.orders = OrdersManager(data=orders)
 
         positions = {}
         for ticket, position in self._data.positions.items():
-            positions[ticket] = TradePosition(
-                (position.get(k) for k in TradePosition.__match_args__)
-            )
-        self.positions = PositionsManager(
-            data=positions,
-            open_positions=self._data.open_positions,
-            margins=self._data.margins,
-        )
+            positions[ticket] = TradePosition((position.get(k) for k in TradePosition.__match_args__))
+        self.positions = PositionsManager(data=positions, open_positions=self._data.open_positions, margins=self._data.margins)
 
         deals = {}
         for ticket, deal in self._data.deals.items():
@@ -229,11 +174,7 @@ class BackTestEngine:
             self.setup_data(restart=True)
 
     def go_to(self, *, time: datetime | float):
-        time = (
-            time.astimezone(tz=UTC)
-            if isinstance(time, datetime)
-            else datetime.fromtimestamp(time, tz=UTC)
-        )
+        time = time.astimezone(tz=UTC) if isinstance(time, datetime) else datetime.fromtimestamp(time, tz=UTC)
         time = int(time.timestamp())
         steps = time - self.cursor.time
         steps = steps // self.speed
@@ -253,10 +194,7 @@ class BackTestEngine:
 
     async def tracker(self):
         try:
-            pos_tasks = [
-                self.check_position(ticket=ticket)
-                for ticket in self.positions._open_positions
-            ]
+            pos_tasks = [self.check_position(ticket=ticket) for ticket in self.positions._open_positions]
             await asyncio.gather(*pos_tasks)
             profit = sum(pos.profit for pos in self.positions.open_positions)
             self.update_account(profit=profit)
@@ -266,41 +204,16 @@ class BackTestEngine:
 
     @error_handler_sync
     def save_result_to_json(self):
-        data = self._account.get_dict(
-            include={
-                "balance",
-                "profit",
-                "equity",
-                "margin",
-                "margin_free",
-                "margin_level",
-            }
-        )
-        wins = [
-            position
-            for ticket in self.positions
-            if (position := self.positions.get(ticket)).profit > 0
-        ]
-        losses = [
-            position
-            for ticket in self.positions
-            if (position := self.positions.get(ticket)).profit <= 0
-        ]
-        win = round(
-            sum(position.profit for position in wins), self._account.currency_digits
-        )
-        loss = round(
-            sum(position.profit for position in losses), self._account.currency_digits
-        )
+        data = self._account.get_dict(include={"balance", "profit", "equity", "margin", "margin_free", "margin_level"})
+        wins = [position for ticket in self.positions if (position := self.positions.get(ticket)).profit > 0]
+        losses = [position for ticket in self.positions if (position := self.positions.get(ticket)).profit <= 0]
+        win = round(sum(position.profit for position in wins), self._account.currency_digits)
+        loss = round(sum(position.profit for position in losses), self._account.currency_digits)
         profit_factor = round(abs(win / loss), 2) if loss != 0 else 0
         wins, losses, total = len(wins), len(losses), len(self.positions._data)
         win_percentage = round(wins / total * 100, 2) if total > 0 else 0
         net_profit = round(win - abs(loss), self._account.currency_digits)
-        profitability = (
-            net_profit / (self._account.balance - net_profit) * 100
-            if net_profit != 0
-            else 0
-        )
+        profitability = net_profit / (self._account.balance - net_profit) * 100 if net_profit != 0 else 0
         profitability = round(profitability, 2)
         data.update(
             {
@@ -320,10 +233,7 @@ class BackTestEngine:
             json.dump(data, file, indent=4)
 
     async def close_all_open(self):
-        tasks = [
-            self.check_position(ticket=position.ticket)
-            for position in self.positions.open_positions
-        ]
+        tasks = [self.check_position(ticket=position.ticket) for position in self.positions.open_positions]
         await asyncio.gather(*tasks)
         for position in self.positions.open_positions:
             await self.close_position_manually(ticket=position.ticket)
@@ -370,9 +280,7 @@ class BackTestEngine:
     async def get_price_tick(self, *, symbol: str, time: int) -> Tick | None:
         try:
             if self.use_terminal and self.preload:
-                if (
-                    ticks := self.preloaded_ticks.get(symbol)
-                ) is not None and time in ticks.index:
+                if (ticks := self.preloaded_ticks.get(symbol)) is not None and time in ticks.index:
                     return Tick(ticks.loc[time])
                 await self.preload_ticks(symbol=symbol)
                 tick = self.preloaded_ticks[symbol].loc[time]
@@ -429,9 +337,7 @@ class BackTestEngine:
                     if res:
                         pos = self.positions.get(ticket)
                         deal.update({"profit": pos.profit, "volume": pos.volume})
-                        self.deals[deal["ticket"]] = TradeDeal(
-                            (deal.get(k, 0) for k in TradeDeal.__match_args__)
-                        )
+                        self.deals[deal["ticket"]] = TradeDeal((deal.get(k, 0) for k in TradeDeal.__match_args__))
 
             case OrderType.SELL:
                 if tick.ask <= tp or tick.ask >= sl:
@@ -439,23 +345,15 @@ class BackTestEngine:
                     if res:
                         pos = self.positions.get(ticket)
                         deal.update({"profit": pos.profit, "volume": pos.volume})
-                        self.deals[deal["ticket"]] = TradeDeal(
-                            (deal.get(k, 0) for k in TradeDeal.__match_args__)
-                        )
+                        self.deals[deal["ticket"]] = TradeDeal((deal.get(k, 0) for k in TradeDeal.__match_args__))
             case _:
                 ...
 
     def check_account(self):
         account = self._account
-        level = (
-            account.margin_level
-            if account.margin_so_mode == AccountStopOutMode.PERCENT
-            else account.margin_so_call
-        )
+        level = account.margin_level if account.margin_so_mode == AccountStopOutMode.PERCENT else account.margin_so_call
         if level < account.margin_so_call and level != 0 and account.equity < 0:
-            logger.critical(
-                "Account has burned out!!! Please top up to continue trading"
-            )
+            logger.critical("Account has burned out!!! Please top up to continue trading")
             self.stop_testing = True
 
     async def check_position(self, *, ticket: int):
@@ -466,22 +364,10 @@ class BackTestEngine:
             ticket (int): Position ticket
         """
         pos = self.positions[ticket]
-        order_type, symbol, volume, price_open, prev_profit = (
-            pos.type,
-            pos.symbol,
-            pos.volume,
-            pos.price_open,
-            pos.profit,
-        )
+        order_type, symbol, volume, price_open, prev_profit = (pos.type, pos.symbol, pos.volume, pos.price_open, pos.profit)
         tick = await self.get_price_tick(symbol=symbol, time=self.cursor.time)
         price_current = tick.bid if order_type == OrderType.BUY else tick.ask
-        profit = await self.order_calc_profit(
-            action=order_type,
-            symbol=symbol,
-            volume=volume,
-            price_open=price_open,
-            price_close=price_current,
-        )
+        profit = await self.order_calc_profit(action=order_type, symbol=symbol, volume=volume, price_open=price_open, price_close=price_current)
         kwargs = dict(price_current=price_current, time_update=self.cursor.time)
         kwargs.update(profit=profit) if profit is not None else ...
         self.positions.update(ticket=pos.ticket, **kwargs)
@@ -497,9 +383,7 @@ class BackTestEngine:
         deal_ticket = random.randint(100_000_000, 199_999_999)
         time = position.time_update
         time_msc = position.time_update_msc
-        order_type = (
-            OrderType.BUY if position.type == OrderType.SELL else OrderType.SELL
-        )
+        order_type = OrderType.BUY if position.type == OrderType.SELL else OrderType.SELL
         order = {
             "position_id": position.ticket,
             "ticket": order_ticket,
@@ -555,14 +439,8 @@ class BackTestEngine:
             margin = self.positions.get_margin(ticket=ticket)
             self.positions.delete_margin(ticket=ticket)
             self.positions.close(ticket=ticket)
-            self.orders.update(
-                ticket=ticket,
-                time_done=self.cursor.time,
-                time_done_msc=self.cursor.time * 1000,
-            )
-            profit = sum(
-                [position.profit for position in self.positions.open_positions]
-            )
+            self.orders.update(ticket=ticket, time_done=self.cursor.time, time_done_msc=self.cursor.time * 1000)
+            profit = sum([position.profit for position in self.positions.open_positions])
             profit = round(profit, self._account.currency_digits)
             self.update_account(gain=position.profit, profit=profit, margin=-margin)
             return True
@@ -583,58 +461,29 @@ class BackTestEngine:
         Returns:
             bool: True if the stops are modified successfully, False otherwise
         """
-        self.positions.update(
-            ticket=ticket,
-            sl=sl,
-            tp=tp,
-            time_update=self.cursor.time,
-            time_update_msc=self.cursor.time * 1000,
-        )
+        self.positions.update(ticket=ticket, sl=sl, tp=tp, time_update=self.cursor.time, time_update_msc=self.cursor.time * 1000)
         return True
 
-    def update_account(
-        self, *, profit: float = None, margin: float = 0, gain: float = 0
-    ):
+    def update_account(self, *, profit: float = None, margin: float = 0, gain: float = 0):
         self.account_lock.acquire()
         try:
             self._account.balance += round(gain, self._account.currency_digits)
-            self._account.profit = (
-                round(profit, self._account.currency_digits)
-                if profit is not None
-                else self._account.profit
-            )
+            self._account.profit = round(profit, self._account.currency_digits) if profit is not None else self._account.profit
             self._account.equity = self._account.balance + self._account.profit
             self._account.margin += round(margin, self._account.currency_digits)
-            self._account.margin_free = round(
-                self._account.equity - self._account.margin,
-                self._account.currency_digits,
-            )
-            self._account.balance = round(
-                self._account.balance, self._account.currency_digits
-            )
-            self._account.equity = round(
-                self._account.equity, self._account.currency_digits
-            )
-            self._account.margin = round(
-                self._account.margin, self._account.currency_digits
-            )
-            self._account.margin_free = round(
-                self._account.margin_free, self._account.currency_digits
-            )
-            self._account.profit = round(
-                self._account.profit, self._account.currency_digits
-            )
+            self._account.margin_free = round(self._account.equity - self._account.margin, self._account.currency_digits)
+            self._account.balance = round(self._account.balance, self._account.currency_digits)
+            self._account.equity = round(self._account.equity, self._account.currency_digits)
+            self._account.margin = round(self._account.margin, self._account.currency_digits)
+            self._account.margin_free = round(self._account.margin_free, self._account.currency_digits)
+            self._account.profit = round(self._account.profit, self._account.currency_digits)
 
             if self._account.margin == 0:
                 self._account.margin_level = 0
             else:
                 mode = self._account.margin_so_mode
                 level = self._account.equity / self._account.margin * 100
-                self._account.margin_level = (
-                    level
-                    if mode == AccountStopOutMode.PERCENT
-                    else self._account.margin_free
-                )
+                self._account.margin_level = level if mode == AccountStopOutMode.PERCENT else self._account.margin_free
         except Exception as exe:
             logger.critical("Error Updating Account: %s", exe)
 
@@ -696,9 +545,7 @@ class BackTestEngine:
             res = pd.DataFrame(res)
             res.drop_duplicates(subset=["time"], keep="last", inplace=True)
             res.set_index("time", inplace=True, drop=False)
-            res = res.reindex(
-                self.span, copy=True, method="nearest"
-            )  # fill in missing values with NaN
+            res = res.reindex(self.span, copy=True, method="nearest")  # fill in missing values with NaN
             prices[symbol] = res
         return prices
 
@@ -725,9 +572,7 @@ class BackTestEngine:
     def symbols(self) -> dict[str, SymbolInfo]:
         symbols = {}
         for symbol, info in self._data.symbols.items():
-            symbols[symbol] = SymbolInfo(
-                (info.get(key) for key in SymbolInfo.__match_args__)
-            )
+            symbols[symbol] = SymbolInfo((info.get(key) for key in SymbolInfo.__match_args__))
         return symbols
 
     @error_handler
@@ -736,52 +581,28 @@ class BackTestEngine:
         osr = {
             "retcode": 10013,
             "comment": "Invalid request",
-            "request": TradeRequest(
-                request.get(k, (0 if k != "comment" else ""))
-                for k in TradeRequest.__match_args__
-            ),
+            "request": TradeRequest(request.get(k, (0 if k != "comment" else "")) for k in TradeRequest.__match_args__),
         }
-        current_tick = await self.get_price_tick(
-            symbol=request.get("symbol"), time=self.cursor.time
-        )
+        current_tick = await self.get_price_tick(symbol=request.get("symbol"), time=self.cursor.time)
         if current_tick is None:
             osr["comment"] = "Market is closed"
             osr["retcode"] = 10018
-            return OrderSendResult(
-                (osr.get(k, 0) for k in OrderSendResult.__match_args__)
-            )
+            return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
-        trade_order = {
-            "external_id": "",
-            "comment": "",
-            **{k: v for k, v in request.items() if k in TradeOrder.__match_args__},
-        }
+        trade_order = {"external_id": "", "comment": "", **{k: v for k, v in request.items() if k in TradeOrder.__match_args__}}
         order_type, symbol = request.get("type"), request.get("symbol", "")
         action, position_id = request.get("action"), request.get("position")
-        sl, tp, volume, symbol = (
-            request.get("sl"),
-            request.get("tp"),
-            request.get("volume"),
-            request.get("symbol"),
-        )
+        sl, tp, volume, symbol = (request.get("sl"), request.get("tp"), request.get("volume"), request.get("symbol"))
         order_type = OrderType(order_type)
         current_position = self.positions.get(position_id)
         order_ticket = random.randint(800_000_000, 899_999_999)
         deal_ticket = random.randint(100_000_000, 199_999_999)
 
         # closing an order by an opposite order using a position ticket and Deal action
-        if (
-            action == TradeAction.DEAL
-            and current_position
-            and order_type.opposite == current_position.type
-        ):
+        if action == TradeAction.DEAL and current_position and order_type.opposite == current_position.type:
             res = await self.close_position(ticket=current_position.ticket)
             if res:
-                price_current = (
-                    current_tick.ask
-                    if order_type == OrderType.BUY
-                    else current_tick.bid
-                )
+                price_current = current_tick.ask if order_type == OrderType.BUY else current_tick.bid
                 trade_order.update(
                     {
                         "position_id": current_position.ticket,
@@ -818,64 +639,30 @@ class BackTestEngine:
                     "external_id": "",
                 }
 
-                order = TradeOrder(
-                    (trade_order.get(k, 0) for k in TradeOrder.__match_args__)
-                )
+                order = TradeOrder((trade_order.get(k, 0) for k in TradeOrder.__match_args__))
                 self.orders[order.ticket] = order
                 deal = TradeDeal((deal.get(k, 0) for k in TradeDeal.__match_args__))
                 self.deals[deal.ticket] = deal
-                osr.update(
-                    {
-                        "comment": "Request completed",
-                        "retcode": 10009,
-                        "order": order_ticket,
-                        "deal": deal_ticket,
-                    }
-                )
-            return OrderSendResult(
-                (osr.get(k, 0) for k in OrderSendResult.__match_args__)
-            )
+                osr.update({"comment": "Request completed", "retcode": 10009, "order": order_ticket, "deal": deal_ticket})
+            return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
         if action == TradeAction.SLTP and current_position:
             check = await self.order_check(request=request, use_terminal=use_terminal)
             if check.retcode != 0:
-                osr = {
-                    "retcode": check.retcode,
-                    "comment": check.comment,
-                    "request": check.request,
-                }
-                return OrderSendResult(
-                    (osr.get(k, 0) for k in OrderSendResult.__match_args__)
-                )
+                osr = {"retcode": check.retcode, "comment": check.comment, "request": check.request}
+                return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
             res = self.modify_stops(ticket=position_id, sl=sl, tp=tp)
             if res:
-                osr.update(
-                    {
-                        "comment": "Request completed",
-                        "retcode": 10009,
-                        "order": order_ticket,
-                        "deal": deal_ticket,
-                    }
-                )
-            return OrderSendResult(
-                (osr.get(k, 0) for k in OrderSendResult.__match_args__)
-            )
+                osr.update({"comment": "Request completed", "retcode": 10009, "order": order_ticket, "deal": deal_ticket})
+            return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
         if action == TradeAction.DEAL and order_type in (OrderType.BUY, OrderType.SELL):
             check = await self.order_check(request=request, use_terminal=use_terminal)
             if check.retcode != 0:
-                osr = {
-                    "retcode": check.retcode,
-                    "comment": check.comment,
-                    "request": check.request,
-                }
-                return OrderSendResult(
-                    (osr.get(k, 0) for k in OrderSendResult.__match_args__)
-                )
+                osr = {"retcode": check.retcode, "comment": check.comment, "request": check.request}
+                return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
-            price = (
-                current_tick.ask if order_type == OrderType.BUY else current_tick.bid
-            )
+            price = current_tick.ask if order_type == OrderType.BUY else current_tick.bid
             position = {
                 "ticket": order_ticket,
                 "symbol": symbol,
@@ -932,12 +719,8 @@ class BackTestEngine:
                 }
             )
 
-            pos = TradePosition(
-                (position.get(k, 0) for k in TradePosition.__match_args__)
-            )
-            order = TradeOrder(
-                (trade_order.get(k, 0) for k in TradeOrder.__match_args__)
-            )
+            pos = TradePosition((position.get(k, 0) for k in TradePosition.__match_args__))
+            order = TradeOrder((trade_order.get(k, 0) for k in TradeOrder.__match_args__))
             deal = TradeDeal((deal.get(k, 0) for k in TradeDeal.__match_args__))
             self.deals[deal_ticket] = deal
             self.positions[order.ticket] = pos
@@ -954,23 +737,13 @@ class BackTestEngine:
                     "deal": deal_ticket,
                 }
             )
-            margin = await self.order_calc_margin(
-                action=action,
-                symbol=symbol,
-                volume=volume,
-                price=price,
-                use_terminal=use_terminal,
-            )
+            margin = await self.order_calc_margin(action=action, symbol=symbol, volume=volume, price=price, use_terminal=use_terminal)
             self.positions.set_margin(ticket=order_ticket, margin=margin)
             self.update_account(margin=margin)
-            return OrderSendResult(
-                (osr.get(k, 0) for k in OrderSendResult.__match_args__)
-            )
+            return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
     @error_handler
-    async def order_check(
-        self, *, request: dict, use_terminal: bool = False
-    ) -> OrderCheckResult:
+    async def order_check(self, *, request: dict, use_terminal: bool = False) -> OrderCheckResult:
         use_terminal = self.use_terminal or use_terminal
         ocr = {
             "retcode": 10013,
@@ -981,69 +754,30 @@ class BackTestEngine:
             "margin_free": 0,
             "margin_level": 0,
             "comment": "Invalid request",
-            "request": TradeRequest(
-                request.get(k, (0 if k != "comment" else ""))
-                for k in TradeRequest.__match_args__
-            ),
+            "request": TradeRequest(request.get(k, (0 if k != "comment" else "")) for k in TradeRequest.__match_args__),
         }
 
-        action, symbol, volume = (
-            request.get("action"),
-            request.get("symbol"),
-            request.get("volume"),
-        )
-        price, order_type, position_id = (
-            request.get("price"),
-            request.get("type"),
-            request.get("position"),
-        )
+        action, symbol, volume = (request.get("action"), request.get("symbol"), request.get("volume"))
+        price, order_type, position_id = (request.get("price"), request.get("type"), request.get("position"))
 
         # check margin and confirm order can go through for a deal action and buy or sell order type
-        if (
-            action == TradeAction.DEAL
-            and order_type in (OrderType.BUY, OrderType.SELL)
-            and position_id is None
-        ):
-            margin = await self.order_calc_margin(
-                action=action,
-                symbol=symbol,
-                volume=volume,
-                price=price,
-                use_terminal=use_terminal,
-            )
+        if action == TradeAction.DEAL and order_type in (OrderType.BUY, OrderType.SELL) and position_id is None:
+            margin = await self.order_calc_margin(action=action, symbol=symbol, volume=volume, price=price, use_terminal=use_terminal)
             if margin is None:
-                return OrderCheckResult(
-                    (ocr.get(k, 0) for k in OrderCheckResult.__match_args__)
-                )
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
             used_margin = self._account.margin + margin
             free_margin = self._account.margin_free - margin
 
-            level = (
-                self._account.equity / used_margin * 100
-                if used_margin
-                else float("inf")
-            )
-            margin_level = (
-                level
-                if self._account.margin_so_mode == AccountStopOutMode.PERCENT
-                else free_margin
-            )
-            ocr.update(
-                {
-                    "margin_level": margin_level,
-                    "margin": margin,
-                    "margin_free": free_margin,
-                }
-            )
+            level = self._account.equity / used_margin * 100 if used_margin else float("inf")
+            margin_level = level if self._account.margin_so_mode == AccountStopOutMode.PERCENT else free_margin
+            ocr.update({"margin_level": margin_level, "margin": margin, "margin_free": free_margin})
 
             # check if the account has enough money
             if margin_level < self._account.margin_so_call:
                 ocr["retcode"] = 10019
                 ocr["comment"] = "No money"
-                return OrderCheckResult(
-                    (ocr.get(k, 0) for k in OrderCheckResult.__match_args__)
-                )
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
         # check if the stops level is valid
         sym = await self.get_symbol_info(symbol=symbol)
@@ -1053,12 +787,8 @@ class BackTestEngine:
             if action == TradeAction.SLTP:
                 pos = self.positions.get(request.get("position"))
                 sym = await self.get_symbol_info(symbol=pos.symbol)
-                current_tick = sym or await self.get_price_tick(
-                    pos.symbol, self.cursor.time
-                )
-                current_price = (
-                    current_tick.bid if pos.type == OrderType.BUY else current_tick.ask
-                )
+                current_tick = sym or await self.get_price_tick(pos.symbol, self.cursor.time)
+                current_price = current_tick.bid if pos.type == OrderType.BUY else current_tick.ask
 
             min_sl = min(sl, tp)
             dsl = abs(current_price - min_sl) / sym.point
@@ -1066,46 +796,29 @@ class BackTestEngine:
             if dsl < tsl:
                 ocr["retcode"] = 10016
                 ocr["comment"] = "Invalid stops"
-                return OrderCheckResult(
-                    (ocr.get(k, 0) for k in OrderCheckResult.__match_args__)
-                )
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
             elif action == TradeAction.SLTP:
                 ocr["comment"] = "Done"
                 ocr["retcode"] = 0
-                return OrderCheckResult(
-                    (ocr.get(k, 0) for k in OrderCheckResult.__match_args__)
-                )
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
         if use_terminal or self.use_terminal:
             ocr_t = await self.mt5.order_check(request)
             if ocr_t.retcode in (10013, 10014):
                 return ocr_t
-        elif action == TradeAction.DEAL and order_type in (
-            OrderType.BUY,
-            OrderType.SELL,
-        ):
+        elif action == TradeAction.DEAL and order_type in (OrderType.BUY, OrderType.SELL):
             # check volume
             if volume < sym.volume_min or volume > sym.volume_max:
                 ocr["retcode"] = 10014
                 ocr["comment"] = "Invalid volume"
-                return OrderCheckResult(
-                    (ocr.get(k, 0) for k in OrderCheckResult.__match_args__)
-                )
+                return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
         ocr.update(
-            {
-                "balance": self._account.balance,
-                "profit": self._account.profit,
-                "equity": self._account.equity,
-                "comment": "Done",
-                "retcode": 0,
-            }
+            {"balance": self._account.balance, "profit": self._account.profit, "equity": self._account.equity, "comment": "Done", "retcode": 0}
         )
 
-        return OrderCheckResult(
-            (ocr.get(k, 0) for k in OrderCheckResult.__match_args__)
-        )
+        return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
     @error_handler
     async def get_terminal_info(self) -> TerminalInfo:
@@ -1173,19 +886,8 @@ class BackTestEngine:
         return SymbolInfo((info.get(key) for key in SymbolInfo.__match_args__))
 
     @error_handler
-    async def get_rates_from(
-        self,
-        *,
-        symbol: str,
-        timeframe: TimeFrame,
-        date_from: datetime | float,
-        count: int,
-    ) -> np.ndarray:
-        date_from = (
-            date_from.astimezone(tz=UTC)
-            if isinstance(date_from, datetime)
-            else datetime.fromtimestamp(date_from, tz=UTC)
-        )
+    async def get_rates_from(self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int) -> np.ndarray:
+        date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
         if self.use_terminal:
             rates = await self.mt5.copy_rates_from(symbol, timeframe, date_from, count)
             return rates
@@ -1194,20 +896,12 @@ class BackTestEngine:
         start = int(date_from.timestamp())
         start = round_down(start, timeframe.seconds)
         rates = rates[rates.time <= start].iloc[-count:]
-        return np.fromiter(
-            (tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates)
-        )
+        return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates))
 
     @error_handler
-    async def get_rates_from_pos(
-        self, *, symbol: str, timeframe: TimeFrame, start_pos: int, count: int
-    ) -> np.ndarray:
+    async def get_rates_from_pos(self, *, symbol: str, timeframe: TimeFrame, start_pos: int, count: int) -> np.ndarray:
         if self.use_terminal:
-            current_time = (
-                self.cursor.time
-                if start_pos == 0
-                else self.cursor.time - start_pos * timeframe.seconds
-            )
+            current_time = self.cursor.time if start_pos == 0 else self.cursor.time - start_pos * timeframe.seconds
             current_time = round_up(current_time, timeframe.seconds)
             start = datetime.fromtimestamp(current_time, tz=UTC)
             rates = await self.mt5.copy_rates_from(symbol, timeframe, start, count)
@@ -1218,63 +912,28 @@ class BackTestEngine:
         # the current time rounded up to a multiple of the timeframe in seconds and then subtracted by the start_pos
         # multiplied by the timeframe in seconds gives the time of the last candlestick in the range when using
         # copy_rates_from_pos
-        end = (
-            int(round_down(self.cursor.time, timeframe.seconds))
-            - start_pos * timeframe.seconds
-        )
+        end = int(round_down(self.cursor.time, timeframe.seconds)) - start_pos * timeframe.seconds
         start = end - count * timeframe.seconds
         rates = rates[(rates.time > start) & (rates.time <= end)]
-        return np.fromiter(
-            (tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates)
-        )
+        return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates))
 
     @error_handler
-    async def get_rates_range(
-        self,
-        *,
-        symbol: str,
-        timeframe: TimeFrame,
-        date_from: datetime | float,
-        date_to: datetime | float,
-    ) -> np.ndarray:
-        date_from = (
-            date_from.astimezone(tz=UTC)
-            if isinstance(date_from, datetime)
-            else datetime.fromtimestamp(date_from, tz=UTC)
-        )
-        date_to = (
-            date_to.astimezone(tz=UTC)
-            if isinstance(date_to, datetime)
-            else datetime.fromtimestamp(date_to, tz=UTC)
-        )
+    async def get_rates_range(self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float, date_to: datetime | float) -> np.ndarray:
+        date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
+        date_to = date_to.astimezone(tz=UTC) if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to, tz=UTC)
         if self.use_terminal:
-            rates = await self.mt5.copy_rates_range(
-                symbol, timeframe, date_from, date_to
-            )
+            rates = await self.mt5.copy_rates_range(symbol, timeframe, date_from, date_to)
             return rates
 
         rates = self.rates[symbol][timeframe]
         start = round_up(int(date_from.timestamp()), timeframe.seconds)
         end = round_up(int(date_to.timestamp()), timeframe.seconds)
         rates = rates[(rates.time >= start) & (rates.time <= end)]
-        return np.fromiter(
-            (tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates)
-        )
+        return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates))
 
     @error_handler
-    async def get_ticks_from(
-        self,
-        *,
-        symbol: str,
-        date_from: datetime | float,
-        count: int,
-        flags: CopyTicks = CopyTicks.ALL,
-    ) -> np.ndarray:
-        date_from = (
-            date_from.astimezone(tz=UTC)
-            if isinstance(date_from, datetime)
-            else datetime.fromtimestamp(date_from, tz=UTC)
-        )
+    async def get_ticks_from(self, *, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks = CopyTicks.ALL) -> np.ndarray:
+        date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
         if self.use_terminal:
             ticks = await self.mt5.copy_ticks_from(symbol, date_from, count, flags)
             return ticks
@@ -1282,29 +941,14 @@ class BackTestEngine:
         ticks = self.ticks[symbol]
         start = int(date_from.timestamp())
         rates = ticks[ticks.time <= start].iloc[-count:]
-        return np.fromiter(
-            (tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates)
-        )
+        return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates))
 
     @error_handler
     async def get_ticks_range(
-        self,
-        *,
-        symbol: str,
-        date_from: datetime | float,
-        date_to: datetime | float,
-        flags: CopyTicks = CopyTicks.ALL,
+        self, *, symbol: str, date_from: datetime | float, date_to: datetime | float, flags: CopyTicks = CopyTicks.ALL
     ) -> np.ndarray:
-        date_from = (
-            date_from.astimezone(tz=UTC)
-            if isinstance(date_from, datetime)
-            else datetime.fromtimestamp(date_from, tz=UTC)
-        )
-        date_to = (
-            date_to.astimezone(tz=UTC)
-            if isinstance(date_to, datetime)
-            else datetime.fromtimestamp(date_to, tz=UTC)
-        )
+        date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
+        date_to = date_to.astimezone(tz=UTC) if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to, tz=UTC)
         if self.use_terminal:
             ticks = await self.mt5.copy_ticks_range(symbol, date_from, date_to, flags)
             return ticks
@@ -1313,19 +957,11 @@ class BackTestEngine:
         start = int(date_from.timestamp())
         end = int(date_to.timestamp())
         rates = ticks[(ticks.time >= start) & (ticks.time <= end)]
-        return np.fromiter(
-            (tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=ticks)
-        )
+        return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=ticks))
 
     @error_handler
     async def order_calc_margin(
-        self,
-        *,
-        action: Literal[OrderType.BUY, OrderType.SELL],
-        symbol: str,
-        volume: float,
-        price: float,
-        use_terminal: bool = None,
+        self, *, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float, price: float, use_terminal: bool = None
     ):
         use_terminal = use_terminal if use_terminal is not None else self.use_terminal
         if use_terminal:
@@ -1334,41 +970,22 @@ class BackTestEngine:
         sym = self.symbols.get(symbol)
         if sym is None and self.use_terminal:
             sym = await self._symbol_info(symbol=symbol)
-        margin = (volume * sym.trade_contract_size * price) / (
-            self._account.leverage / (sym.margin_initial or 1)
-        )
+        margin = (volume * sym.trade_contract_size * price) / (self._account.leverage / (sym.margin_initial or 1))
         return round(margin, self._account.currency_digits)
 
     @error_handler
     async def order_calc_profit(
-        self,
-        *,
-        action: Literal[OrderType.BUY, OrderType.SELL],
-        symbol: str,
-        volume: float,
-        price_open: float,
-        price_close: float,
-        use_terminal=None,
+        self, *, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float, price_open: float, price_close: float, use_terminal=None
     ):
         use_terminal = use_terminal if use_terminal is not None else self.use_terminal
 
         if use_terminal:
-            return await self.mt5.order_calc_profit(
-                action, symbol, volume, price_open, price_close
-            )
+            return await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
 
         sym = self.symbols.get(symbol)
         if sym is None and self.use_terminal:
             sym = await self._symbol_info(symbol=symbol)
-        profit = (
-            volume
-            * sym.trade_contract_size
-            * (
-                (price_close - price_open)
-                if action == OrderType.BUY
-                else (price_open - price_close)
-            )
-        )
+        profit = volume * sym.trade_contract_size * ((price_close - price_open) if action == OrderType.BUY else (price_open - price_close))
         return round(profit, self._account.currency_digits)
 
     @error_handler_sync
@@ -1382,9 +999,7 @@ class BackTestEngine:
         return 0
 
     @error_handler_sync
-    def get_orders(
-        self, *, symbol: str = "", group: str = "", ticket: int = None
-    ) -> tuple[TradeOrder, ...]:
+    def get_orders(self, *, symbol: str = "", group: str = "", ticket: int = None) -> tuple[TradeOrder, ...]:
         """
         Get pending orders from the terminal history. This has to do with pending orders, which this backtester
         doesn't support yet.
@@ -1412,9 +1027,7 @@ class BackTestEngine:
         return self.positions.positions_total()
 
     @error_handler_sync
-    def get_positions(
-        self, *, symbol: str = None, group: str = None, ticket: int = None
-    ) -> tuple[TradePosition, ...]:
+    def get_positions(self, *, symbol: str = None, group: str = None, ticket: int = None) -> tuple[TradePosition, ...]:
         """
         Get open positions from the terminal history.
 
@@ -1429,9 +1042,7 @@ class BackTestEngine:
         return self.positions.positions_get(ticket=ticket, symbol=symbol, group=group)
 
     @error_handler_sync
-    def get_history_orders_total(
-        self, *, date_from: datetime | float, date_to: datetime | float
-    ) -> int:
+    def get_history_orders_total(self, *, date_from: datetime | float, date_to: datetime | float) -> int:
         """
         Get the total number of orders in the terminal history.
 
@@ -1447,13 +1058,7 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_history_orders(
-        self,
-        *,
-        date_from: datetime | float = None,
-        date_to: datetime | float = None,
-        group: str = "",
-        ticket: int = None,
-        position: int = None,
+        self, *, date_from: datetime | float = None, date_to: datetime | float = None, group: str = "", ticket: int = None, position: int = None
     ) -> tuple[TradeOrder, ...]:
         """
         Get orders from the terminal history.
@@ -1468,18 +1073,10 @@ class BackTestEngine:
         Returns:
             tuple[TradeOrder]: Orders in the history
         """
-        return self.orders.history_orders_get(
-            date_from=date_from,
-            date_to=date_to,
-            group=group,
-            ticket=ticket,
-            position=position,
-        )
+        return self.orders.history_orders_get(date_from=date_from, date_to=date_to, group=group, ticket=ticket, position=position)
 
     @error_handler_sync
-    def get_history_deals_total(
-        self, *, date_from: datetime | float, date_to: datetime | float
-    ) -> int:
+    def get_history_deals_total(self, *, date_from: datetime | float, date_to: datetime | float) -> int:
         """
         Get the total number of deals in the terminal history.
 
@@ -1494,13 +1091,7 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_history_deals(
-        self,
-        *,
-        date_from: datetime | float = None,
-        date_to: datetime | float = None,
-        group: str = None,
-        position: int = None,
-        ticket: int = None,
+        self, *, date_from: datetime | float = None, date_to: datetime | float = None, group: str = None, position: int = None, ticket: int = None
     ) -> tuple[TradeDeal, ...]:
         """
         Get deals from the terminal history.
@@ -1515,10 +1106,4 @@ class BackTestEngine:
         Returns:
             tuple[TradeDeal, ...]: Deals in the history
         """
-        return self.deals.history_deals_get(
-            date_from=date_from,
-            date_to=date_to,
-            group=group,
-            position=position,
-            ticket=ticket,
-        )
+        return self.deals.history_deals_get(date_from=date_from, date_to=date_to, group=group, position=position, ticket=ticket)

@@ -73,12 +73,7 @@ class TradeRecords:
                 rows = await self.update_rows(rows=rows)
 
             with open(file, mode="w", newline="") as fw:
-                writer = csv.DictWriter(
-                    fw,
-                    fieldnames=reader.fieldnames,
-                    extrasaction="ignore",
-                    restval=None,
-                )
+                writer = csv.DictWriter(fw, fieldnames=reader.fieldnames, extrasaction="ignore", restval=None)
                 writer.writeheader()
                 writer.writerows(rows)
         except Exception as err:
@@ -119,12 +114,7 @@ class TradeRecords:
             deals = [
                 deal
                 for deal in deals
-                if (
-                    deal.order != deal.position_id
-                    and deal.position_id == order
-                    and deal.entry == 1
-                    and deal.position_id not in position_ids
-                )
+                if (deal.order != deal.position_id and deal.position_id == order and deal.entry == 1 and deal.position_id not in position_ids)
             ]
             deals.sort(key=lambda deal: deal.time_msc)
             deal = deals[-1]
@@ -157,16 +147,12 @@ class TradeRecords:
 
     async def update_csv_records(self):
         """Update csv trade records in the records_dir folder."""
-        records = [
-            self.read_update_csv(file=record) for record in self.get_csv_records()
-        ]
+        records = [self.read_update_csv(file=record) for record in self.get_csv_records()]
         await asyncio.gather(*records)
 
     async def update_json_records(self):
         """Update json trade records in the records_dir folder."""
-        records = [
-            self.read_update_json(file=record) for record in self.get_json_records()
-        ]
+        records = [self.read_update_json(file=record) for record in self.get_json_records()]
         await asyncio.gather(*records)
 
     async def update_csv_record(self, *, file: Path | str):

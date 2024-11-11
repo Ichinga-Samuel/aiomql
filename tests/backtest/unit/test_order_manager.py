@@ -1,7 +1,5 @@
 # noinspection PyTestUnpassedFixture
-async def test_orders_manager(
-    backtest_engine, sell_order, buy_order, period, positions
-):
+async def test_orders_manager(backtest_engine, sell_order, buy_order, period, positions):
     backtest_engine.reset(clear_data=True)
     await backtest_engine.setup_account(balance=100)
     backtest_engine.fast_forward(steps=100)
@@ -23,8 +21,4 @@ async def test_orders_manager(
     orders = backtest_engine.orders.history_orders_get(position=bo.order)
     assert len(orders) <= 2
     orders = backtest_engine.orders.get_orders_range(date_from=start, date_to=end)
-    assert (
-        len(orders)
-        == backtest_engine.orders.history_orders_total(date_from=start, date_to=end)
-        == len(backtest_engine.orders._data.keys())
-    )
+    assert len(orders) == backtest_engine.orders.history_orders_total(date_from=start, date_to=end) == len(backtest_engine.orders._data.keys())

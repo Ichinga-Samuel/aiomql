@@ -19,6 +19,7 @@ class Executor:
         coroutines (list[Coroutine]): A list of coroutines to run in the executor
         functions (dict[Callable, dict]): A dictionary of functions to run in the executor
     """
+
     executor: ThreadPoolExecutor
     tasks: list[asyncio.Task]
     config: Config
@@ -36,18 +37,10 @@ class Executor:
         kwargs = kwargs or {}
         self.functions[function] = kwargs
 
-    def add_coroutine(
-        self,
-        *,
-        coroutine: Callable | Coroutine,
-        kwargs: dict = None,
-        on_separate_thread=False,
-    ):
+    def add_coroutine(self, *, coroutine: Callable | Coroutine, kwargs: dict = None, on_separate_thread=False):
         kwargs = kwargs or {}
         coroutine = coroutine(**kwargs)
-        self.coroutines.append(
-            coroutine
-        ) if on_separate_thread is False else self.coroutine_threads.append(coroutine)
+        self.coroutines.append(coroutine) if on_separate_thread is False else self.coroutine_threads.append(coroutine)
 
     def add_strategies(self, *, strategies: tuple[Strategy]):
         """Add multiple strategies at once
@@ -85,9 +78,7 @@ class Executor:
 
     async def create_coroutines_task(self):
         """"""
-        task = asyncio.create_task(
-            asyncio.gather(*self.coroutines, return_exceptions=True)
-        )
+        task = asyncio.create_task(asyncio.gather(*self.coroutines, return_exceptions=True))
         self.tasks.append(task)
         await task
 
@@ -116,9 +107,7 @@ class Executor:
         start = asyncio.get_event_loop().time()
         try:
             while self.config.shutdown is False and self.config.force_shutdown is False:
-                if self.timeout is not None and self.timeout < (
-                    asyncio.get_event_loop().time() - start
-                ):
+                if self.timeout is not None and self.timeout < (asyncio.get_event_loop().time() - start):
                     self.config.shutdown = True
 
             for strategy in self.strategy_runners:
@@ -140,25 +129,11 @@ class Executor:
         Notes:
             No matter the number specified, the executor will always use a minimum of 5 workers.
         """
-        workers_ = (
-            len(self.strategy_runners)
-            + len(self.functions)
-            + len(self.coroutine_threads)
-            + 2
-        )
+        workers_ = len(self.strategy_runners) + len(self.functions) + len(self.coroutine_threads) + 2
         workers = max(workers, workers_)
         with ThreadPoolExecutor(max_workers=workers) as executor:
             self.executor = executor
-            [
-                self.executor.submit(self.run_strategy, strategy)
-                for strategy in self.strategy_runners
-            ]
-            [
-                self.executor.submit(function, **kwargs)
-                for function, kwargs in self.functions.items()
-            ]
-            [
-                self.executor.submit(self.run_coroutine_task, coroutine)
-                for coroutine in self.coroutine_threads
-            ]
+            [self.executor.submit(self.run_strategy, strategy) for strategy in self.strategy_runners]
+            [self.executor.submit(function, **kwargs) for function, kwargs in self.functions.items()]
+            [self.executor.submit(self.run_coroutine_task, coroutine) for coroutine in self.coroutine_threads]
             self.executor.submit(self.run_coroutine_tasks)

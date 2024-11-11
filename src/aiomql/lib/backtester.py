@@ -25,6 +25,7 @@ class BackTester:
         config (Config): Config instance
         mt (MetaBackTester): MetaTrader instance
     """
+
     config: Config
     executor: Executor
     mt: MetaBackTester
@@ -57,18 +58,12 @@ class BackTester:
             self.backtest_engine.setup_account_sync()
             self.init_strategies_sync()
             if (strategies := len(self.executor.strategy_runners)) == 0:
-                logger.warning(
-                    "No strategies were added to the backtester. Exiting ..."
-                )
+                logger.warning("No strategies were added to the backtester. Exiting ...")
                 raise Exception("No strategies added to the backtester")
             self.config.task_queue.worker_timeout = 5
-            self.add_coroutine(
-                coroutine=self.config.task_queue.run, on_separate_thread=True
-            )
+            self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
             self.add_coroutine(coroutine=self.executor.exit)
-            self.add_coroutine(
-                coroutine=self.backtest_controller.control, on_separate_thread=True
-            )
+            self.add_coroutine(coroutine=self.backtest_controller.control, on_separate_thread=True)
             parties = strategies + 1
             self.backtest_controller.set_parties(parties=parties)
         except Exception as err:
@@ -92,31 +87,19 @@ class BackTester:
             await self.backtest_engine.setup_account()
             await self.init_strategies()
             if (strategies := len(self.executor.strategy_runners)) == 0:
-                logger.warning(
-                    "No strategies were added to the backtester. Exiting ..."
-                )
+                logger.warning("No strategies were added to the backtester. Exiting ...")
                 raise Exception("No strategies added to the backtester")
             self.config.task_queue.worker_timeout = 5
-            self.add_coroutine(
-                coroutine=self.config.task_queue.run, on_separate_thread=True
-            )
+            self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
             self.add_coroutine(coroutine=self.executor.exit)
-            self.add_coroutine(
-                coroutine=self.backtest_controller.control, on_separate_thread=True
-            )
+            self.add_coroutine(coroutine=self.backtest_controller.control, on_separate_thread=True)
             parties = strategies + 1
             self.backtest_controller.set_parties(parties=parties)
         except Exception as err:
             logger.error(f"{err}. Backtester initialization failed")
             raise SystemExit
 
-    def add_coroutine(
-        self,
-        *,
-        coroutine: Callable[..., ...] | Coroutine,
-        on_separate_thread=False,
-        **kwargs,
-    ):
+    def add_coroutine(self, *, coroutine: Callable[..., ...] | Coroutine, on_separate_thread=False, **kwargs):
         """Add a coroutine to the executor.
 
         Args:
@@ -127,9 +110,7 @@ class BackTester:
         Returns:
 
         """
-        self.executor.add_coroutine(
-            coroutine=coroutine, kwargs=kwargs, on_separate_thread=on_separate_thread
-        )
+        self.executor.add_coroutine(coroutine=coroutine, kwargs=kwargs, on_separate_thread=on_separate_thread)
 
     def execute(self):
         """Execute the bot."""
@@ -161,14 +142,7 @@ class BackTester:
         """
         [self.add_strategy(strategy=strategy) for strategy in strategies]
 
-    def add_strategy_all(
-        self,
-        *,
-        strategy: Type[Strategy],
-        params: dict | None = None,
-        symbols: list[Symbol] = None,
-        **kwargs,
-    ):
+    def add_strategy_all(self, *, strategy: Type[Strategy], params: dict | None = None, symbols: list[Symbol] = None, **kwargs):
         """Use this to run a single strategy on multiple symbols with the same parameters and keyword arguments.
 
         Keyword Args:
@@ -177,10 +151,7 @@ class BackTester:
             symbols (list): A list of symbols to run the strategy on
             **kwargs: Additional keyword arguments for the strategy
         """
-        [
-            self.add_strategy(strategy=strategy(symbol=symbol, params=params, **kwargs))
-            for symbol in symbols
-        ]
+        [self.add_strategy(strategy=strategy(symbol=symbol, params=params, **kwargs)) for symbol in symbols]
 
     async def init_strategy(self, *, strategy: Strategy) -> bool:
         """Initialize a single strategy. This method is called internally by the bot."""

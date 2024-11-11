@@ -1,4 +1,5 @@
 """The base class for creating strategies."""
+
 import asyncio
 from time import time
 from typing import TypeVar
@@ -46,9 +47,7 @@ class Strategy(ABC):
     backtest_controller = BackTestController
     current_session = Session
 
-    def __init__(
-        self, *, symbol: Symbol, params: dict = None, sessions: Sessions = None, name=""
-    ):
+    def __init__(self, *, symbol: Symbol, params: dict = None, sessions: Sessions = None, name=""):
         """Initiate the parameters dict and add name and symbol fields.
         Use class name as strategy name if name is not provided
 
@@ -62,9 +61,7 @@ class Strategy(ABC):
         self.parameters["symbol"] = symbol.name
         self.parameters["name"] = self.name
         self.running = True
-        self.sessions = sessions or Sessions(
-            sessions=[Session(start=0, end=dtime(hour=23, minute=59, second=59))]
-        )
+        self.sessions = sessions or Sessions(sessions=[Session(start=0, end=dtime(hour=23, minute=59, second=59))])
         self.config = Config()
         self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
         self.backtest_controller = BackTestController()
@@ -165,9 +162,7 @@ class Strategy(ABC):
     async def backtest_strategy(self):
         """Backtest the strategy."""
         async with self as _:
-            logger.info(
-                "Testing %s strategy on %s with Backtester", self.name, self.symbol.name
-            )
+            logger.info("Testing %s strategy on %s with Backtester", self.name, self.symbol.name)
             while self.running:
                 try:
                     await self.sessions.check()

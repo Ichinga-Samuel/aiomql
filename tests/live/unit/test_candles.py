@@ -11,12 +11,8 @@ from aiomql.core.constants import TimeFrame
 class TestCandle:
     @classmethod
     def setup_class(cls):
-        cls.bullish_candle = Candle(
-            open=1.3421, high=1.3462, low=1.3405, close=1.3452, time=0, Index=0
-        )
-        cls.bearish_candle = Candle(
-            open=1.3452, high=1.3405, low=1.3462, close=1.3421, time=1, Index=1
-        )
+        cls.bullish_candle = Candle(open=1.3421, high=1.3462, low=1.3405, close=1.3452, time=0, Index=0)
+        cls.bearish_candle = Candle(open=1.3452, high=1.3405, low=1.3462, close=1.3421, time=1, Index=1)
 
     def test_repr(self):
         repr_str = repr(self.bearish_candle)

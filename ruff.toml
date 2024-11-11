@@ -1,4 +1,2 @@
 line-length = 150
 target-version = "py311"
-[format]
-skip-magic-trailing-comma=true

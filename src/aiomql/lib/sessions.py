@@ -23,12 +23,7 @@ def delta(obj: time) -> timedelta:
     Args:
         obj (datetime.time): A datetime.time object.
     """
-    return timedelta(
-        hours=obj.hour,
-        minutes=obj.minute,
-        seconds=obj.second,
-        microseconds=obj.microsecond,
-    )
+    return timedelta(hours=obj.hour, minutes=obj.minute, seconds=obj.second, microseconds=obj.microsecond)
 
 
 async def backtest_sleep(secs):
@@ -58,9 +53,7 @@ class Session:
         *,
         start: int | time,
         end: int | time,
-        on_start: Literal[
-            "close_all", "close_win", "close_loss", "custom_start"
-        ] = None,
+        on_start: Literal["close_all", "close_win", "close_loss", "custom_start"] = None,
         on_end: Literal["close_all", "close_win", "close_loss", "custom_end"] = None,
         custom_start: Callable = None,
         custom_end: Callable = None,
@@ -79,11 +72,7 @@ class Session:
             custom_end (Callable): A custom function to call when the session ends. Default is None.
             name (str): A name for the session. Default is a combination of start and end.
         """
-        self.start = (
-            start.replace(tzinfo=UTC)
-            if isinstance(start, time)
-            else time(hour=start, tzinfo=UTC)
-        )
+        self.start = start.replace(tzinfo=UTC) if isinstance(start, time) else time(hour=start, tzinfo=UTC)
         self.end = end if isinstance(end, time) else time(hour=end, tzinfo=UTC)
         self.on_start = on_start
         self.on_end = on_end
@@ -112,9 +101,7 @@ class Session:
         now = (
             datetime.now(tz=UTC).time()
             if self.config.mode == "live"
-            else datetime.fromtimestamp(
-                self.config.backtest_engine.cursor.time, tz=UTC
-            ).time()
+            else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
         )
         return now in self
 
@@ -133,13 +120,7 @@ class Session:
         return Duration(hours=hours, minutes=minutes, seconds=seconds)
 
     async def close_positions(self, *, positions: tuple[TradePosition, ...]):
-        results = asyncio.gather(
-            *(
-                self.positions_manager.close_position(position=position)
-                for position in positions
-            ),
-            return_exceptions=True,
-        )
+        results = asyncio.gather(*(self.positions_manager.close_position(position=position) for position in positions), return_exceptions=True)
         closed = pending = 0
         for result in results:
             if isinstance(result, OrderSendResult) and result.retcode == 10009:
@@ -155,16 +136,12 @@ class Session:
 
     async def close_win(self):
         open_positions = await self.positions_manager.get_positions()
-        positions = tuple(
-            position for position in open_positions if position.profit >= 0
-        )
+        positions = tuple(position for position in open_positions if position.profit >= 0)
         await self.close_positions(positions=positions)
 
     async def close_loss(self):
         open_positions = await self.positions_manager.get_positions()
-        positions = tuple(
-            position for position in open_positions if position.profit < 0
-        )
+        positions = tuple(position for position in open_positions if position.profit < 0)
         await self.close_positions(positions=positions)
 
     async def action(self, *, action):
@@ -198,9 +175,7 @@ class Session:
     def until(self):
         """Get the seconds until the session starts from the current time in seconds."""
         if self.config.mode == "backtest":
-            now = datetime.fromtimestamp(
-                self.config.backtest_engine.cursor.time, tz=UTC
-            ).time()
+            now = datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
             secs = (delta(self.start) - delta(now)).seconds
         else:
             secs = (delta(self.start) - delta(datetime.now(tz=UTC).time())).seconds
@@ -237,11 +212,7 @@ class Sessions:
         moment = (
             moment or datetime.now(tz=UTC).time()
             if self.config.mode == "live"
-            else (
-                datetime.fromtimestamp(
-                    self.config.backtest_engine.cursor.time, tz=UTC
-                ).time()
-            )
+            else (datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time())
         )
         for session in self.sessions:
             if moment in session:
@@ -260,11 +231,7 @@ class Sessions:
         moment = (
             moment or datetime.now(tz=UTC).time()
             if self.config.mode == "live"
-            else (
-                datetime.fromtimestamp(
-                    self.config.backtest_engine.cursor.time, tz=UTC
-                ).time()
-            )
+            else (datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time())
         )
         for session in self.sessions:
             if delta(moment) < delta(session.start):
@@ -287,9 +254,7 @@ class Sessions:
             return
 
         if self.config.mode == "backtest":
-            now = datetime.fromtimestamp(
-                self.config.backtest_engine.cursor.time, tz=UTC
-            ).time()
+            now = datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
         else:
             now = datetime.now(tz=UTC).time()
 

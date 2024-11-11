@@ -6,10 +6,7 @@ from aiomql.contrib.symbols import ForexSymbol
 
 
 async def test_bot():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     syms = ["BTCUSD", "SOLUSD", "ETHUSD"]
     symbols = [ForexSymbol(name=sym) for sym in syms]
     strategies = [Chaos(symbol=symbol, name="test_chaos") for symbol in symbols]

@@ -12,16 +12,8 @@ from aiomql.core.backtesting import BackTestEngine
 async def back_tester():
     config = Config()
     config.mode = "backtest"
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-    syms = [
-        "Volatility 75 Index",
-        "Volatility 100 Index",
-        "Volatility 25 Index",
-        "Volatility 10 Index",
-    ]
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    syms = ["Volatility 75 Index", "Volatility 100 Index", "Volatility 25 Index", "Volatility 10 Index"]
     symbols = [ForexSymbol(name=sym) for sym in syms]
     strategies = [Chaos(symbol=symbol) for symbol in symbols]
     start = datetime(2024, 5, 1, tzinfo=UTC)
@@ -35,7 +27,7 @@ async def back_tester():
         close_open_positions_on_exit=True,
         assign_to_config=True,
         preload=True,
-        account_info={'balance': 350}
+        account_info={"balance": 350},
     )
     backtester = BackTester(backtest_engine=back_test_engine)
     backtester.add_strategies(strategies=strategies)

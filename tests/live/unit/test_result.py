@@ -36,9 +36,7 @@ class TestResult:
 
     async def test_json(self, order_results):
         res1, res2 = order_results
-        await asyncio.gather(
-            res1.save(trade_record_mode="json"), res2.save(trade_record_mode="json")
-        )
+        await asyncio.gather(res1.save(trade_record_mode="json"), res2.save(trade_record_mode="json"))
         assert res1.config.records_dir.exists()
         record = res1.config.records_dir / f"{res1.name}.json"
         assert record.exists()

@@ -58,15 +58,7 @@ class BackTestData:
 class GetData:
     data: BackTestData
 
-    def __init__(
-        self,
-        *,
-        start: datetime,
-        end: datetime,
-        symbols: Sequence[str],
-        timeframes: Sequence[TimeFrame],
-        name: str = "",
-    ):
+    def __init__(self, *, start: datetime, end: datetime, symbols: Sequence[str], timeframes: Sequence[TimeFrame], name: str = ""):
         """"""
         self.config = Config()
         self.start = start.astimezone(tz=UTC)
@@ -102,14 +94,8 @@ class GetData:
             logger.error(f"Error: {err}")
 
     def save_data(self, *, name: str | Path = ""):
-        name = name or (
-            self.name + ".pkl" if not self.name.endswith(".pkl") else self.name
-        )
-        name = (
-            Path(self.config.backtest_dir) / name
-            if not isinstance(name, Path)
-            else name
-        )
+        name = name or (self.name + ".pkl" if not self.name.endswith(".pkl") else self.name)
+        name = Path(self.config.backtest_dir) / name if not isinstance(name, Path) else name
         with open(name, "wb") as fo:
             pickle.dump(self.data, fo, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -118,26 +104,15 @@ class GetData:
         if workers:
             self.task_queue.workers = workers
 
-        q_items = [
-            QueueItem(self.get_symbols_rates),
-            QueueItem(self.get_symbols_ticks),
-            QueueItem(self.get_symbols_info),
-        ]
+        q_items = [QueueItem(self.get_symbols_rates), QueueItem(self.get_symbols_ticks), QueueItem(self.get_symbols_info)]
 
-        [
-            self.task_queue.add(item=item, priority=0, must_complete=True)
-            for item in q_items
-        ]
+        [self.task_queue.add(item=item, priority=0, must_complete=True) for item in q_items]
 
         if not self.data.account:
-            self.task_queue.add(
-                item=QueueItem(self.get_account_info), must_complete=True
-            )
+            self.task_queue.add(item=QueueItem(self.get_account_info), must_complete=True)
 
         if not self.data.terminal:
-            self.task_queue.add(
-                item=QueueItem(self.get_terminal_info), must_complete=True
-            )
+            self.task_queue.add(item=QueueItem(self.get_terminal_info), must_complete=True)
 
         if not self.data.version:
             self.task_queue.add(item=QueueItem(self.get_version), must_complete=True)
@@ -146,9 +121,7 @@ class GetData:
 
         if self.data.fully_loaded is False:
             logger.warning("Data not fully loaded")
-            self.data = BackTestData(
-                name=self.name, span=self.span, range=self.range, fully_loaded=False
-            )
+            self.data = BackTestData(name=self.name, span=self.span, range=self.range, fully_loaded=False)
 
     async def get_terminal_info(self):
         """"""
@@ -179,29 +152,16 @@ class GetData:
 
     async def get_symbols_info(self):
         """"""
-        [
-            self.task_queue.add(item=QueueItem(self.get_symbol_info, symbol=symbol))
-            for symbol in self.symbols
-            if self.data.symbols.get(symbol) is None
-        ]
+        [self.task_queue.add(item=QueueItem(self.get_symbol_info, symbol=symbol)) for symbol in self.symbols if self.data.symbols.get(symbol) is None]
 
     async def get_symbols_ticks(self):
         """"""
-        [
-            self.task_queue.add(item=QueueItem(self.get_symbol_ticks, symbol=symbol))
-            for symbol in self.symbols
-            if self.data.ticks.get(symbol) is None
-        ]
+        [self.task_queue.add(item=QueueItem(self.get_symbol_ticks, symbol=symbol)) for symbol in self.symbols if self.data.ticks.get(symbol) is None]
 
     async def get_symbols_rates(self):
         """"""
         [
-            self.task_queue.add(
-                item=QueueItem(
-                    self.get_symbol_rates, symbol=symbol, timeframe=timeframe
-                ),
-                priority=4,
-            )
+            self.task_queue.add(item=QueueItem(self.get_symbol_rates, symbol=symbol, timeframe=timeframe), priority=4)
             for symbol in self.symbols
             for timeframe in self.timeframes
             if self.data.rates.get(symbol, {}).get(timeframe) is None
@@ -219,9 +179,7 @@ class GetData:
     @backoff_decorator
     async def get_symbol_ticks(self, *, symbol: str):
         """"""
-        res = await self.mt5.copy_ticks_range(
-            symbol, self.start, self.end, MetaTrader5.COPY_TICKS_ALL
-        )
+        res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, MetaTrader5.COPY_TICKS_ALL)
         if res is None:
             self.data.fully_loaded = False
             self.task_queue.stop_queue()

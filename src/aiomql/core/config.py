@@ -114,9 +114,7 @@ class Config:
             **kwargs: Object attributes and values as keyword arguments
         """
         if kwargs.pop("root", None) is not None:
-            logger.warning(
-                "Tried setting root from set_attributes. Use load_config to change project root"
-            )
+            logger.warning("Tried setting root from set_attributes. Use load_config to change project root")
         [setattr(self, key, value) for key, value in kwargs.items()]
 
     @staticmethod
@@ -145,14 +143,7 @@ class Config:
             logger.debug(f"Error finding config file: {err}")
             return
 
-    def load_config(
-        self,
-        *,
-        file: str | Path = None,
-        filename: str = None,
-        root: str | Path = None,
-        **kwargs,
-    ) -> Self:
+    def load_config(self, *, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Self:
         """Load configuration settings from a file.
 
         Keyword Args:
@@ -190,17 +181,9 @@ class Config:
         self.set_attributes(**data)
 
         if self.path:
-            self.path = (
-                self.root / self.path
-                if not Path(self.path).resolve().exists()
-                else self.path
-            )
+            self.path = self.root / self.path if not Path(self.path).resolve().exists() else self.path
 
-        if self.record_trades and (
-            hasattr(self, "records_dir") is False
-            or self.records_dir is None
-            or root is not None
-        ):
+        if self.record_trades and (hasattr(self, "records_dir") is False or self.records_dir is None or root is not None):
             self.records_dir = self.root / self.records_dir_name
             self.records_dir.mkdir(parents=True, exist_ok=True)
 

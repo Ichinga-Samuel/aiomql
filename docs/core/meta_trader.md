@@ -38,14 +38,15 @@ The MetaTrader Class provides an asynchronous wrapper around the MetaTrader5 API
 - [history\_deals\_total](#history_deals_total)
 - [history\_deals\_get](#history_deals_get)
 
-<a id="MetaTrader"></a>
+<a id="meta_trader.meta_trader"></a>
 ### MetaTrader
 ```python
-class MetaTrader(metaclass=BaseMeta)
+class MetaTrader(MetaCore)
 ```
 The MetaTrader class is a wrapper around the MetaTrader terminal.
 It provides methods for connecting to the MetaTrader terminal and retrieving data from it.
-#### Attributes
+
+#### Attributes:
 | Name  | Type  | Description                                            | Default                |
 |-------|-------|--------------------------------------------------------|------------------------|
 | error | Error | The last error encountered by the MetaTrader terminal. | Error(1, 'Successful') |
@@ -62,7 +63,7 @@ async def __aenter__() -> 'MetaTrader'
 Async context manager entry point.
 Initializes the connection to the MetaTrader terminal.
 
-#### Returns
+#### Returns:
 | Type         | Description                         |
 |--------------|-------------------------------------|
 | `MetaTrader` | An instance of the MetaTrader class |

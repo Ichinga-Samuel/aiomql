@@ -25,12 +25,7 @@ class Order(_Base, TradeRequest):
             type_time (OrderTime.DAY): Order time
             type_filling (OrderFilling.FOK): Order filling
         """
-        kwargs = {
-            "action": TradeAction.DEAL,
-            "type_time": OrderTime.DAY,
-            "type_filling": OrderFilling.FOK,
-            **kwargs,
-        }
+        kwargs = {"action": TradeAction.DEAL, "type_time": OrderTime.DAY, "type_filling": OrderFilling.FOK, **kwargs}
         super().__init__(**kwargs)
 
     async def orders_total(self):
@@ -111,9 +106,7 @@ class Order(_Base, TradeRequest):
         Returns:
             float: Returns float value if successful
         """
-        res = await self.mt5.order_calc_margin(
-            self.type, self.symbol, self.volume, self.price
-        )
+        res = await self.mt5.order_calc_margin(self.type, self.symbol, self.volume, self.price)
         return res
 
     @error_handler(response=0, log_error_msg=False)
@@ -124,16 +117,8 @@ class Order(_Base, TradeRequest):
             float: Returns float value if successful
             None: If not successful
         """
-        action, symbol, volume, price_open, price_close = (
-            self.type,
-            self.symbol,
-            self.volume,
-            self.price,
-            self.tp,
-        )
-        res = await self.mt5.order_calc_profit(
-            action, symbol, volume, price_open, price_close
-        )
+        action, symbol, volume, price_open, price_close = (self.type, self.symbol, self.volume, self.price, self.tp)
+        res = await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
         return res
 
     @error_handler(response=0, log_error_msg=False)
@@ -144,23 +129,11 @@ class Order(_Base, TradeRequest):
             float: Returns float value if successful
             None: If not successful
         """
-        action, symbol, volume, price_open, price_close = (
-            self.type,
-            self.symbol,
-            self.volume,
-            self.price,
-            self.sl,
-        )
-        res = await self.mt5.order_calc_profit(
-            action, symbol, volume, price_open, price_close
-        )
+        action, symbol, volume, price_open, price_close = (self.type, self.symbol, self.volume, self.price, self.sl)
+        res = await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
         return res
 
     @property
     def request(self) -> dict:
         """Return the order request as a dictionary."""
-        return {
-            key: value
-            for key, value in self.dict.items()
-            if key in self.mt5.TradeRequest.__match_args__
-        }
+        return {key: value for key, value in self.dict.items() if key in self.mt5.TradeRequest.__match_args__}

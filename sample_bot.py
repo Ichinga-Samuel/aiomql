@@ -6,10 +6,7 @@ from aiomql.contrib.symbols import ForexSymbol
 
 
 def chaos_bot():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     syms = ["Volatility 75 Index", "Volatility 100 Index", "Volatility 50 Index"]
     symbols = [ForexSymbol(name=sym) for sym in syms]
     strategies = [Chaos(symbol=symbol) for symbol in symbols]

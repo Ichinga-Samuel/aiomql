@@ -14,13 +14,7 @@ class TestGetData:
         cls.end = datetime(2024, 2, 2, tzinfo=UTC)
         cls.symbols = ["BTCUSD", "ETHUSD"]
         cls.timeframes = [TimeFrame.H1, TimeFrame.H2]
-        cls.g_data = GetData(
-            start=cls.start,
-            end=cls.end,
-            symbols=cls.symbols,
-            timeframes=cls.timeframes,
-            name="test_data",
-        )
+        cls.g_data = GetData(start=cls.start, end=cls.end, symbols=cls.symbols, timeframes=cls.timeframes, name="test_data")
 
     @pytest.fixture(scope="class", autouse=True)
     async def get_data(self):
@@ -34,9 +28,7 @@ class TestGetData:
         assert self.g_data.timeframes == set(self.timeframes)
         assert self.g_data.name == "test_data"
         assert self.g_data.range == range(int((self.end - self.start).total_seconds()))
-        assert self.g_data.span == range(
-            int(self.start.timestamp()), int(self.end.timestamp())
-        )
+        assert self.g_data.span == range(int(self.start.timestamp()), int(self.end.timestamp()))
 
     async def test_get_data(self):
         assert self.g_data.data.fully_loaded is True

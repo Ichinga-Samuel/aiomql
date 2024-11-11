@@ -1,4 +1,5 @@
 """Terminal related functions and properties"""
+
 from typing import NamedTuple
 from logging import getLogger
 
@@ -7,9 +8,7 @@ from ..core.base import _Base
 
 logger = getLogger(__name__)
 
-Version = NamedTuple(
-    "Version", (("version", str), ("build", int), ("release_date", str))
-)
+Version = NamedTuple("Version", (("version", str), ("build", int), ("release_date", str)))
 
 
 class Terminal(_Base, TerminalInfo):
