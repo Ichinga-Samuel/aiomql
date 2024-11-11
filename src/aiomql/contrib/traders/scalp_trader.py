@@ -8,7 +8,9 @@ logger = getLogger(__name__)
 
 class ScalpTrader(Trader):
     async def place_trade(self, *, order_type: OrderType, volume: float = None, parameters: dict = None):
-        """Places a trade based on the order_type and a given stop_loss
+        """Places a trade based on the order_type and volume. The volume is optional. If not provided, the minimum volume
+        for the symbol will be used. This trade is placed without a stop_loss or take_profit. The trade is recorded in the
+        trade_record file.
 
         Args:
             order_type (OrderType): The order_type

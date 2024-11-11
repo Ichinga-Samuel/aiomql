@@ -6,6 +6,7 @@ from ..constants import AccountTradeMode, AccountMarginMode, AccountStopOutMode
 
 @dataclass
 class BackTestAccount:
+    """Account data for backtesting"""
     login: int = 0
     trade_mode: AccountTradeMode = AccountTradeMode.DEMO
     leverage: float = 1
@@ -38,13 +39,21 @@ class BackTestAccount:
     __match_args__: ClassVar[tuple]
 
     def get_dict(self, exclude: set = None, include: set = None):
+        """Returns a dictionary of the account data. Using the exclude and include arguments, you can filter the data
+        
+        Args:
+            exclude (set): A set of keys to exclude
+            include (set): A set of keys to include
+        """
         exclude, include = exclude or set(), include or set()
         filter_ = include or set(self.__match_args__).difference(exclude)
         return {key: value for key, value in self.asdict().items() if key in filter_}
 
     def asdict(self):
+        """Returns a dictionary of the account data"""
         res = {key: getattr(self, key) for key in self.__match_args__}
         return res
 
     def set_attrs(self, **kwargs):
+        """Se the attributes of the account data to the instance"""
         [setattr(self, k, v) for k, v in kwargs.items() if k in self.__match_args__]

@@ -8,7 +8,8 @@ logger = getLogger(__name__)
 
 class SimpleTrader(Trader):
     async def place_trade(self, *, order_type: OrderType, sl: float, parameters: dict = None):
-        """Places a trade based on the order_type and a given stop_loss
+        """Places a trade based on the order_type and a given stop_loss. The volume is based on the amount to risk which is 
+        calculated using the Risk Assessment Management instance.
 
         Args:
             order_type (OrderType): The order_type

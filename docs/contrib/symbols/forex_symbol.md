@@ -1,71 +1,90 @@
-# Table of Contents
+# ForexSymbol
 
-* [aiomql.contrib.symbols.forex\_symbol](#aiomql.contrib.symbols.forex_symbol)
-  * [ForexSymbol](#aiomql.contrib.symbols.forex_symbol.ForexSymbol)
-    * [pip](#aiomql.contrib.symbols.forex_symbol.ForexSymbol.pip)
-    * [compute\_points](#aiomql.contrib.symbols.forex_symbol.ForexSymbol.compute_points)
-    * [compute\_volume\_points](#aiomql.contrib.symbols.forex_symbol.ForexSymbol.compute_volume_points)
+## Table of Contents
+- [ForexSymbol](#forex_symbol.forex_symbol)
+- [pip](#forex_symbol.pip)
+- [compute_points](#forex_symbol.compute_points)
+- [compute_volume_points](#forex_symbol.compute_volume_points)
+- [compute_volume_sl](#forex_symbol.compute_volume_sl)
 
-<a id="aiomql.contrib.symbols.forex_symbol"></a>
 
-# aiomql.contrib.symbols.forex\_symbol
-
-<a id="aiomql.contrib.symbols.forex_symbol.ForexSymbol"></a>
-
-## ForexSymbol Objects
-
+<a id="forex_symbol.forex_symbol"></a>
+### ForexSymbol
 ```python
 class ForexSymbol(Symbol)
 ```
+Subclass of Symbol for Forex Symbols. Handles the computation of stop loss, take profit and volume.
 
-Subclass of Symbol for Forex Symbols. Handles the conversion of currency and the computation of stop loss,
-take profit and volume.
-
-<a id="aiomql.contrib.symbols.forex_symbol.ForexSymbol.pip"></a>
-
-#### pip
-
+<a id="forex_symbol.pip"></a>
+### pip
 ```python
 @property
 def pip()
 ```
-
 Returns the pip value of the symbol. This is ten times the point value for forex symbols.
 
-**Returns**:
+#### Returns:
+|Type|Description|
+|----|-----------|
+|float|The pip value of the symbol.|
 
-- `float` - The pip value of the symbol.
-
-<a id="aiomql.contrib.symbols.forex_symbol.ForexSymbol.compute_points"></a>
-
-#### compute\_points
-
+<a id="forex_symbol.compute_points"></a>
+### compute_points
 ```python
 def compute_points(*, amount: float, volume: float) -> float
 ```
-
 Compute the number of points required for a trade. Given the amount and the volume of the trade.
 
-**Arguments**:
+#### Parameters:
+|Name|Type|Description|
+|----|----|-----------|
+|amount|float|Amount to trade|
+|volume|float|Volume to trade|
 
-- `amount` _float_ - Amount to trade
-- `volume` _float_ - Volume to trade
+#### Returns:
+|Type|Description|
+|----|-----------|
+|float|The number of points required for the trade.|
 
-<a id="aiomql.contrib.symbols.forex_symbol.ForexSymbol.compute_volume_points"></a>
-
-#### compute\_volume\_points
-
+<a id="forex_symbol.compute_volume_points"></a>
+### compute_volume_points
 ```python
 async def compute_volume_points(*,
                                 amount: float,
                                 points: float,
                                 round_down: bool = False) -> float
 ```
-
 Compute the volume required for a trade. Given the amount and the number of points.
 
-**Arguments**:
+#### Parameters:
+|Name|Type|Description|
+|----|----|-----------|
+|amount|float|Amount to trade|
+|points|float|Number of points|
+|round_down|bool|round down the computed volume to the nearest step default True|
 
-- `amount` _float_ - Amount to trade
-- `points` _float_ - Number of points
-- `round_down` - round down the computed volume to the nearest step default True
+#### Returns:
+|Type|Description|
+|----|-----------|
+|float|The volume required for the trade.
+
+
+<a id="forex_symbol.compute_volume_sl"></a>
+### compute_volume_sl
+```python
+async def compute_volume_sl(*, amount: float, price: float, sl: float, round_down: bool = False) -> float
+```
+Compute the volume required for a trade. Given the amount, the price and the stop loss.
+
+#### Parameters:
+|Name|Type|Description|
+|----|----|-----------|
+|amount|float|Amount to trade|
+|price|float|Price of the trade|
+|sl|float|Stop loss|
+|round_down|bool|round down the computed volume to the nearest step default True|
+
+#### Returns:
+|Type|Description|
+|----|-----------|
+|float|The volume required for the trade.

@@ -23,6 +23,7 @@ class Tracker:
     tp: float = 0
 
     def update(self, **kwargs):
+        """Updates the tracker with the given kwargs"""
         fields = self.__dict__
         for key in kwargs:
             if key in fields:

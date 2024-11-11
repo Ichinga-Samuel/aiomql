@@ -76,6 +76,68 @@ class BackTestEngine:
         assign_to_config: bool = True,
         account_info: dict = None,
     ):
+        """The BackTestEngine class is used to simulate trading strategies on historical data.
+        It can accept already saved data or create new data for backtesting on the fly. Ideally only one instance of this class should be created per session.
+        By default it is automatically assigned to the global config instance during instantiation,
+        replacing any existing backtest engine instance. But this is a configurable behaviour.
+        The start and end time can still be specified even when test data is provided. In that case it will be used to set the range of the backtest.
+
+        Args:
+            data (BackTestData, optional): The data to use for backtesting. Defaults to None.
+
+            speed (int, optional): The speed of the backtest. Defaults to 60 seconds.
+
+            start (float | datetime, optional): The start time of the backtest. Defaults to 0. If a float is passed, it is assumed to be a timestamp.
+
+            end (float | datetime, optional): The end time of the backtest. Defaults to 0. If a float is passed, it is assumed to be a timestamp.
+
+            restart (bool, optional): Whether to restart the backtest from the beginning. Defaults to True. This is useful when resuming a backtest
+            using a saved BackTestData instance.
+
+            use_terminal (bool, optional): Whether to use the terminal for backtesting. Defaults to None. If None, it uses the global config setting.
+            If use terminal is true, the backtest engine will use the terminal to get price data, compute margins, profit and check order viability.
+            If false, it will use the data provided in the BackTestData instance and default algorithm for the calculations
+
+            name (str, optional): The name of the backtest. Defaults to "". If not provided, it is generated from the start and end times.
+            
+            stop_time (float | datetime, optional): The time to stop the backtest. Defaults to None. If a float is passed, it is assumed to be a timestamp.
+            If not given it is asummed to be the end of the backtest range.
+
+            close_open_positions_on_exit (bool, optional): Whether to close all open positions when the backtest is stopped. Defaults to True.
+
+            preload (bool, optional): Whether to preload the ticks for the backtest. Defaults to True.
+
+            assign_to_config (bool, optional): Whether to assign the backtest engine to the global config instance. Defaults to True.
+
+            account_info (dict, optional): A dictionary of account information to use for the backtest. Defaults to None. Use this to set
+             the account information for the backtest.
+
+        Attributes:
+            _data (BackTestData): The data used for backtesting. This is the data that is saved to disk when the backtest is stopped.
+
+            mt5 (MetaTrader): The MetaTrader instance for the backtest engine.
+
+            config (Config): The global configuration instance.
+
+            name (str): The name of the backtest.
+
+            stop_testing (bool): Whether to stop the backtest.
+
+            use_terminal (bool): Whether to use the terminal for backtesting.
+
+            close_open_positions_on_exit (bool): Whether to close all open positions when the backtest is stopped.
+
+            stop_time (int): The time to stop the backtest.
+
+            preload (bool): Whether to preload the ticks for the backtest.
+
+            preloaded_ticks (dict): A dictionary of preloaded ticks for the backtest.
+
+            account_lock (RLock): A reentrant lock for the account data.
+
+            account_info (dict): A dictionary of account information for the backtest.
+
+        """
         self._data = data or BackTestData()
         self.mt5 = MetaTrader()
         self.config = self.mt5.config
@@ -113,6 +175,14 @@ class BackTestEngine:
         return f"{self.__class__.__name__}()"
 
     def setup_test_range(self, *, start: float | datetime = None, end: float | datetime = None, speed: int = 60, restart: bool = True):
+        """Setup the test range for the backtest engine. This is used to set the range of the backtest and the speed at which it runs.
+        
+        Args:
+            start (float | datetime, optional): The start time of the backtest. Defaults to None. If a float is passed, it is assumed to be a timestamp.
+            end (float | datetime, optional): The end time of the backtest. Defaults to None. If a float is passed, it is assumed to be a timestamp.
+            speed (int, optional): The speed of the backtest. Defaults to 60.
+            restart (bool, optional): Whether to restart the backtest. Defaults to True. This is useful when resuming a backtest using a saved BackTestData.
+        """
         if self._data.span and self._data.range:
             start = start or self._data.span[0]
             end = end or self._data.span[-1] + speed

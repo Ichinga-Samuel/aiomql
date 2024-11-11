@@ -36,7 +36,7 @@ The base class for creating strategies.
 
 
 <a id="strategy.__init__"></a>
-### \_\_init\_\_
+### \__init\__
 ```python
 def __init__(*, symbol: Symbol, params: dict = None, sessions: Sessions, name: str = "")
 ```
