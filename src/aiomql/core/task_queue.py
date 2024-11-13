@@ -26,25 +26,40 @@ class QueueItem:
         try:
             if asyncio.iscoroutinefunction(self.task_item):
                 await self.task_item(*self.args, **self.kwargs)
-
-            else:
-                self.task_item(*self.args, **self.kwargs)
-
         except Exception as err:
-            logger.error(f"Error {err} occurred in {self.task_item.__name__} with args {self.args} and kwargs {self.kwargs}")
+            logger.error(f"Error {err} occurred in {self.task_item.__name__} with args {self.args} and kwargs"
+                         f" {self.kwargs}")
 
 
 class TaskQueue:
-    def __init__(
-        self,
-        size: int = 0,
-        workers: int = 10,
-        timeout: int = None,
-        queue: asyncio.Queue = None,
-        on_exit: Literal["cancel", "complete_priority"] = "complete_priority",
-        mode: Literal["finite", "infinite"] = "infinite",
-        worker_timeout: int = 60,
-    ):
+    """TaskQueue is a class that allows you to queue tasks and run them concurrently with a specified number of workers.
+
+    Attributes:
+        - `workers` (int): The number of workers to run concurrently. Default is 10.
+
+        - `timeout` (int): The maximum time to wait for the queue to complete. Default is None. If timeout is provided
+            the queue is joined using `asyncio.wait_for` with the timeout.
+
+        - `queue` (asyncio.Queue): The queue to store the tasks. Default is `asyncio.PriorityQueue` with no size limit.
+
+        - `on_exit` (Literal["cancel", "complete_priority"]): The action to take when the queue is stopped.
+
+        - `mode` (Literal["finite", "infinite"]): The mode of the queue. If `finite` the queue will stop when all tasks
+            are completed. If `infinite` the queue will continue to run until stopped.
+
+        - `worker_timeout` (int): The time to wait for a task to be added to the queue before stopping the worker or
+            adding a dummy sleep task to the queue.
+
+        - `stop` (bool): A flag to stop the queue instance.
+
+        - `tasks` (list): A list of the worker tasks running concurrently, including the main task that joins the queue.
+
+        - `priority_tasks` (set): A set to store the QueueItems that must complete before the queue stops.
+    """
+
+    def __init__(self, size: int = 0, workers: int = 10, timeout: int = None, queue: asyncio.Queue = None,
+                 on_exit: Literal["cancel", "complete_priority"] = "complete_priority",
+                 mode: Literal["finite", "infinite"] = "infinite", worker_timeout: int = 60):
         self.queue = queue or asyncio.PriorityQueue(maxsize=size)
         self.workers = workers
         self.tasks = []
@@ -55,7 +70,14 @@ class TaskQueue:
         self.mode = mode
         self.worker_timeout = worker_timeout
 
-    def add(self, *, item: QueueItem, priority=3, must_complete=False):
+    def add(self, *, item: QueueItem, priority: int = 3, must_complete: bool = False):
+        """Add a task to the queue.
+
+        Args:
+            item (QueueItem): The task to add to the queue.
+            priority (int): The priority of the task. Default is 3.
+            must_complete (bool): A flag to indicate if the task must complete before the queue stops. Default is False.
+        """
         try:
             if self.stop:
                 return
@@ -66,6 +88,9 @@ class TaskQueue:
             self.queue.put_nowait(item)
         except asyncio.QueueFull:
             logger.error("Queue is full")
+
+        except Exception as err:
+            logger.error("%s: Error occurred in %s.add", err, self.__class__.__name__)
 
     async def worker(self):
         while True:
@@ -98,7 +123,7 @@ class TaskQueue:
                 await asyncio.sleep(self.worker_timeout)
 
             except Exception as err:
-                logger.error("%s: Error occurred in worker", err)
+                logger.error("%s: Error occurred in %s worker", err, self.__class__.__name__)
 
     async def run(self, timeout: int = 0):
         start = time.perf_counter()
@@ -145,7 +170,7 @@ class TaskQueue:
             ...
 
         except Exception as err:
-            logger.error(f"%s: Error occurred in %s.clean_up", err, self.__class__.__name__)
+            logger.error("%s: Error occurred in %s.clean_up", err, self.__class__.__name__)
 
         finally:
             self.cancel()

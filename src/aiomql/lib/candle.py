@@ -194,10 +194,10 @@ class Candles:
     def __len__(self):
         return len(self._data.index)
 
-    def __contains__(self, item: Self):
+    def __contains__(self, item: Candle):
         return item.time == self[item.Index].time
 
-    def __getitem__(self, index) -> Self | Self | Series:
+    def __getitem__(self, index: slice | int | str) -> Self | Series | Candle:
         if isinstance(index, slice):
             cls = self.__class__
             data = self._data.iloc[index]

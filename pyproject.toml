@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aiomql"
-version = "3.23"
+version = "4.0.0"
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
@@ -16,7 +16,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 keywords = ['MetaTrader5', 'Asynchronous', 'Algorithmic Trading', 'Trading Bot']
-dependencies = ["MetaTrader5>=5.0.37", "pandas>=1.5.0", "pandas-ta>=0.3.14b0", "matplotlib>=3.8.4", "mplfinance>=0.12.10b0"]
+dependencies = ["MetaTrader5>=5.0.37", "pandas>=1.5.0", "pandas-ta>=0.3.14b0"]
 authors = [{name = "Ichinga Samuel", email = "ichingasamuel@gmail.com"}]
 description = "Asynchronous MetaTrader5 library and Algorithmic Trading Framework"
 

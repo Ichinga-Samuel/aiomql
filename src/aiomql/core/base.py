@@ -12,10 +12,16 @@ logger = getLogger(__name__)
 class Base:
     """A base class for all data structure classes in the aiomql package. This class provides a set of common methods
     and attributes for handling data.
+
+    Attributes:
+        exclude (set[str]): A set of attributes to be excluded when retrieving attributes
+         using the get_dict and dict method.
+        include (set [str]): A set of attributes to be included when retrieving attributes
+         using the get_dict and dict method.
     """
 
-    exclude: set
-    include: set
+    exclude: set[str]
+    include: set[str]
 
     def __init__(self, **kwargs):
         """
@@ -74,12 +80,12 @@ class Base:
             annots |= getattr(base, "__annotations__", {})
         return annots
 
-    def get_dict(self, exclude: set = None, include: set = None) -> dict:
-        """Returns class attributes as a dict, with the ability to filter
+    def get_dict(self, exclude: set[str] = None, include: set[str] = None) -> dict:
+        """Returns class attributes as a dict, with the ability to filter out specific attributes
 
-        Keyword Args:
-            exclude: A set of attributes to be excluded
-            include: Specific attributes to be returned
+        Args:
+            exclude (set[str]): A set of attributes to be excluded
+            include (set[str]): Specific attributes to be returned
 
         Returns:
              dict: A dictionary of specified class attributes
@@ -120,6 +126,9 @@ class Base:
 
 
 class _Base(Base):
+    """Base class that provides access to the MetaTrader and Config classes as well as the MetaBackTester class for
+    backtesting mode.
+    """
     def __init__(self, **kwargs):
         self.config = Config()
         self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()

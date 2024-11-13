@@ -1,6 +1,6 @@
 # Table of Contents
-- [MetaTrader](https://github.com/Ichinga-Samuel/aiomql/blob/master/docs/core/meta_trader.md)
-- [Config](https://github.com/Ichinga-Samuel/aiomql/blob/master/docs/core/config.md) 
+- [MetaTrader](core/meta_trader.md)
+- [Config](core/config.md) 
 - [Base](https://github.com/Ichinga-Samuel/aiomql/blob/master/docs/core/base.md)
 - [Constants](https://github.com/Ichinga-Samuel/aiomql/blob/master/docs/core/constants.md)
 - [TaskQueue](https://github.com/Ichinga-Samuel/aiomql/blob/master/docs/core/task_queue.md)

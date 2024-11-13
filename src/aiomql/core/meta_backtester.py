@@ -15,7 +15,11 @@ BackTestEngine = TypeVar("BackTestEngine")
 
 
 class MetaBackTester(MetaTrader):
-    """A class for testing trading strategies in the MetaTrader 5 terminal. A subclass of MetaTrader."""
+    """A class for testing trading strategies in the MetaTrader 5 terminal. A subclass of MetaTrader.
+
+    Attributes:
+        backtest_engine (BackTestEngine): The backtesting engine to use for testing trading strategies.
+    """
 
     backtest_engine: BackTestEngine
 

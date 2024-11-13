@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 from logging import getLogger
-from typing import Literal
+from typing import Literal, Self
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +23,7 @@ class MetaTrader(MetaCore):
         self.config = Config()
         self.error: Error = Error(1)
 
-    async def __aenter__(self) -> "MetaTrader":
+    async def __aenter__(self) -> Self:
         """
         Async context manager entry point.
         Initializes the connection to the MetaTrader terminal.

@@ -36,6 +36,7 @@ from .trades_manager import PositionsManager, OrdersManager, DealsManager
 logger = getLogger(__name__)
 
 
+# noinspection PyUnresolvedReferences
 class BackTestEngine:
     mt5: MetaTrader
     span: range
@@ -77,43 +78,51 @@ class BackTestEngine:
         account_info: dict = None,
     ):
         """The BackTestEngine class is used to simulate trading strategies on historical data.
-        It can accept already saved data or create new data for backtesting on the fly. Ideally only one instance of this class should be created per session.
-        By default it is automatically assigned to the global config instance during instantiation,
-        replacing any existing backtest engine instance. But this is a configurable behaviour.
-        The start and end time can still be specified even when test data is provided. In that case it will be used to set the range of the backtest.
+        It can accept already saved data or create new data for backtesting on the fly. Ideally only one instance of
+        this class should be created per session. By default it is automatically assigned to the global config instance
+        during instantiation, replacing any existing backtest engine instance. But this is a configurable behaviour.
+        The start and end time can still be specified even when test data is provided. In that case it will be used
+        to set the range of the backtest.
 
         Args:
             data (BackTestData, optional): The data to use for backtesting. Defaults to None.
 
             speed (int, optional): The speed of the backtest. Defaults to 60 seconds.
 
-            start (float | datetime, optional): The start time of the backtest. Defaults to 0. If a float is passed, it is assumed to be a timestamp.
+            start (float | datetime, optional): The start time of the backtest. Defaults to 0. If a float is passed,
+             it is assumed to be a timestamp.
 
-            end (float | datetime, optional): The end time of the backtest. Defaults to 0. If a float is passed, it is assumed to be a timestamp.
+            end (float | datetime, optional): The end time of the backtest. Defaults to 0. If a float is passed,
+             it is assumed to be a timestamp.
 
-            restart (bool, optional): Whether to restart the backtest from the beginning. Defaults to True. This is useful when resuming a backtest
-            using a saved BackTestData instance.
+            restart (bool, optional): Whether to restart the backtest from the beginning. Defaults to True.
+             This is useful when resuming a backtest using a saved BackTestData instance.
 
-            use_terminal (bool, optional): Whether to use the terminal for backtesting. Defaults to None. If None, it uses the global config setting.
-            If use terminal is true, the backtest engine will use the terminal to get price data, compute margins, profit and check order viability.
-            If false, it will use the data provided in the BackTestData instance and default algorithm for the calculations
+            use_terminal (bool, optional): Whether to use the terminal for backtesting. Defaults to None. If None,
+             it uses the global config setting. If use terminal is true, the backtest engine will use the terminal to
+             get price data, compute margins, profit and check order viability. If false, it will use the data
+             provided in the BackTestData instance and default algorithm for the calculations
 
-            name (str, optional): The name of the backtest. Defaults to "". If not provided, it is generated from the start and end times.
+            name (str, optional): The name of the backtest. Defaults to "". If not provided,
+             it is generated from the start and end times.
             
-            stop_time (float | datetime, optional): The time to stop the backtest. Defaults to None. If a float is passed, it is assumed to be a timestamp.
-            If not given it is asummed to be the end of the backtest range.
+            stop_time (float | datetime, optional): The time to stop the backtest. Defaults to None.
+             If a float is passed, it is assumed to be a timestamp. If not given it is assumed to be the end of the backtest range.
 
-            close_open_positions_on_exit (bool, optional): Whether to close all open positions when the backtest is stopped. Defaults to True.
+            close_open_positions_on_exit (bool, optional): Whether to close all open positions when the backtest
+             is stopped. Defaults to True.
 
             preload (bool, optional): Whether to preload the ticks for the backtest. Defaults to True.
 
-            assign_to_config (bool, optional): Whether to assign the backtest engine to the global config instance. Defaults to True.
+            assign_to_config (bool, optional): Whether to assign the backtest engine to the global config instance.
+             Defaults to True.
 
             account_info (dict, optional): A dictionary of account information to use for the backtest. Defaults to None. Use this to set
              the account information for the backtest.
 
         Attributes:
-            _data (BackTestData): The data used for backtesting. This is the data that is saved to disk when the backtest is stopped.
+            _data (BackTestData): The data used for backtesting. This is the data that is saved to disk when the
+             backtest is stopped.
 
             mt5 (MetaTrader): The MetaTrader instance for the backtest engine.
 
@@ -174,14 +183,22 @@ class BackTestEngine:
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
-    def setup_test_range(self, *, start: float | datetime = None, end: float | datetime = None, speed: int = 60, restart: bool = True):
-        """Setup the test range for the backtest engine. This is used to set the range of the backtest and the speed at which it runs.
+    def setup_test_range(self, *, start: float | datetime = None, end: float | datetime = None, speed:
+        int = 60, restart: bool = True):
+        """Setup the test range for the backtest engine. This is used to set the range of the backtest and the speed
+         at which it runs.
         
         Args:
-            start (float | datetime, optional): The start time of the backtest. Defaults to None. If a float is passed, it is assumed to be a timestamp.
-            end (float | datetime, optional): The end time of the backtest. Defaults to None. If a float is passed, it is assumed to be a timestamp.
+            start (float | datetime, optional): The start time of the backtest. Defaults to None. If a float is passed,
+             it is assumed to be a timestamp.
+            
+            end (float | datetime, optional): The end time of the backtest. Defaults to None. If a float is passed,
+             it is assumed to be a timestamp.
+            
             speed (int, optional): The speed of the backtest. Defaults to 60.
-            restart (bool, optional): Whether to restart the backtest. Defaults to True. This is useful when resuming a backtest using a saved BackTestData.
+            
+            restart (bool, optional): Whether to restart the backtest. Defaults to True.
+             This is useful when resuming a backtest using a saved BackTestData.
         """
         if self._data.span and self._data.range:
             start = start or self._data.span[0]
@@ -206,6 +223,13 @@ class BackTestEngine:
             self.cursor = Cursor(index=self.range.start, time=self.span.start)
 
     def setup_data(self, *, restart: bool = True):
+        """Sets up the data for the backtest engine. This includes the orders, positions, deals and account
+         information. This data is handled by specialized classes such as the BackTestAccount and the TradeManager
+         classes.
+
+        Args:
+            restart (bool, optional): Whether to restart the data. Defaults to True.
+         """
         if restart is True:
             self.orders = OrdersManager()
             self.positions = PositionsManager()
@@ -231,19 +255,26 @@ class BackTestEngine:
         self._account = BackTestAccount(**self._data.account)
 
     def next(self) -> Cursor:
+        """Move the cursor to the next time step in the backtest range."""
         return next(self)
 
     @property
     def data(self):
+        """The BackTestData instance used for the backtest. If not provided, a new instance is created,
+         and the data is made persistent when the backtest is stopped."""
         return self._data
 
     def reset(self, clear_data: bool = False):
+        """Reset the backtest engine. This is useful when restarting the backtest from the beginning."""
         self.iter = zip(self.range, self.span)
         self.cursor = Cursor(index=self.range.start, time=self.span.start)
         if clear_data:
             self.setup_data(restart=True)
 
     def go_to(self, *, time: datetime | float):
+        """Move the cursor to a specific time in the backtest range. You can pass a datetime object or a timestamp.
+        You can't go back in time or beyond the limits of the range.
+        """
         time = time.astimezone(tz=UTC) if isinstance(time, datetime) else datetime.fromtimestamp(time, tz=UTC)
         time = int(time.timestamp())
         steps = time - self.cursor.time
@@ -255,6 +286,7 @@ class BackTestEngine:
         raise ValueError("Can't go back in time or beyond the limits of the range")
 
     def fast_forward(self, *, steps: int):
+        """Fast-forward the backtester by the given steps."""
         for _ in range(steps):
             self.next()
 
@@ -263,6 +295,7 @@ class BackTestEngine:
         return [(c, t) for c, t in zip(df.columns, df.dtypes)]
 
     async def tracker(self):
+        """The tracker monitors and updates open positions on every iteration. It is called by the controller."""
         try:
             pos_tasks = [self.check_position(ticket=ticket) for ticket in self.positions._open_positions]
             await asyncio.gather(*pos_tasks)
@@ -274,6 +307,7 @@ class BackTestEngine:
 
     @error_handler_sync
     def save_result_to_json(self):
+        """Saves the result to a json file at the end of testing."""
         data = self._account.get_dict(include={"balance", "profit", "equity", "margin", "margin_free", "margin_level"})
         wins = [position for ticket in self.positions if (position := self.positions.get(ticket)).profit > 0]
         losses = [position for ticket in self.positions if (position := self.positions.get(ticket)).profit <= 0]
@@ -303,6 +337,7 @@ class BackTestEngine:
             json.dump(data, file, indent=4)
 
     async def close_all_open(self):
+        """Closes all open position at the end of testing"""
         tasks = [self.check_position(ticket=position.ticket) for position in self.positions.open_positions]
         await asyncio.gather(*tasks)
         for position in self.positions.open_positions:
@@ -310,6 +345,8 @@ class BackTestEngine:
 
     @error_handler
     async def wrap_up(self):
+        """Wraps up the backtest. This is called at the end of testing to save the results and close all open
+         positions."""
         if self.close_open_positions_on_exit:
             await self.close_all_open()
         self.save_result_to_json()
@@ -329,7 +366,11 @@ class BackTestEngine:
         GetData.pickle_data(data=self._data, name=path)
 
     async def preload_ticks(self, *, symbol: str):
-        """Pull a month data on ticks from the terminal. Starting from the current time"""
+        """Pull a month data on ticks from the terminal. Starting from the current time.
+
+        Args:
+            symbol (str): The symbol to preload ticks for.
+        """
         try:
             start = self.cursor.time
             end = start + (30 * 24 * 60 * 60)
@@ -348,6 +389,13 @@ class BackTestEngine:
 
     @async_cache
     async def get_price_tick(self, *, symbol: str, time: int) -> Tick | None:
+        """Get the price tick for a symbol at a given time. If the preload option is set to True,
+        it will use the preloaded ticks when available.
+
+        Args:
+            symbol (str): The symbol to get the price tick for.
+            time (int): The time to get the price tick.
+        """
         try:
             if self.use_terminal and self.preload:
                 if (ticks := self.preloaded_ticks.get(symbol)) is not None and time in ticks.index:
@@ -420,6 +468,7 @@ class BackTestEngine:
                 ...
 
     def check_account(self):
+        """Checks an account status. This method is called at each iteration to check if the account has burned out."""
         account = self._account
         level = account.margin_level if account.margin_so_mode == AccountStopOutMode.PERCENT else account.margin_so_call
         if level < account.margin_so_call and level != 0 and account.equity < 0:
@@ -428,7 +477,8 @@ class BackTestEngine:
 
     async def check_position(self, *, ticket: int):
         """
-        Update the profit of an open position based on the current price of the symbol.
+        Update the profit of an open position based on the current price of the symbol. It is called by the
+        tracker to update the profit of open positions.
 
         Args:
             ticket (int): Position ticket
@@ -445,6 +495,7 @@ class BackTestEngine:
 
     @error_handler_sync
     async def close_position_manually(self, *, ticket: int):
+        """Close a position manually without. Usually at the end of testing."""
         res = await self.close_position(ticket=ticket)
         if not res:
             return
@@ -524,9 +575,9 @@ class BackTestEngine:
         Modify the stop loss and take profit levels of an open position.
 
         Args:
-            ticket: Position ticket
-            sl: stop loss level
-            tp: Take profit level
+            ticket (int): Position ticket
+            sl (int): stop loss level
+            tp (int): Take profit level
 
         Returns:
             bool: True if the stops are modified successfully, False otherwise
@@ -535,6 +586,14 @@ class BackTestEngine:
         return True
 
     def update_account(self, *, profit: float = None, margin: float = 0, gain: float = 0):
+        """
+        Update the account. This method is protected by thread lock.
+
+        Args:
+            profit (float): The current profit of one or more open positions. Can be positive or negative.
+            margin (float): The margin set aside for a trade. It is released when the trade is closed.
+            gain (gain): The gain realized when the trade is closed.
+        """
         self.account_lock.acquire()
         try:
             self._account.balance += round(gain, self._account.currency_digits)
@@ -561,14 +620,21 @@ class BackTestEngine:
             self.account_lock.release()
 
     def deposit(self, *, amount: float):
+        """Make deposit to the trading account"""
         self.update_account(gain=amount)
 
     def withdraw(self, *, amount: float):
+        """Make a withdrawal from the trading account. You can not withdraw more than what you have"""
         assert amount <= self._account.balance, "Insufficient funds"
         self.update_account(gain=-amount)
 
     @error_handler
     async def setup_account(self, **kwargs):
+        """Setup the trading account before the begining of a backtesting session.
+
+        Args:
+            (**kwargs, Any): Attributes for the backetest account object can be set here.
+        """
         kwargs = {**self.account_info, **kwargs}
         default = {
             "profit": self._account.profit,
@@ -589,6 +655,7 @@ class BackTestEngine:
 
     @error_handler_sync
     def setup_account_sync(self, **kwargs):
+        """Set up the backtesting account in sync mode"""
         kwargs = {**self.account_info, **kwargs}
         default = {
             "profit": self._account.profit,
@@ -609,6 +676,16 @@ class BackTestEngine:
 
     @cached_property
     def prices(self) -> dict[str, DataFrame]:
+        """Get the prices for instruments used in the backtesting. This class is called when the use_terminal option
+        is set to False and trading data is provided in the data attribute. It makes sure that there is a price for each
+        symbol for every second covered in the backtesting range, by reindexing the price ticks using the backtesting
+        time span and filling up missing data using the nearest method.
+        This method returns a dictionaries of dataframe containing the prices for each symbol.
+        It's cached and there computed only once per backtesting session.
+
+        Returns:
+             dict[str, DataFrame]: A dictionary mapping dataframe of prices to symbols.
+        """
         prices = {}
         for symbol in self._data.ticks.keys():
             res = self._data.ticks[symbol]
@@ -621,6 +698,11 @@ class BackTestEngine:
 
     @cached_property
     def ticks(self) -> dict[str, DataFrame]:
+        """Similar to prices above, but returns prices exactly as they are without reindexing and filling up.
+
+        Returns:
+            dict[str, DataFrame]: A dictionary mapping symbols to dataframes of ticks.
+        """
         ticks = {}
         for symbol in self._data.ticks.keys():
             res = self._data.ticks[symbol]
@@ -630,6 +712,12 @@ class BackTestEngine:
 
     @cached_property
     def rates(self) -> dict[str, dict[int, DataFrame]]:
+        """This property is useful when backtesting with the use_terminal option set to false. It returns a nested dict
+        that maps symbols to a dict mapping timeframes to rates. The timeframes are mapped using their integer values.
+
+        Returns:
+            dict[str, dict[int, DataFrame]]: A dictionary containing the symbol rates.
+        """
         rates = {}
         for symbol in self._data.rates.keys():
             for timeframe in self._data.rates[symbol].keys():
@@ -640,6 +728,11 @@ class BackTestEngine:
 
     @cached_property
     def symbols(self) -> dict[str, SymbolInfo]:
+        """A dictionary of symbols and SymbolInfo object. Used when use_terminal is set to false.
+
+        Returns:
+            dict[str, SymbolInfo]
+        """
         symbols = {}
         for symbol, info in self._data.symbols.items():
             symbols[symbol] = SymbolInfo((info.get(key) for key in SymbolInfo.__match_args__))
@@ -647,6 +740,20 @@ class BackTestEngine:
 
     @error_handler
     async def order_send(self, *, request: dict, use_terminal=False) -> OrderSendResult:
+        """Simulates the sending of an order to the broker. An OrderSendResult is object is created at the end of this
+        operation as would be created if it was done in live trading. When an order is successful a positions object is
+        created, an order and deal object is created as well. When use_terminal is set to true the margin and profit
+        are calculated by sending to the broker. This increases accuracy but slows down the backtester. Check order is
+        called to make sure the order is valid and would go through if it was a live trade.
+
+        Args:
+            request (dict): The order request as a dict.
+            use_terminal (bool): A flag to override the use_terminal attribute. If true, the terminal will
+            be used even if the use_terminal attribute is True.
+
+        Returns:
+            OrderSendResult: An object containing the result of the order send operation.
+        """
         use_terminal = self.use_terminal or use_terminal
         osr = {
             "retcode": 10013,
@@ -814,6 +921,16 @@ class BackTestEngine:
 
     @error_handler
     async def order_check(self, *, request: dict, use_terminal: bool = False) -> OrderCheckResult:
+        """Checks the order before placing it. If use_terminal, the order is checked with the broker, but the entire result
+        is not used. Details such as balance, profit, equity, margin, and margin level are calculated by the backtester.
+
+        Args:
+            request (dict): The order request as a dict.
+            use_terminal (bool): A flag to override the use_terminal attribute. If true, the terminal will used.
+
+        Returns:
+            OrderCheckResult: The result of the order check.
+        """
         use_terminal = self.use_terminal or use_terminal
         ocr = {
             "retcode": 10013,
@@ -892,6 +1009,11 @@ class BackTestEngine:
 
     @error_handler
     async def get_terminal_info(self) -> TerminalInfo:
+        """Get the terminal information
+
+        Returns:
+            TerminalInfo: The terminal information
+        """
         if self.use_terminal:
             res = await self.mt5.terminal_info()
             return res
@@ -899,6 +1021,11 @@ class BackTestEngine:
 
     @error_handler
     async def get_version(self) -> tuple[int, int, str]:
+        """Get the version of the terminal.
+
+        Returns:
+            tuple[int, int, str]: The version of the terminal
+        """
         if self.use_terminal:
             res = await self.mt5.version()
             return res
@@ -906,6 +1033,11 @@ class BackTestEngine:
 
     @error_handler
     async def get_symbols_total(self) -> int:
+        """Get the total number of symbols available in the terminal.
+
+        Returns:
+            int: The total number of symbols available.
+        """
         if self.use_terminal:
             syms = await self.mt5.symbols_total()
             return syms
@@ -913,6 +1045,14 @@ class BackTestEngine:
 
     @error_handler
     async def get_symbols(self, *, group: str = "") -> tuple[SymbolInfo, ...]:
+        """Get the symbols available in the terminal. Filter by group if provided.
+
+        Args:
+            group (str): The group to filter by (default is "")
+
+        Returns:
+            tuple[SymbolInfo, ...]: A tuple of symbol information
+        """
         if self.use_terminal:
             syms = await self.mt5.symbols_get(group=group)
             return syms
@@ -920,10 +1060,23 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_account_info(self) -> AccountInfo:
+        """Get the account information
+
+        Returns:
+            AccountInfo: The account information
+        """
         return AccountInfo(self._account.asdict().values())
 
     @error_handler
-    async def get_symbol_info_tick(self, *, symbol: str) -> Tick | None:
+    async def get_symbol_info_tick(self, *, symbol: str) -> Tick:
+        """Get the price tick for a symbol at the current time
+
+        Args:
+            symbol (str): The symbol
+
+        Returns:
+            Tick: The price tick
+        """
         tick = await self.get_price_tick(symbol=symbol, time=self.cursor.time)
         return tick
 
@@ -937,6 +1090,14 @@ class BackTestEngine:
 
     @error_handler
     async def get_symbol_info(self, *, symbol: str) -> SymbolInfo:
+        """Get the symbol information
+
+        Args:
+            symbol (str): The symbol to get information for
+
+        Returns:
+            SymbolInfo: The symbol information
+        """
         if self.use_terminal:
             info = await self._symbol_info(symbol=symbol)
         else:
@@ -957,6 +1118,17 @@ class BackTestEngine:
 
     @error_handler
     async def get_rates_from(self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int) -> np.ndarray:
+        """Get rates from a specific date to the current date. Used by the backtester to get rates for a symbol
+
+        Args:
+            symbol (str): The symbol to get rates for
+            timeframe (TimeFrame): The timeframe of the rates
+            date_from (datetime | float): The date from which to get the rates
+            count (int): The number of rates to get
+
+        Returns:
+            np.ndarray: An array of rates
+        """
         date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
         if self.use_terminal:
             rates = await self.mt5.copy_rates_from(symbol, timeframe, date_from, count)
@@ -970,6 +1142,17 @@ class BackTestEngine:
 
     @error_handler
     async def get_rates_from_pos(self, *, symbol: str, timeframe: TimeFrame, start_pos: int, count: int) -> np.ndarray:
+        """Get a number of rates counting from a specific position. With position zero being the current time.
+
+        Args:
+            symbol (str): The symbol to get rates for
+            timeframe (TimeFrame): The timeframe of the rates
+            start_pos (int): The position to start from
+            count (int): The number of rates to get
+
+        Returns:
+            np.ndarray: An array of rates
+        """
         if self.use_terminal:
             current_time = self.cursor.time if start_pos == 0 else self.cursor.time - start_pos * timeframe.seconds
             current_time = round_up(current_time, timeframe.seconds)
@@ -988,7 +1171,19 @@ class BackTestEngine:
         return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates))
 
     @error_handler
-    async def get_rates_range(self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float, date_to: datetime | float) -> np.ndarray:
+    async def get_rates_range(self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float,
+                              date_to: datetime | float) -> np.ndarray:
+        """Get rates within a specific date range. Used by the backtester to get rates for a symbol
+
+        Args:
+            symbol (str): The symbol to get rates for
+            timeframe (TimeFrame): The timeframe of the rates
+            date_from (datetime | float): The date from which to get the rates
+            date_to (datetime | float): The date to which to get the rates
+
+        Returns:
+            np.ndarray: An array of rates
+        """
         date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
         date_to = date_to.astimezone(tz=UTC) if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to, tz=UTC)
         if self.use_terminal:
@@ -1002,7 +1197,18 @@ class BackTestEngine:
         return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates))
 
     @error_handler
-    async def get_ticks_from(self, *, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks = CopyTicks.ALL) -> np.ndarray:
+    async def get_ticks_from(self, *, symbol: str, date_from: datetime | float, count: int,
+                             flags: CopyTicks = CopyTicks.ALL) -> np.ndarray:
+        """Get a specified number of ticks counting from a specific date.
+        Args:
+            symbol (str): The symbol to get ticks for
+            date_from (datetime | float): The date from which to get the ticks
+            count (int): The number of ticks to get
+            flags (CopyTicks): The flags to use when getting the ticks
+
+        Returns:
+            np.ndarray: An array of ticks
+        """
         date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
         if self.use_terminal:
             ticks = await self.mt5.copy_ticks_from(symbol, date_from, count, flags)
@@ -1017,6 +1223,17 @@ class BackTestEngine:
     async def get_ticks_range(
         self, *, symbol: str, date_from: datetime | float, date_to: datetime | float, flags: CopyTicks = CopyTicks.ALL
     ) -> np.ndarray:
+        """Get ticks within a specific date range.
+
+        Args:
+            symbol (str): The symbol to get ticks for
+            date_from (datetime | float): The date from which to get the ticks
+            date_to (datetime | float): The date to which to get the ticks
+            flags (CopyTicks): The flags to use when getting the ticks
+
+        Returns:
+            np.ndarray: An array of ticks
+        """
         date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
         date_to = date_to.astimezone(tz=UTC) if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to, tz=UTC)
         if self.use_terminal:
@@ -1031,8 +1248,21 @@ class BackTestEngine:
 
     @error_handler
     async def order_calc_margin(
-        self, *, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float, price: float, use_terminal: bool = None
-    ):
+        self, *, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float,
+            price: float, use_terminal: bool = None):
+        """Calculate the margin required for a trade.
+
+        Args:
+            action (Literal[OrderType.BUY, OrderType.SELL]): Type of order
+            symbol (str): Symbol name
+            volume (float): Volume of the trade
+            price (float): The price at which the trade is opened
+            use_terminal (bool): A flag to override the use_terminal attribute. If true, the terminal will be used
+             even if the use_terminal attribute is True.
+
+        Returns:
+            float: The margin required for the trade
+        """
         use_terminal = use_terminal if use_terminal is not None else self.use_terminal
         if use_terminal:
             return await self.mt5.order_calc_margin(action, symbol, volume, price)
@@ -1045,8 +1275,23 @@ class BackTestEngine:
 
     @error_handler
     async def order_calc_profit(
-        self, *, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float, price_open: float, price_close: float, use_terminal=None
-    ):
+        self, *, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float,
+            price_open: float, price_close: float, use_terminal=None):
+        """
+        Calculate the profit for a trade.
+
+        Args:
+            action (Literal[OrderType.BUY, OrderType.SELL]): Type of order
+            symbol (str): Symbol name
+            volume (float): Volume of the trade
+            price_open (float): The price at which the trade is opened
+            price_close (float): The price at which the trade is closed
+            use_terminal (bool): A flag to override the use_terminal attribute. If true, the terminal will be used
+             even if the use_terminal attribute is True.
+
+        Returns:
+            float: The profit of the trade
+        """
         use_terminal = use_terminal if use_terminal is not None else self.use_terminal
 
         if use_terminal:
@@ -1060,8 +1305,7 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_orders_total(self) -> int:
-        """
-        Get the total number of pending orders.
+        """Get the total number of pending orders.
 
         Returns:
             int: Total number of pending orders
@@ -1070,8 +1314,7 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_orders(self, *, symbol: str = "", group: str = "", ticket: int = None) -> tuple[TradeOrder, ...]:
-        """
-        Get pending orders from the terminal history. This has to do with pending orders, which this backtester
+        """Get pending orders from the terminal history. This has to do with pending orders, which this backtester
         doesn't support yet.
 
         Args:
@@ -1080,7 +1323,7 @@ class BackTestEngine:
             ticket: Order ticket
 
         Returns:
-            tuple[TradeOrder]
+            tuple[TradeOrder, ...]: Pending orders
         """
         if symbol and group and ticket:
             return tuple()
@@ -1088,8 +1331,7 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_positions_total(self) -> int:
-        """
-        Get the total number of open positions.
+        """Get the total number of open positions.
 
         Returns:
             int: Total number of open positions
@@ -1098,23 +1340,21 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_positions(self, *, symbol: str = None, group: str = None, ticket: int = None) -> tuple[TradePosition, ...]:
-        """
-        Get open positions from the terminal history.
+        """Get open positions from the terminal history.
 
-        Keyword Args:
+        Args:
             symbol: The symbol name
             group: Group argument to filter by
             ticket: Position ticket
 
         Returns:
-            tuple[TradePosition]: Open positions
+            tuple[TradePosition, ...]: Open positions
         """
         return self.positions.positions_get(ticket=ticket, symbol=symbol, group=group)
 
     @error_handler_sync
     def get_history_orders_total(self, *, date_from: datetime | float, date_to: datetime | float) -> int:
-        """
-        Get the total number of orders in the terminal history.
+        """Get the total number of orders in the terminal history.
 
         Args:
             date_from: The start date of the history
@@ -1128,12 +1368,11 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_history_orders(
-        self, *, date_from: datetime | float = None, date_to: datetime | float = None, group: str = "", ticket: int = None, position: int = None
-    ) -> tuple[TradeOrder, ...]:
-        """
-        Get orders from the terminal history.
+        self, *, date_from: datetime | float = None, date_to: datetime | float = None, group: str = "",
+            ticket: int = None, position: int = None) -> tuple[TradeOrder, ...]:
+        """Get orders from the terminal history.
 
-        Keyword Args:
+        Args:
             date_from: Date from which to start the history
             date_to: Date to which to end the history
             group: group keyword to filter by
@@ -1141,14 +1380,14 @@ class BackTestEngine:
             position: position id to filter by
 
         Returns:
-            tuple[TradeOrder]: Orders in the history
+            tuple[TradeOrder, ...]: Orders in the history
         """
-        return self.orders.history_orders_get(date_from=date_from, date_to=date_to, group=group, ticket=ticket, position=position)
+        return self.orders.history_orders_get(date_from=date_from, date_to=date_to, group=group,
+                                              ticket=ticket, position=position)
 
     @error_handler_sync
     def get_history_deals_total(self, *, date_from: datetime | float, date_to: datetime | float) -> int:
-        """
-        Get the total number of deals in the terminal history.
+        """Get the total number of deals in the terminal history.
 
         Args:
             date_from: Date from which to start the history
@@ -1161,12 +1400,11 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_history_deals(
-        self, *, date_from: datetime | float = None, date_to: datetime | float = None, group: str = None, position: int = None, ticket: int = None
-    ) -> tuple[TradeDeal, ...]:
-        """
-        Get deals from the terminal history.
+        self, *, date_from: datetime | float = None, date_to: datetime | float = None, group: str = None,
+            position: int = None, ticket: int = None) -> tuple[TradeDeal, ...]:
+        """Get deals from the terminal history.
 
-        Keyword Args:
+        Args:
             date_from: Date from which to start the history
             date_to: Date to which to end the history
             group: group keyword to filter by
@@ -1176,4 +1414,5 @@ class BackTestEngine:
         Returns:
             tuple[TradeDeal, ...]: Deals in the history
         """
-        return self.deals.history_deals_get(date_from=date_from, date_to=date_to, group=group, position=position, ticket=ticket)
+        return self.deals.history_deals_get(date_from=date_from, date_to=date_to, group=group,
+                                            position=position, ticket=ticket)

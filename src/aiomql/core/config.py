@@ -1,4 +1,3 @@
-import inspect
 import os
 from pathlib import Path
 from typing import Iterator, Literal, TypeVar, Self
@@ -12,28 +11,32 @@ Bot = TypeVar("Bot")
 BackTestEngine = TypeVar("BackTestEngine")
 
 
-def func():
-    stack = inspect.stack()
-    calling_context = next(context for context in stack if context.filename != __file__)
-    print(calling_context.filename)
-    return calling_context.filename
-
-
 class Config:
     """A class for handling configuration settings for the aiomql package.
 
     Attributes:
-        record_trades (bool): Whether to keep record of trades or not.
-        trade_record_mode: How to save trade, json or csv. Defaults to json
-        filename (str): Name of the config file
-        records_dir (str): Path to the directory where trade records are saved
-        login (int): Trading account number
-        password (str): Trading account password
-        server (str): Broker server
-        path (str): Path to terminal file
-        timeout (int): Timeout for terminal connection
-        state (dict): A global state dictionary for storing data across the framework
-        root (Path): Root directory of the project
+        login (int): The account login number
+        trade_record_mode (Literal["csv", "json"]): The mode for recording trades
+        password (str): The account password
+        server (str): The account server
+        path (str | Path): The path to the terminal
+        timeout (int): The timeout argument for the terminal
+        filename (str): The filename of the config file
+        state (dict): The
+        root (Path): The root directory of the project
+        record_trades (bool): To record trades or not. Default is True
+        records_dir (Path): The directory to store trade records, relative to the root directory
+        records_dir_name (str): The name of the trade records directory
+        backtest_dir (Path): The directory to store backtest results, relative to the root directory
+        backtest_dir_name (str): The name of the backtest directory
+        task_queue (TaskQueue): The TaskQueue object for handling background tasks
+        _backtest_engine (BackTestEngine): The backtest engine object
+        bot (Bot): The bot object
+        _instance (Self): The instance of the Config class
+        mode (Literal["backtest", "live"]): The trading mode, either backtest or live, default is live
+        use_terminal_for_backtesting (bool): Use the terminal for backtesting, default is True
+        shutdown (bool): A signal to shut down the terminal, default is False
+        force_shutdown (bool): A signal to force shut down the terminal, default is False
 
     Notes:
         By default, the config class looks for a file named aiomql.json.
@@ -41,7 +44,6 @@ class Config:
         or the load_config method.
         By passing reload=True to the load_config method, you can reload and search again for the config file.
     """
-
     login: int
     trade_record_mode: Literal["csv", "json"]
     password: str
@@ -93,6 +95,7 @@ class Config:
         return cls._instance
 
     def __init__(self, **kwargs):
+        """Initialize the Config object. The root directory can be set here or in the load_config method."""
         root = kwargs.pop("root", None)
         if root is not None:
             self.load_config(root=root, **kwargs)
@@ -101,16 +104,18 @@ class Config:
 
     @property
     def backtest_engine(self):
+        """Returns the backtest engine object"""
         return self._backtest_engine
 
     @backtest_engine.setter
     def backtest_engine(self, value: BackTestEngine):
+        """Set the backtest engine object"""
         self._backtest_engine = value
 
     def set_attributes(self, **kwargs):
         """Set keyword arguments as object attributes, The root folder attribute can't be set here.
 
-        Keyword Args:
+        Args:
             **kwargs: Object attributes and values as keyword arguments
         """
         if kwargs.pop("root", None) is not None:
@@ -146,11 +151,11 @@ class Config:
     def load_config(self, *, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Self:
         """Load configuration settings from a file.
 
-        Keyword Args:
+        Args:
             file (str | Path): The absolute path to the config file.
             filename (str): The name of the file to load if file path is not specified. If not provided aiomql.json is used
             root (str): The root directory of the project.
-            kwargs: Additional keyword arguments to set as object attributes.
+            **kwargs: Additional keyword arguments to be set on the config object.
         """
         if root is not None:
             root = Path(root).resolve()
@@ -197,6 +202,6 @@ class Config:
         """Returns Account login details as found in the config object if available
 
         Returns:
-            dict: A dictionary of login details
+            dict[str, int | str]: A dictionary of login details
         """
         return {"login": self.login, "password": self.password, "server": self.server}
