@@ -1,58 +1,55 @@
-# Table of Contents
+# BackTestAccount
 
-* [backtest\_account](#backtest_account)
-  * [BackTestAccount](#backtest_account.BackTestAccount)
-    * [get\_dict](#backtest_account.BackTestAccount.get_dict)
-    * [asdict](#backtest_account.BackTestAccount.asdict)
-    * [set\_attrs](#backtest_account.BackTestAccount.set_attrs)
+## Table of Contents
+- [BackTestAccount](#back_test_account.back_test_account)
+- [get_dict](#back_test_account.back_test_account.get_dict)
+- [asdict](#back_test_account.asdict)
+- [set_attrs](#back_test_account.set_attrs)
 
-<a id="backtest_account"></a>
 
-# backtest\_account
-
-<a id="backtest_account.BackTestAccount"></a>
-
-## BackTestAccount Objects
-
+### BackTestAccount
+<a id="back_test_account.back_test_account"></a>
 ```python
 @dataclass
-class BackTestAccount()
+class BackTestAccount:
 ```
+The `BackTestAccount` class provides data structure for managing account data specifically for backtesting purposes.
 
-Account data for backtesting
+#### Attributes:
+| Name        | Type          | Description                                               |
+|-------------|---------------|-----------------------------------------------------------|
+| `balance`   | `float`       | The account balance for the backtest                      |
+| `equity`    | `float`       | The equity value of the account during the backtest       |
+| `currency`  | `str`         | The currency type used in the backtesting account         |
+| `leverage`  | `float`       | Leverage ratio applied to the backtest account            |
+| `spread`    | `int`         | Spread value applied to simulated trades                  |
 
-<a id="backtest_account.BackTestAccount.get_dict"></a>
 
-#### get\_dict
-
+<a id="back_test_account.get_dict"></a>
+### get_dict
 ```python
-def get_dict(exclude: set = None, include: set = None)
+def get_dict(exclude: set = None, include: set = None) -> dict
 ```
+Returns a dictionary representation of the account data. The `exclude` and `include` parameters allow filtering of data keys.
 
-Returns a dictionary of the account data. Using the exclude and include arguments, you can filter the data
+#### Arguments:
+| Name      | Type  | Description                                              |
+|-----------|-------|----------------------------------------------------------|
+| `exclude` | `set` | A set of attribute names to exclude from the dictionary. |
+| `include` | `set` | A set of attribute names to include in the dictionary.   |
 
-**Arguments**:
 
-- `exclude` _set_ - A set of keys to exclude
-- `include` _set_ - A set of keys to include
-
-<a id="backtest_account.BackTestAccount.asdict"></a>
-
-#### asdict
-
+<a id="back_test_account.asdict"></a>
+### asdict
 ```python
-def asdict()
+def asdict() -> dict
 ```
+Returns a dictionary of all attributes in the account data without filtering.
 
-Returns a dictionary of the account data
 
-<a id="backtest_account.BackTestAccount.set_attrs"></a>
-
-#### set\_attrs
-
+### set_attrs
+<a id="back_test_account.set_attrs"></a>
 ```python
 def set_attrs(**kwargs)
 ```
-
-Se the attributes of the account data to the instance
-
+Sets multiple attributes at once by passing key-value pairs as keyword arguments.

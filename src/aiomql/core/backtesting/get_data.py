@@ -3,7 +3,7 @@ import pickle
 from pathlib import Path
 from datetime import datetime, UTC
 from logging import getLogger
-from typing import Sequence, NamedTuple
+from typing import NamedTuple, Iterable
 
 import MetaTrader5
 from numpy import ndarray
@@ -95,8 +95,8 @@ class GetData:
     """
     data: BackTestData
 
-    def __init__(self, *, start: datetime, end: datetime, symbols: Sequence[str],
-                 timeframes: Sequence[TimeFrame], name: str = ""):
+    def __init__(self, *, start: datetime, end: datetime, symbols: Iterable[str],
+                 timeframes: Iterable[TimeFrame], name: str = ""):
         """
         Get the backtesting data from the MetaTrader5 terminal.
 

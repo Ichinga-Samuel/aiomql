@@ -1,7 +1,7 @@
 # Bot
 
 ## Table of Contents
-- [Bot](#bot.Bot)
+- [Bot](#bot.bot)
 - [\_\_init\_\_](#bot.init)
 - [initialize](#bot.initialize)
 - [execute](#bot.execute)
@@ -13,14 +13,14 @@
 - [add_strategy_all](#bot.add_strategy_all)
 - [process_pool](#bot.run_bots)
 
-<a id='bot.Bot'></a>
+<a id='bot.bot'></a>
 ### Bot
 ```python
 class Bot
 ```
 """The bot class. Create a bot instance to run strategies.
 
-#### Attributes.
+#### Attributes:
 | Name         | Type               | Description                                | Default      |
 |--------------|--------------------|--------------------------------------------|--------------|
 | `account`    | `Account`          | Account Object.                            | None         |
@@ -30,11 +30,12 @@ class Bot
 | `config`     | `Config`           | A Config instance                          | Config()     |
 
 <a id='bot.init'></a>
-### \_\_init\_\_
+### \__init\__
 ```python
 def __init__()
 ```
 Initializes the Bot class.
+
 
 <a id='bot.initialize'></a>
 ### initialize
@@ -52,7 +53,6 @@ Note: *initialize_sync* is a synchronous version of this method.
 | `SystemExit` | If sign in was not successful |
 
 
-
 <a id='bot.execute'></a>
 ### execute
 ```python
@@ -61,6 +61,7 @@ def execute()
 Executes the bot. Use this method to run the bot in a synchronous manner.
 This method is blocking and will not return until the bot is done running.
 
+
 <a id='bot.start'></a>
 ### start
 ```python
@@ -68,13 +69,14 @@ async def start()
 ```
 Initialize the bot and execute it. Similar to calling **execute** method but is asynchronous.
 
+
 <a id='bot.add_coroutine'></a>
 ### add_coroutine
 ```python
 def add_coroutine(self, coroutine: Coroutine, on_separate_thread=False, **kwargs)
 ```
 Add a coroutine to the executor. By default, all coroutines added to the executor run on this same thread,
-using _asyncio.gather_, but if _on_separate_thread_ is true then the coroutine is given it's own thread.
+using `asyncio.gather`, but if `on_separate_thread` is true then the coroutine is given it's own thread.
 
 #### Parameters:
 | Name                 | Type        | Description                                        |
@@ -82,6 +84,7 @@ using _asyncio.gather_, but if _on_separate_thread_ is true then the coroutine i
 | `coroutine`          | `Coroutine` | A coroutine to run in the executor                 |
 | `on_separate_thread` | `bool`      | Run coroutine on a separate thread in the executor |
 | `kwargs`             | `Any`       | Keyword arguments to pass to the coroutine         |
+
 
 <a id='bot.add_function'></a>
 ### add_function
@@ -95,6 +98,7 @@ Add a function to the executor.
 | `function` | `Callable` | A function to run in the executor         |
 | `kwargs`   | `Any`      | Keyword arguments to pass to the function |
 
+
 <a id='bot.add_strategy'></a>
 ### add_strategy
 ```python
@@ -107,16 +111,19 @@ Add a strategy to the list of strategies.
 |------------|------------|-----------------------------------|
 | `strategy` | `Strategy` | A Strategy instance to run on bot |
 
+
 <a id='bot.add_strategies'></a>
 ### add_strategies
 ```python
 def add_strategies(strategies: Iterable[Strategy])
 ```
 Add multiple strategies at the same time
+
 #### Parameters:
 | Name         | Type                 | Description                       |
 |--------------|----------------------|-----------------------------------|
 | `strategies` | `Iterable[Strategy]` | An iterable of Strategy instances |
+
 
 <a id='bot.add_strategy_all'></a>
 ### add_strategy_all
@@ -124,6 +131,7 @@ Add multiple strategies at the same time
 def add_strategy_all(*, strategy: Type[Strategy], params: dict | None = None, symbols: list[Symbol] = None, **kwargs)
 ```
 Use this to run a single strategy on multiple symbols with the same parameters and keyword arguments.
+
 #### Parameters:
 | Name       | Type             | Description                                 |
 |------------|------------------|---------------------------------------------|

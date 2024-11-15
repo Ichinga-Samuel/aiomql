@@ -1,5 +1,5 @@
 class Error:
-    """Error class for handling errors from MetaTrader 5."""
+    """Error class for handling errors"""
 
     descriptions = {
         # common errors

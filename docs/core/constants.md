@@ -9,8 +9,9 @@ MetaTrader 5 constants defined as Enums.
   - [opposite](#ordertype.opposite)
 - [BookType](#BookType)
 - [TimeFrame](#TimeFrame)
-  - [time](#timeframe.time)
-  - [get](#timeframe.get)
+  - [get_timeframe](#timeframe.get_timeframe)
+  - [seconds](#timeframe.seconds)
+  - [all](#timeframe.all)
 - [CopyTicks](#CopyTicks)
 - [PositionType](#PositionType)
 - [PositionReason](#PositionReason)
@@ -156,41 +157,43 @@ TIMEFRAME Enum.
 | `W1`  | 604800  | One Week        |
 | `MN1` | 2592000 | One Month       |
 
-<a id="timeframe.get"></a> 
-### get
-```python
-@classmethod
-    def get(cls, time: int) -> 'TimeFrame':
-```
-Gets the TIMEFRAME enum value from a time in seconds
-#### Parameters
-| Name  | Type | Description          |
-|-------|------|----------------------|
-| time  | int  | The time in seconds  |
-#### Returns
-| Type       | Description                          |
-|------------|--------------------------------------|
-| TimeFrame  | The TIMEFRAME enum value             |
 
-<a id="timeframe.time"></a>
-### time
+<a id="timeframe.seconds"></a> 
+### seconds
 ```python
 @property
-def time()
+def seconds() -> int
 ```
 The number of seconds in a TIMEFRAME
-#### Returns
-| Type | Description                          |
-|------|--------------------------------------|
-| int  | The number of seconds in a TIMEFRAME |
 
-<a id="TimeFrame.example"></a>
-### Example
 
+<a id="timeframe.get_timeframe"></a>
+#### get_timeframe
 ```python
-t = TimeFrame.H1
-print(t.seconds)  # 3600
+@property
+def get_timeframe()
 ```
+Get a timeframe object from a time value in seconds
+
+#### Returns:
+| Type      | Description                 |
+|-----------|-----------------------------|
+| TimeFrame | The corresponding timeframe |
+
+
+<a id="timeframe.all"></a>
+#### all
+```python
+@classmethod
+def all()
+```
+Get all the timeframes
+
+#### Returns:
+| Type                  | Description                 |
+|-----------------------|-----------------------------|
+| tuple[TimeFrame, ...] | All the timeframes          |
+
 
 <a id="CopyTicks"></a>
 ## CopyTicks

@@ -39,10 +39,12 @@ class Config:
         force_shutdown (bool): A signal to force shut down the terminal, default is False
 
     Notes:
-        By default, the config class looks for a file named aiomql.json.
-        You can change this by passing the filename and/or the config_dir keyword argument(s) to the constructor
-        or the load_config method.
-        By passing reload=True to the load_config method, you can reload and search again for the config file.
+        By default, the config class looks for a file named aiomql.json. This can be changed by setting the filename
+        attribute to the desired file name. The root directory of the project can be set by passing the root argument
+        to the load_config method or during object instantiation. If not provided it is assumed to be the current working
+        directory. All directories and files are assumed to be relative to the root directory except when an absolute path
+        is provided, this includes the config file, the records_dir and the backtest_dir attributes.
+        The root directory is used to locate the config file and to set the records_dir and backtest_dir attributes.
     """
     login: int
     trade_record_mode: Literal["csv", "json"]
@@ -113,13 +115,13 @@ class Config:
         self._backtest_engine = value
 
     def set_attributes(self, **kwargs):
-        """Set keyword arguments as object attributes, The root folder attribute can't be set here.
+        """Set keyword arguments as object attributes. The root folder attribute can't be set here.
 
         Args:
             **kwargs: Object attributes and values as keyword arguments
         """
         if kwargs.pop("root", None) is not None:
-            logger.warning("Tried setting root from set_attributes. Use load_config to change project root")
+            logger.debug("Tried setting root from set_attributes. Use load_config to change project root")
         [setattr(self, key, value) for key, value in kwargs.items()]
 
     @staticmethod
@@ -149,7 +151,7 @@ class Config:
             return
 
     def load_config(self, *, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Self:
-        """Load configuration settings from a file.
+        """Load configuration settings from a file and reset the config object.
 
         Args:
             file (str | Path): The absolute path to the config file.
