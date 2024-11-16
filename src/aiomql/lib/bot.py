@@ -67,9 +67,9 @@ class Bot:
             self.add_coroutine(coroutine=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
-                logger.warning("No strategies were added to the bot. Exiting after 10 seconds")
-                await asyncio.sleep(10)
-                raise SystemExit
+                logger.warning("No strategies were added to the bot. Exiting in five seconds")
+                await asyncio.sleep(5)
+                self.config.shutdown = True
         except Exception as err:
             logger.error("%s: Bot initialization failed", err)
             raise SystemExit
@@ -93,8 +93,9 @@ class Bot:
             self.add_coroutine(coroutine=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
-                logger.warning("No strategies were added to the bot. Exiting after 10 seconds")
-                time.sleep(10)
+                logger.warning("No strategies were added to the bot. Exiting in 5 seconds")
+                time.sleep(5)
+                self.config.shutdown = True
         except Exception as err:
             logger.error("%s: Bot initialization failed", err)
             raise SystemExit

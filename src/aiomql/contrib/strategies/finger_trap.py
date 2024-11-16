@@ -60,8 +60,6 @@ class FingerTrap(Strategy):
 
             else:
                 self.tracker.update(trend="ranging", snooze=self.ttf.seconds, order_type=None)
-
-            self.tracker.update(trend="bullish")  #Todo remove this line
         except Exception as err:
             logger.error(f"{err} for {self.symbol} in {self.__class__.__name__}.check_trend")
             self.tracker.update(snooze=self.ttf.seconds, order_type=None)
@@ -80,10 +78,10 @@ class FingerTrap(Strategy):
             candles["cbe"] = candles.ta_lib.cross(candles.close, candles.ema, above=False)
             current = candles[-1]
 
-            if True or self.tracker.bullish and current.cae:
+            if self.tracker.bullish and current.cae:
                 sl = find_bullish_fractal(candles).low
                 self.tracker.update(snooze=self.ttf.seconds, order_type=OrderType.BUY, sl=sl)
-            elif True or self.tracker.bearish and current.cbe:
+            elif self.tracker.bearish and current.cbe:
                 sl = find_bearish_fractal(candles).high
                 self.tracker.update(snooze=self.ttf.seconds, order_type=OrderType.SELL, sl=sl)
             else:
@@ -102,12 +100,11 @@ class FingerTrap(Strategy):
             await self.watch_market()
             if self.tracker.new is False:
                 await self.sleep(secs=5)
-                return
-            if self.tracker.order_type is None:
+            elif self.tracker.order_type is None:
                 await self.sleep(secs=self.tracker.snooze)
-                return
-            await self.trader.place_trade(order_type=self.tracker.order_type, parameters=self.parameters,
-                                          sl=self.tracker.sl)
+            else:
+                await self.trader.place_trade(order_type=self.tracker.order_type, parameters=self.parameters,
+                                              sl=self.tracker.sl)
             await self.sleep(secs=self.tracker.snooze)
         except Exception as err:
             logger.error(f"{err} For {self.symbol} in {self.__class__.__name__}.trade")
