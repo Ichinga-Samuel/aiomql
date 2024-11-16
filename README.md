@@ -194,16 +194,23 @@ class EMAXOver(Strategy):
         else:
             await self.trader.place_trade(order_type=self.tracker.order_type, parameters=self.parameters)
             await self.delay(secs=self.tracker.snooze)
-
 ```
 
-## API Documentation
+### Testing
+
+Run the tests with pytest
+
+```bash
+pytest test 
+```
+
+### API Documentation
 see [API Documentation](docs) for more details
 
-## Contributing
+### Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-## Support
+### Support
 Feeling generous, like the package or want to see it become a more mature package?
 
 Consider supporting the project by buying me a coffee.
