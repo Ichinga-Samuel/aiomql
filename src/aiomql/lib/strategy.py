@@ -117,11 +117,15 @@ class Strategy(ABC):
         else:
             await self.live_sleep(secs=secs)
 
-    async def backtest_sleep(self, *, secs: float):
+    async def delay(self, *, secs: float):
+        """Sleep for the input amount of seconds"""
+        if self.config.mode == "backtest":
+            await self._backtest_sleep(secs=secs)
+        else:
+            await asyncio.sleep(secs)
+
+    async def _backtest_sleep(self, *, secs: float):
         try:
-            _time = self.config.backtest_engine.cursor.time
-            mod = _time % secs
-            secs = secs - mod if mod != 0 else mod
             if self.backtest_controller.parties == 2:
                 steps = int(secs) // self.config.backtest_engine.speed
                 steps = max(steps, 1)
@@ -134,6 +138,21 @@ class Strategy(ABC):
                     self.backtest_controller.wait()
             else:
                 self.backtest_controller.wait()
+        except Exception as err:
+            self.backtest_controller.wait()
+            logger.error("Error: %s in backtest_sleep", err)
+
+    async def backtest_sleep(self, *, secs: float):
+        """Sleep for the needed amount of seconds in between requests to the terminal.
+
+        Args:
+            secs (float): The time in seconds. Usually the timeframe you are trading on.
+        """
+        try:
+            _time = self.config.backtest_engine.cursor.time
+            mod = _time % secs
+            secs = secs - mod if mod != 0 else mod
+            await self._backtest_sleep(secs=secs)
         except Exception as err:
             logger.error("Error: %s in backtest_sleep", err)
 

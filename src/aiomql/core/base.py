@@ -35,7 +35,11 @@ class Base:
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        kv = [(k, v) for k, v in self.__dict__.items() if not k.startswith("_") and (type(v) in (int, float, str) or isinstance(v, enum.Enum))]
+        kv = [
+            (k, v)
+            for k, v in self.__dict__.items()
+            if not k.startswith("_") and (type(v) in (int, float, str) or isinstance(v, enum.Enum))
+        ]
         args = ", ".join("%s=%s" % (i, j) for i, j in kv[:3])
         args = args if len(kv) <= 3 else args + " ... " + ", ".join("%s=%s" % (i, j) for i, j in kv[-1:])
         return "%(class)s(%(args)s)" % {"class": self.__class__.__name__, "args": args}
@@ -120,7 +124,11 @@ class Base:
         """
         try:
             _filter = self.exclude.difference(self.include)
-            return {key: value for key, value in (self.class_vars | self.__dict__).items() if key not in _filter and value is not None}
+            return {
+                key: value
+                for key, value in (self.class_vars | self.__dict__).items()
+                if key not in _filter and value is not None
+            }
         except Exception as err:
             logger.warning(err)
 
@@ -129,6 +137,7 @@ class _Base(Base):
     """Base class that provides access to the MetaTrader and Config classes as well as the MetaBackTester class for
     backtesting mode.
     """
+
     def __init__(self, **kwargs):
         self.config = Config()
         self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()

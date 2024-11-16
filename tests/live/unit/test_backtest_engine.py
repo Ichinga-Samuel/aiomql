@@ -14,7 +14,13 @@ class TestBackTestEngine:
     def setup_class(cls):
         cls.start = datetime(2024, 2, 1)
         cls.end = datetime(2024, 2, 7)
-        cls.g_data = GetData(start=cls.start, end=cls.end, symbols=["BTCUSD", "SOLUSD"], timeframes=[TimeFrame.H1, TimeFrame.H2], name="test_engine")
+        cls.g_data = GetData(
+            start=cls.start,
+            end=cls.end,
+            symbols=["BTCUSD", "SOLUSD"],
+            timeframes=[TimeFrame.H1, TimeFrame.H2],
+            name="test_engine",
+        )
         cls.bte = BackTestEngine(start=cls.start, end=cls.end, assign_to_config=True, preload=False)
 
     @pytest.fixture(scope="class")
@@ -27,7 +33,13 @@ class TestBackTestEngine:
     @pytest.fixture(scope="class")
     async def sell_order(self):
         sym = await self.bte.get_symbol_info(symbol="BTCUSD")
-        request = {"type": OrderType.SELL, "symbol": "BTCUSD", "volume": sym.volume_min, "price": sym.bid, "action": TradeAction.DEAL}
+        request = {
+            "type": OrderType.SELL,
+            "symbol": "BTCUSD",
+            "volume": sym.volume_min,
+            "price": sym.bid,
+            "action": TradeAction.DEAL,
+        }
         return request
 
     @pytest.fixture(scope="class")
@@ -47,7 +59,8 @@ class TestBackTestEngine:
         }
         return request
 
-    def modify_stops(self, order): ...
+    def modify_stops(self, order):
+        ...
 
     def test_span_and_range(self):
         assert self.bte.range == range(0, int((self.end - self.start).total_seconds()), self.bte.speed)
@@ -255,10 +268,14 @@ class TestBackTestEngine:
         bte2.go_to(time=moment)
         sym = "BTCUSD"
         sym_info = await self.bte.get_symbol_info(symbol=sym)
-        margin = await self.bte.order_calc_margin(action=OrderType.SELL, symbol=sym, volume=sym_info.volume_min, price=sym_info.bid)
+        margin = await self.bte.order_calc_margin(
+            action=OrderType.SELL, symbol=sym, volume=sym_info.volume_min, price=sym_info.bid
+        )
         assert margin > 0
         sym_info2 = await self.bte.get_symbol_info(symbol=sym)
-        margin2 = await bte2.order_calc_margin(action=OrderType.SELL, symbol=sym, volume=sym_info2.volume_min, price=sym_info2.bid)
+        margin2 = await bte2.order_calc_margin(
+            action=OrderType.SELL, symbol=sym, volume=sym_info2.volume_min, price=sym_info2.bid
+        )
         assert margin2 > 0
 
     async def test_order_check(self, buy_order, sell_order):

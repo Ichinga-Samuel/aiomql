@@ -81,7 +81,14 @@ class Positions:
             volume (float): Volume to close.
             order_type (OrderType): Order type.
         """
-        order = Order(action=TradeAction.DEAL, price=price, position=ticket, symbol=symbol, volume=volume, type=order_type.opposite)
+        order = Order(
+            action=TradeAction.DEAL,
+            price=price,
+            position=ticket,
+            symbol=symbol,
+            volume=volume,
+            type=order_type.opposite,
+        )
         return await order.send()
 
     async def close_position_by_ticket(self, *, ticket: int) -> OrderSendResult | None:
@@ -119,5 +126,7 @@ class Positions:
             int: Return number of positions closed.
         """
         positions = self.positions or await self.get_positions()
-        results = await asyncio.gather(*(self.close_position(position=position) for position in positions), return_exceptions=True)
+        results = await asyncio.gather(
+            *(self.close_position(position=position) for position in positions), return_exceptions=True
+        )
         return len([res for res in results if (isinstance(res, OrderSendResult) and res.retcode == 10009)])

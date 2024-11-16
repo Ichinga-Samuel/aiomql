@@ -30,7 +30,11 @@ class Chaos(Strategy):
     async def check_trend(self):
         try:
             candles = await self.symbol.copy_rates_from_pos(timeframe=self.htf, count=self.hcc)
-            if (current := candles[-1]) and current.time < self.tracker.trend_time and current.close == self.tracker.last_trend_price:
+            if (
+                (current := candles[-1])
+                and current.time < self.tracker.trend_time
+                and current.close == self.tracker.last_trend_price
+            ):
                 self.tracker.update(new=False, order_type=None, snooze=5)
                 return
             self.tracker.update(new=True, trend_time=current.time, last_trend_price=current.close)

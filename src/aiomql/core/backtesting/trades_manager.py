@@ -42,6 +42,7 @@ class TradeManager(Generic[TradeData]):
         >>> pos in manager
         False
     """
+
     _data: dict[int, TradeData]
 
     def __init__(self, *, data: dict = None):
@@ -112,6 +113,7 @@ class PositionsManager(TradeManager):
         _open_positions (set[int]): The open positions.
         margins (dict[int, float]): The margins of the open positions.
     """
+
     _data: dict[int, TradePosition]
     _open_positions: set[int]
     margins: dict[int, float]
@@ -240,8 +242,9 @@ class PositionsManager(TradeManager):
 
 class OrdersManager(TradeManager):
     """Managers orders data during a backtest. It is a subclass of TradeManager. It manages access to the historical
-     orders data
+    orders data
     """
+
     _data = dict[int, TradeOrder]
 
     def get_orders_range(self, *, date_from: float, date_to: float) -> tuple[TradeData, ...]:
@@ -258,8 +261,15 @@ class OrdersManager(TradeManager):
         end = date_to.timestamp() if isinstance(date_to, datetime) else date_to
         return tuple(order for order in self.values() if start <= order.time_setup <= end)
 
-    def history_orders_get(self, *, date_from: float | datetime = None, date_to: float | datetime = None,
-                           group: str = "", ticket: int = None, position: int = None) -> tuple[TradeOrder, ...]:
+    def history_orders_get(
+        self,
+        *,
+        date_from: float | datetime = None,
+        date_to: float | datetime = None,
+        group: str = "",
+        ticket: int = None,
+        position: int = None,
+    ) -> tuple[TradeOrder, ...]:
         """Get historical orders. Given the start and end date of the range, the group, ticket, or position of the
          orders.
 
@@ -272,7 +282,7 @@ class OrdersManager(TradeManager):
 
         Returns:
             tuple[TradeOrder, ...]: The historical orders.
-         """
+        """
         if date_from and date_to:
             orders = self.get_orders_range(date_from=date_from, date_to=date_to)
             if group:
@@ -314,8 +324,15 @@ class DealsManager(TradeManager):
         end = date_to.timestamp() if isinstance(date_to, datetime) else date_to
         return tuple(deal for deal in self.values() if start <= deal.time <= end)
 
-    def history_deals_get(self, *, date_from: float | datetime = None, date_to: float | datetime = None,
-                          group: str = "", ticket: int = None, position: int = None) -> tuple[TradeDeal, ...]:
+    def history_deals_get(
+        self,
+        *,
+        date_from: float | datetime = None,
+        date_to: float | datetime = None,
+        group: str = "",
+        ticket: int = None,
+        position: int = None,
+    ) -> tuple[TradeDeal, ...]:
         """History deals get. Given the start and end date of the range, the group, ticket, or position of the deals.
 
         Args:

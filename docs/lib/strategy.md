@@ -3,8 +3,9 @@ The base class for creating strategies.
 
 ## Table of Contents
 - [Strategy](#strategy.strategy)
-- [\_\_init\_\_](#strategy.__init__)
+- [\__init\__](#strategy.__init__)
 - [sleep](#strategy.sleep)
+- [delay](#strategy.delay)
 - [live_sleep](#strategy.live_sleep)
 - [backtest_sleep](#strategy.backtest_sleep)
 - [run_strategy](#strategy.run_strategy)
@@ -54,8 +55,7 @@ Initiate the parameters dict and add name and symbol fields. Use class name as s
 <a id="strategy.sleep"></a>
 ### sleep
 ```python
-@staticmethod
-async def sleep(secs: float)
+async def sleep(*, secs: float)
 ```
 Sleep for the needed amount of seconds in between requests to the terminal.
 computes the accurate amount of time needed to sleep ensuring that the next request is made at the start of
@@ -66,6 +66,14 @@ This method calls the `live_sleep` method during live trading or `backtest_sleep
 | Name   | Type    | Description                                                    | Default |
 |--------|---------|----------------------------------------------------------------|---------|
 | `secs` | `float` | The time in seconds. Usually the timeframe you are trading on. | None    |
+
+
+<a id="strategy.delay"></a>
+### delay
+```python
+async def delay(*, secs: float)
+```
+Sleep for the needed amount of seconds specified in the parameter.
 
 
 <a id="strategy.live_sleep"></a>

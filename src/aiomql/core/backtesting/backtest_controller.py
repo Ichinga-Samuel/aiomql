@@ -23,11 +23,11 @@ class BackTestController:
         tasks (list[Task]): The tasks that are being run
         barrier (Barrier): The barrier for synchronizing the tasks
     """
+
     _instance: Self
     config: Config
     tasks: list[Task]
     barrier: Barrier
-
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
@@ -76,15 +76,20 @@ class BackTestController:
             while True:
                 pending = self.wait()
                 # all main tasks have been completed in the current cycle
-                if pending == 0:  
+                if pending == 0:
                     await self.backtest_engine.tracker()
                     self.backtest_engine.next()
                     # gives an output every 6 hours
                     if self.backtest_engine.cursor.time % (3600 * 6) == 0:
-                        logger.info(datetime.strftime(datetime.fromtimestamp(self.backtest_engine.cursor.time), "%Y-%m-%d %H:%M:%S"))
+                        logger.info(
+                            datetime.strftime(
+                                datetime.fromtimestamp(self.backtest_engine.cursor.time), "%Y-%m-%d %H:%M:%S"
+                            )
+                        )
                 if self.backtest_engine.stop_testing:
                     logger.info(
-                        "Stop trading called in control at %s", datetime.fromtimestamp(self.backtest_engine.cursor.time).strftime("%Y-%m-%d %H:%M:%S")
+                        "Stop trading called in control at %s",
+                        datetime.fromtimestamp(self.backtest_engine.cursor.time).strftime("%Y-%m-%d %H:%M:%S"),
                     )
                     break
             await self.backtest_engine.wrap_up()

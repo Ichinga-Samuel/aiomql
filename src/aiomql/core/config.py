@@ -46,6 +46,7 @@ class Config:
         is provided, this includes the config file, the records_dir and the backtest_dir attributes.
         The root directory is used to locate the config file and to set the records_dir and backtest_dir attributes.
     """
+
     login: int
     trade_record_mode: Literal["csv", "json"]
     password: str
@@ -190,7 +191,9 @@ class Config:
         if self.path:
             self.path = self.root / self.path if not Path(self.path).resolve().exists() else self.path
 
-        if self.record_trades and (hasattr(self, "records_dir") is False or self.records_dir is None or root is not None):
+        if self.record_trades and (
+            hasattr(self, "records_dir") is False or self.records_dir is None or root is not None
+        ):
             self.records_dir = self.root / self.records_dir_name
             self.records_dir.mkdir(parents=True, exist_ok=True)
 

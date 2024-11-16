@@ -27,8 +27,9 @@ class QueueItem:
             if asyncio.iscoroutinefunction(self.task_item):
                 await self.task_item(*self.args, **self.kwargs)
         except Exception as err:
-            logger.error(f"Error {err} occurred in {self.task_item.__name__} with args {self.args} and kwargs"
-                         f" {self.kwargs}")
+            logger.error(
+                f"Error {err} occurred in {self.task_item.__name__} with args {self.args} and kwargs" f" {self.kwargs}"
+            )
 
 
 class TaskQueue:
@@ -57,9 +58,16 @@ class TaskQueue:
         - `priority_tasks` (set): A set to store the QueueItems that must complete before the queue stops.
     """
 
-    def __init__(self, size: int = 0, workers: int = 10, timeout: int = None, queue: asyncio.Queue = None,
-                 on_exit: Literal["cancel", "complete_priority"] = "complete_priority",
-                 mode: Literal["finite", "infinite"] = "infinite", worker_timeout: int = 60):
+    def __init__(
+        self,
+        size: int = 0,
+        workers: int = 10,
+        timeout: int = None,
+        queue: asyncio.Queue = None,
+        on_exit: Literal["cancel", "complete_priority"] = "complete_priority",
+        mode: Literal["finite", "infinite"] = "infinite",
+        worker_timeout: int = 60,
+    ):
         self.queue = queue or asyncio.PriorityQueue(maxsize=size)
         self.workers = workers
         self.tasks = []
@@ -140,7 +148,9 @@ class TaskQueue:
             await main_task
 
         except TimeoutError:
-            logger.warning("Timed out after %d seconds, %d tasks remaining", time.perf_counter() - start, self.queue.qsize())
+            logger.warning(
+                "Timed out after %d seconds, %d tasks remaining", time.perf_counter() - start, self.queue.qsize()
+            )
             self.stop = True
 
         except asyncio.CancelledError as _:

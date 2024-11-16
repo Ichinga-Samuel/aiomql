@@ -14,7 +14,9 @@ class TestGetData:
         cls.end = datetime(2024, 2, 2, tzinfo=UTC)
         cls.symbols = ["BTCUSD", "ETHUSD"]
         cls.timeframes = [TimeFrame.H1, TimeFrame.H2]
-        cls.g_data = GetData(start=cls.start, end=cls.end, symbols=cls.symbols, timeframes=cls.timeframes, name="test_data")
+        cls.g_data = GetData(
+            start=cls.start, end=cls.end, symbols=cls.symbols, timeframes=cls.timeframes, name="test_data"
+        )
 
     @pytest.fixture(scope="class", autouse=True)
     async def get_data(self):

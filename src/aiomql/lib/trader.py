@@ -82,7 +82,9 @@ class Trader(ABC):
         elif self.order.type == OrderType.SELL:
             self.order.sl, self.order.tp = round(price + sl, self.symbol.digits), round(price - tp, digits)
 
-    async def create_order_with_stops(self, *, order_type: OrderType, sl: float, tp: float, amount_to_risk: float = None):
+    async def create_order_with_stops(
+        self, *, order_type: OrderType, sl: float, tp: float, amount_to_risk: float = None
+    ):
         """Create an order with stop loss and take profit levels. Use the amount to risk per trade to
         calculate the volume.
 
@@ -100,7 +102,9 @@ class Trader(ABC):
         volume = await self.symbol.compute_volume_sl(amount=amount, price=price, sl=sl)
         self.order.set_attributes(sl=sl, tp=tp, volume=volume, price=price, type=order_type)
 
-    async def create_order_with_sl(self, *, order_type: OrderType, sl: float, amount_to_risk: float = None, risk_to_reward: float = None):
+    async def create_order_with_sl(
+        self, *, order_type: OrderType, sl: float, amount_to_risk: float = None, risk_to_reward: float = None
+    ):
         """
         Create an order with a given stop_loss level. Use the amount to risk per trade to calculate the volume.
 
@@ -122,7 +126,9 @@ class Trader(ABC):
         volume = await self.symbol.compute_volume_sl(amount=amount, price=price, sl=sl)
         self.order.set_attributes(sl=sl, tp=tp, volume=volume, price=price, type=order_type)
 
-    async def create_order_with_points(self, *, order_type: OrderType, points: float, amount_to_risk: float = None, risk_to_reward: float = None):
+    async def create_order_with_points(
+        self, *, order_type: OrderType, points: float, amount_to_risk: float = None, risk_to_reward: float = None
+    ):
         """Create an order with specific points to risk. Use the amount to risk per trade to calculate the volume.
 
         Args:
@@ -167,18 +173,18 @@ class Trader(ABC):
             return check
 
         if check.retcode != 0:
-            logger.warning(f"Invalid order for due to {check.comment}")
+            logger.warning("Invalid order %s, for due to %s", self.symbol, check.comment)
         return check
 
     async def send_order(self) -> OrderSendResult | None:
         """Send the order to the broker."""
         result = await self.order.send()
         if result is None:
-            logger.warning(f"{self.order.mt5.error}: Failed to place order.")
+            logger.warning("%s: Failed to place order.", self.order.mt5.error)
             return result
 
         if result.retcode != 10009:
-            logger.warning(f"Unable to place order for due to {result.comment}")
+            logger.warning("Unable to place order for %s due to %s", self.symbol, result.comment)
             return result
         return result
 
@@ -195,7 +201,11 @@ class Trader(ABC):
         params = {**parameters} or {}
         profit = await self.order.calc_profit()
         params["expected_profit"] = profit
-        date = datetime.now(tz=UTC) if self.config.mode == "live" else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC)
+        date = (
+            datetime.now(tz=UTC)
+            if self.config.mode == "live"
+            else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC)
+        )
         params["date"] = date.strftime("%Y-%m-%d %H:%M:%S.%f")
         res = Result(result=result, parameters=params, name=name)
         self.config.task_queue.add(item=QueueItem(res.save), must_complete=True)

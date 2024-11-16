@@ -36,7 +36,13 @@ class TestRecordsAndResults:
     async def sell(self, mt):
         sym = "BTCUSD"
         sym_info = await mt.symbol_info(sym)
-        return {"action": mt.TRADE_ACTION_DEAL, "symbol": sym, "volume": sym_info.volume_min, "type": mt.ORDER_TYPE_SELL, "price": sym_info.bid}
+        return {
+            "action": mt.TRADE_ACTION_DEAL,
+            "symbol": sym,
+            "volume": sym_info.volume_min,
+            "type": mt.ORDER_TYPE_SELL,
+            "price": sym_info.bid,
+        }
 
     @pytest.fixture(scope="class", autouse=True)
     async def setup(self, sell, buy, mt):
@@ -48,7 +54,12 @@ class TestRecordsAndResults:
         sell_res = Result(result=OrderSendResult(**sell_res._asdict()), name="test_result")
         sell_res_2 = Result(result=OrderSendResult(**sell_res_2._asdict()), name="test_result")
         buy_res_2 = Result(result=OrderSendResult(**buy_res_2._asdict()), name="test_result")
-        await asyncio.gather(buy_res.save(), sell_res.save(), buy_res_2.save(trade_record_mode="json"), sell_res_2.save(trade_record_mode="json"))
+        await asyncio.gather(
+            buy_res.save(),
+            sell_res.save(),
+            buy_res_2.save(trade_record_mode="json"),
+            sell_res_2.save(trade_record_mode="json"),
+        )
         await Positions().close_all()
 
     def test_records_dir(self):

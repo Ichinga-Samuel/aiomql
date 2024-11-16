@@ -21,4 +21,8 @@ async def test_orders_manager(backtest_engine, sell_order, buy_order, period, po
     orders = backtest_engine.orders.history_orders_get(position=bo.order)
     assert len(orders) <= 2
     orders = backtest_engine.orders.get_orders_range(date_from=start, date_to=end)
-    assert len(orders) == backtest_engine.orders.history_orders_total(date_from=start, date_to=end) == len(backtest_engine.orders._data.keys())
+    assert (
+        len(orders)
+        == backtest_engine.orders.history_orders_total(date_from=start, date_to=end)
+        == len(backtest_engine.orders._data.keys())
+    )

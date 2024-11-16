@@ -25,7 +25,18 @@ from MetaTrader5 import (
 )
 
 from ..meta_trader import MetaTrader
-from ..constants import TimeFrame, OrderType, TradeAction, AccountStopOutMode, PositionReason, DealType, DealReason, DealEntry, OrderReason, CopyTicks
+from ..constants import (
+    TimeFrame,
+    OrderType,
+    TradeAction,
+    AccountStopOutMode,
+    PositionReason,
+    DealType,
+    DealReason,
+    DealEntry,
+    OrderReason,
+    CopyTicks,
+)
 
 from ..._utils import round_down, round_up, error_handler, error_handler_sync, async_cache
 
@@ -105,7 +116,7 @@ class BackTestEngine:
 
             name (str, optional): The name of the backtest. Defaults to "". If not provided,
              it is generated from the start and end times.
-            
+
             stop_time (float | datetime, optional): The time to stop the backtest. Defaults to None.
              If a float is passed, it is assumed to be a timestamp. If not given it is assumed to be the end of the backtest range.
 
@@ -154,14 +165,20 @@ class BackTestEngine:
             self.config.backtest_engine = self
         self.setup_test_range(start=start, end=end, speed=speed, restart=restart)
         self.setup_data(restart=restart)
-        start, end = (self.span[0], self.span[-1]) if len(self.span) >= 2 else ((now := datetime.now(UTC).timestamp()), now)
+        start, end = (
+            (self.span[0], self.span[-1]) if len(self.span) >= 2 else ((now := datetime.now(UTC).timestamp()), now)
+        )
         start, end = datetime.fromtimestamp(start, tz=UTC), datetime.fromtimestamp(end, tz=UTC)
         self.name = name or self._data.name or f"backtest_data_{start:%d_%m_%y}_{end:%d_%m_%y}"
         self.stop_testing = False
         self.use_terminal = self.config.use_terminal_for_backtesting if use_terminal is None else use_terminal
         self.close_open_positions_on_exit = close_open_positions_on_exit
         if stop_time is not None:
-            val = stop_time.astimezone(tz=UTC) if isinstance(stop_time, datetime) else datetime.fromtimestamp(stop_time, tz=UTC)
+            val = (
+                stop_time.astimezone(tz=UTC)
+                if isinstance(stop_time, datetime)
+                else datetime.fromtimestamp(stop_time, tz=UTC)
+            )
             stop_time = int(val.timestamp())
         self.stop_time = stop_time
         self.preload = preload
@@ -183,20 +200,21 @@ class BackTestEngine:
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
-    def setup_test_range(self, *, start: float | datetime = None, end: float | datetime = None, speed:
-        int = 60, restart: bool = True):
+    def setup_test_range(
+        self, *, start: float | datetime = None, end: float | datetime = None, speed: int = 60, restart: bool = True
+    ):
         """Setup the test range for the backtest engine. This is used to set the range of the backtest and the speed
          at which it runs.
-        
+
         Args:
             start (float | datetime, optional): The start time of the backtest. Defaults to None. If a float is passed,
              it is assumed to be a timestamp.
-            
+
             end (float | datetime, optional): The end time of the backtest. Defaults to None. If a float is passed,
              it is assumed to be a timestamp.
-            
+
             speed (int, optional): The speed of the backtest. Defaults to 60.
-            
+
             restart (bool, optional): Whether to restart the backtest. Defaults to True.
              This is useful when resuming a backtest using a saved BackTestData.
         """
@@ -229,7 +247,7 @@ class BackTestEngine:
 
         Args:
             restart (bool, optional): Whether to restart the data. Defaults to True.
-         """
+        """
         if restart is True:
             self.orders = OrdersManager()
             self.positions = PositionsManager()
@@ -245,7 +263,9 @@ class BackTestEngine:
         positions = {}
         for ticket, position in self._data.positions.items():
             positions[ticket] = TradePosition((position.get(k) for k in TradePosition.__match_args__))
-        self.positions = PositionsManager(data=positions, open_positions=self._data.open_positions, margins=self._data.margins)
+        self.positions = PositionsManager(
+            data=positions, open_positions=self._data.open_positions, margins=self._data.margins
+        )
 
         deals = {}
         for ticket, deal in self._data.deals.items():
@@ -261,7 +281,7 @@ class BackTestEngine:
     @property
     def data(self):
         """The BackTestData instance used for the backtest. If not provided, a new instance is created,
-         and the data is made persistent when the backtest is stopped."""
+        and the data is made persistent when the backtest is stopped."""
         return self._data
 
     def reset(self, clear_data: bool = False):
@@ -346,7 +366,7 @@ class BackTestEngine:
     @error_handler
     async def wrap_up(self):
         """Wraps up the backtest. This is called at the end of testing to save the results and close all open
-         positions."""
+        positions."""
         if self.close_open_positions_on_exit:
             await self.close_all_open()
         self.save_result_to_json()
@@ -484,10 +504,18 @@ class BackTestEngine:
             ticket (int): Position ticket
         """
         pos = self.positions[ticket]
-        order_type, symbol, volume, price_open, prev_profit = (pos.type, pos.symbol, pos.volume, pos.price_open, pos.profit)
+        order_type, symbol, volume, price_open, prev_profit = (
+            pos.type,
+            pos.symbol,
+            pos.volume,
+            pos.price_open,
+            pos.profit,
+        )
         tick = await self.get_price_tick(symbol=symbol, time=self.cursor.time)
         price_current = tick.bid if order_type == OrderType.BUY else tick.ask
-        profit = await self.order_calc_profit(action=order_type, symbol=symbol, volume=volume, price_open=price_open, price_close=price_current)
+        profit = await self.order_calc_profit(
+            action=order_type, symbol=symbol, volume=volume, price_open=price_open, price_close=price_current
+        )
         kwargs = dict(price_current=price_current, time_update=self.cursor.time)
         kwargs.update(profit=profit) if profit is not None else ...
         self.positions.update(ticket=pos.ticket, **kwargs)
@@ -582,7 +610,9 @@ class BackTestEngine:
         Returns:
             bool: True if the stops are modified successfully, False otherwise
         """
-        self.positions.update(ticket=ticket, sl=sl, tp=tp, time_update=self.cursor.time, time_update_msc=self.cursor.time * 1000)
+        self.positions.update(
+            ticket=ticket, sl=sl, tp=tp, time_update=self.cursor.time, time_update_msc=self.cursor.time * 1000
+        )
         return True
 
     def update_account(self, *, profit: float = None, margin: float = 0, gain: float = 0):
@@ -597,10 +627,14 @@ class BackTestEngine:
         self.account_lock.acquire()
         try:
             self._account.balance += round(gain, self._account.currency_digits)
-            self._account.profit = round(profit, self._account.currency_digits) if profit is not None else self._account.profit
+            self._account.profit = (
+                round(profit, self._account.currency_digits) if profit is not None else self._account.profit
+            )
             self._account.equity = self._account.balance + self._account.profit
             self._account.margin += round(margin, self._account.currency_digits)
-            self._account.margin_free = round(self._account.equity - self._account.margin, self._account.currency_digits)
+            self._account.margin_free = round(
+                self._account.equity - self._account.margin, self._account.currency_digits
+            )
             self._account.balance = round(self._account.balance, self._account.currency_digits)
             self._account.equity = round(self._account.equity, self._account.currency_digits)
             self._account.margin = round(self._account.margin, self._account.currency_digits)
@@ -766,7 +800,11 @@ class BackTestEngine:
             osr["retcode"] = 10018
             return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
-        trade_order = {"external_id": "", "comment": "", **{k: v for k, v in request.items() if k in TradeOrder.__match_args__}}
+        trade_order = {
+            "external_id": "",
+            "comment": "",
+            **{k: v for k, v in request.items() if k in TradeOrder.__match_args__},
+        }
         order_type, symbol = request.get("type"), request.get("symbol", "")
         action, position_id = request.get("action"), request.get("position")
         sl, tp, volume, symbol = (request.get("sl"), request.get("tp"), request.get("volume"), request.get("symbol"))
@@ -820,7 +858,9 @@ class BackTestEngine:
                 self.orders[order.ticket] = order
                 deal = TradeDeal((deal.get(k, 0) for k in TradeDeal.__match_args__))
                 self.deals[deal.ticket] = deal
-                osr.update({"comment": "Request completed", "retcode": 10009, "order": order_ticket, "deal": deal_ticket})
+                osr.update(
+                    {"comment": "Request completed", "retcode": 10009, "order": order_ticket, "deal": deal_ticket}
+                )
             return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
         if action == TradeAction.SLTP and current_position:
@@ -830,7 +870,9 @@ class BackTestEngine:
                 return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
             res = self.modify_stops(ticket=position_id, sl=sl, tp=tp)
             if res:
-                osr.update({"comment": "Request completed", "retcode": 10009, "order": order_ticket, "deal": deal_ticket})
+                osr.update(
+                    {"comment": "Request completed", "retcode": 10009, "order": order_ticket, "deal": deal_ticket}
+                )
             return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
 
         if action == TradeAction.DEAL and order_type in (OrderType.BUY, OrderType.SELL):
@@ -914,7 +956,9 @@ class BackTestEngine:
                     "deal": deal_ticket,
                 }
             )
-            margin = await self.order_calc_margin(action=action, symbol=symbol, volume=volume, price=price, use_terminal=use_terminal)
+            margin = await self.order_calc_margin(
+                action=action, symbol=symbol, volume=volume, price=price, use_terminal=use_terminal
+            )
             self.positions.set_margin(ticket=order_ticket, margin=margin)
             self.update_account(margin=margin)
             return OrderSendResult((osr.get(k, 0) for k in OrderSendResult.__match_args__))
@@ -949,7 +993,9 @@ class BackTestEngine:
 
         # check margin and confirm order can go through for a deal action and buy or sell order type
         if action == TradeAction.DEAL and order_type in (OrderType.BUY, OrderType.SELL) and position_id is None:
-            margin = await self.order_calc_margin(action=action, symbol=symbol, volume=volume, price=price, use_terminal=use_terminal)
+            margin = await self.order_calc_margin(
+                action=action, symbol=symbol, volume=volume, price=price, use_terminal=use_terminal
+            )
             if margin is None:
                 return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
@@ -1002,7 +1048,13 @@ class BackTestEngine:
                 return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
 
         ocr.update(
-            {"balance": self._account.balance, "profit": self._account.profit, "equity": self._account.equity, "comment": "Done", "retcode": 0}
+            {
+                "balance": self._account.balance,
+                "profit": self._account.profit,
+                "equity": self._account.equity,
+                "comment": "Done",
+                "retcode": 0,
+            }
         )
 
         return OrderCheckResult((ocr.get(k, 0) for k in OrderCheckResult.__match_args__))
@@ -1117,7 +1169,9 @@ class BackTestEngine:
         return SymbolInfo((info.get(key) for key in SymbolInfo.__match_args__))
 
     @error_handler
-    async def get_rates_from(self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int) -> np.ndarray:
+    async def get_rates_from(
+        self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float, count: int
+    ) -> np.ndarray:
         """Get rates from a specific date to the current date. Used by the backtester to get rates for a symbol
 
         Args:
@@ -1129,7 +1183,11 @@ class BackTestEngine:
         Returns:
             np.ndarray: An array of rates
         """
-        date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
+        date_from = (
+            date_from.astimezone(tz=UTC)
+            if isinstance(date_from, datetime)
+            else datetime.fromtimestamp(date_from, tz=UTC)
+        )
         if self.use_terminal:
             rates = await self.mt5.copy_rates_from(symbol, timeframe, date_from, count)
             return rates
@@ -1171,8 +1229,9 @@ class BackTestEngine:
         return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates))
 
     @error_handler
-    async def get_rates_range(self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float,
-                              date_to: datetime | float) -> np.ndarray:
+    async def get_rates_range(
+        self, *, symbol: str, timeframe: TimeFrame, date_from: datetime | float, date_to: datetime | float
+    ) -> np.ndarray:
         """Get rates within a specific date range. Used by the backtester to get rates for a symbol
 
         Args:
@@ -1184,8 +1243,14 @@ class BackTestEngine:
         Returns:
             np.ndarray: An array of rates
         """
-        date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
-        date_to = date_to.astimezone(tz=UTC) if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to, tz=UTC)
+        date_from = (
+            date_from.astimezone(tz=UTC)
+            if isinstance(date_from, datetime)
+            else datetime.fromtimestamp(date_from, tz=UTC)
+        )
+        date_to = (
+            date_to.astimezone(tz=UTC) if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to, tz=UTC)
+        )
         if self.use_terminal:
             rates = await self.mt5.copy_rates_range(symbol, timeframe, date_from, date_to)
             return rates
@@ -1197,8 +1262,9 @@ class BackTestEngine:
         return np.fromiter((tuple(i) for i in rates.iloc), dtype=self.get_dtype(df=rates))
 
     @error_handler
-    async def get_ticks_from(self, *, symbol: str, date_from: datetime | float, count: int,
-                             flags: CopyTicks = CopyTicks.ALL) -> np.ndarray:
+    async def get_ticks_from(
+        self, *, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks = CopyTicks.ALL
+    ) -> np.ndarray:
         """Get a specified number of ticks counting from a specific date.
         Args:
             symbol (str): The symbol to get ticks for
@@ -1209,7 +1275,11 @@ class BackTestEngine:
         Returns:
             np.ndarray: An array of ticks
         """
-        date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
+        date_from = (
+            date_from.astimezone(tz=UTC)
+            if isinstance(date_from, datetime)
+            else datetime.fromtimestamp(date_from, tz=UTC)
+        )
         if self.use_terminal:
             ticks = await self.mt5.copy_ticks_from(symbol, date_from, count, flags)
             return ticks
@@ -1234,8 +1304,14 @@ class BackTestEngine:
         Returns:
             np.ndarray: An array of ticks
         """
-        date_from = date_from.astimezone(tz=UTC) if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from, tz=UTC)
-        date_to = date_to.astimezone(tz=UTC) if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to, tz=UTC)
+        date_from = (
+            date_from.astimezone(tz=UTC)
+            if isinstance(date_from, datetime)
+            else datetime.fromtimestamp(date_from, tz=UTC)
+        )
+        date_to = (
+            date_to.astimezone(tz=UTC) if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to, tz=UTC)
+        )
         if self.use_terminal:
             ticks = await self.mt5.copy_ticks_range(symbol, date_from, date_to, flags)
             return ticks
@@ -1248,8 +1324,14 @@ class BackTestEngine:
 
     @error_handler
     async def order_calc_margin(
-        self, *, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float,
-            price: float, use_terminal: bool = None):
+        self,
+        *,
+        action: Literal[OrderType.BUY, OrderType.SELL],
+        symbol: str,
+        volume: float,
+        price: float,
+        use_terminal: bool = None,
+    ):
         """Calculate the margin required for a trade.
 
         Args:
@@ -1275,8 +1357,15 @@ class BackTestEngine:
 
     @error_handler
     async def order_calc_profit(
-        self, *, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float,
-            price_open: float, price_close: float, use_terminal=None):
+        self,
+        *,
+        action: Literal[OrderType.BUY, OrderType.SELL],
+        symbol: str,
+        volume: float,
+        price_open: float,
+        price_close: float,
+        use_terminal=None,
+    ):
         """
         Calculate the profit for a trade.
 
@@ -1300,7 +1389,11 @@ class BackTestEngine:
         sym = self.symbols.get(symbol)
         if sym is None and self.use_terminal:
             sym = await self._symbol_info(symbol=symbol)
-        profit = volume * sym.trade_contract_size * ((price_close - price_open) if action == OrderType.BUY else (price_open - price_close))
+        profit = (
+            volume
+            * sym.trade_contract_size
+            * ((price_close - price_open) if action == OrderType.BUY else (price_open - price_close))
+        )
         return round(profit, self._account.currency_digits)
 
     @error_handler_sync
@@ -1368,8 +1461,14 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_history_orders(
-        self, *, date_from: datetime | float = None, date_to: datetime | float = None, group: str = "",
-            ticket: int = None, position: int = None) -> tuple[TradeOrder, ...]:
+        self,
+        *,
+        date_from: datetime | float = None,
+        date_to: datetime | float = None,
+        group: str = "",
+        ticket: int = None,
+        position: int = None,
+    ) -> tuple[TradeOrder, ...]:
         """Get orders from the terminal history.
 
         Args:
@@ -1382,8 +1481,9 @@ class BackTestEngine:
         Returns:
             tuple[TradeOrder, ...]: Orders in the history
         """
-        return self.orders.history_orders_get(date_from=date_from, date_to=date_to, group=group,
-                                              ticket=ticket, position=position)
+        return self.orders.history_orders_get(
+            date_from=date_from, date_to=date_to, group=group, ticket=ticket, position=position
+        )
 
     @error_handler_sync
     def get_history_deals_total(self, *, date_from: datetime | float, date_to: datetime | float) -> int:
@@ -1400,8 +1500,14 @@ class BackTestEngine:
 
     @error_handler_sync
     def get_history_deals(
-        self, *, date_from: datetime | float = None, date_to: datetime | float = None, group: str = None,
-            position: int = None, ticket: int = None) -> tuple[TradeDeal, ...]:
+        self,
+        *,
+        date_from: datetime | float = None,
+        date_to: datetime | float = None,
+        group: str = None,
+        position: int = None,
+        ticket: int = None,
+    ) -> tuple[TradeDeal, ...]:
         """Get deals from the terminal history.
 
         Args:
@@ -1414,5 +1520,6 @@ class BackTestEngine:
         Returns:
             tuple[TradeDeal, ...]: Deals in the history
         """
-        return self.deals.history_deals_get(date_from=date_from, date_to=date_to, group=group,
-                                            position=position, ticket=ticket)
+        return self.deals.history_deals_get(
+            date_from=date_from, date_to=date_to, group=group, position=position, ticket=ticket
+        )

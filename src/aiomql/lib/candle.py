@@ -55,15 +55,18 @@ class Candle:
         self.set_attributes(**kwargs)
 
     def __repr__(self):
-        return "%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s)" % {
-            "class": self.__class__.__name__,
-            "open": self.open,
-            "high": self.high,
-            "low": self.low,
-            "close": self.close,
-            "time": self.time,
-            "Index": self.Index,
-        }
+        return (
+            "%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s)"
+            % {
+                "class": self.__class__.__name__,
+                "open": self.open,
+                "high": self.high,
+                "low": self.low,
+                "close": self.close,
+                "time": self.time,
+                "Index": self.Index,
+            }
+        )
 
     def __eq__(self, other: Self):
         return self.time == other.time

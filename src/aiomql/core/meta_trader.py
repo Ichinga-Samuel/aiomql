@@ -5,8 +5,18 @@ from typing import Literal, Self
 from pathlib import Path
 
 import numpy as np
-from MetaTrader5 import (BookInfo, SymbolInfo, AccountInfo, Tick, TerminalInfo, TradeOrder, TradeDeal, TradePosition,
-                         OrderSendResult, OrderCheckResult)
+from MetaTrader5 import (
+    BookInfo,
+    SymbolInfo,
+    AccountInfo,
+    Tick,
+    TerminalInfo,
+    TradeOrder,
+    TradeDeal,
+    TradePosition,
+    OrderSendResult,
+    OrderCheckResult,
+)
 import MetaTrader5 as mt5
 
 from .constants import OrderType, CopyTicks
@@ -105,7 +115,13 @@ class MetaTrader(MetaCore):
         return res
 
     async def initialize(
-        self, path: str = None, login: int = 0, password: str = "", server: str = "", timeout: int | None = None, portable=False
+        self,
+        path: str = None,
+        login: int = 0,
+        password: str = "",
+        server: str = "",
+        timeout: int | None = None,
+        portable=False,
     ) -> bool:
         """
         Initializes the connection to the MetaTrader terminal. All parameters are optional.
@@ -147,7 +163,13 @@ class MetaTrader(MetaCore):
             return res
 
     def initialize_sync(
-        self, path: str = None, login: int = 0, password: str = "", server: str = "", timeout: int | None = None, portable=False
+        self,
+        path: str = None,
+        login: int = 0,
+        password: str = "",
+        server: str = "",
+        timeout: int | None = None,
+        portable=False,
     ) -> bool:
         """
         Initializes the connection to the MetaTrader terminal. All parameters are optional.
@@ -227,7 +249,11 @@ class MetaTrader(MetaCore):
         return res
 
     async def symbol_info(self, symbol: str) -> SymbolInfo | None:
-        api = {"func": self._symbol_info, "args": (symbol,), "error_msg": f"Error in obtaining information for {symbol}"}
+        api = {
+            "func": self._symbol_info,
+            "args": (symbol,),
+            "error_msg": f"Error in obtaining information for {symbol}",
+        }
         res = await self._handler(api)
         return res
 
@@ -242,22 +268,40 @@ class MetaTrader(MetaCore):
         return res
 
     async def market_book_add(self, symbol: str) -> bool:
-        api = {"func": self._market_book_add, "args": (symbol,), "error_msg": f"Error in adding {symbol} to market book"}
+        api = {
+            "func": self._market_book_add,
+            "args": (symbol,),
+            "error_msg": f"Error in adding {symbol} to market book",
+        }
         res = await self._handler(api)
         return res
 
     async def market_book_get(self, symbol: str) -> tuple[BookInfo] | None:
-        api = {"func": self._market_book_get, "args": (symbol,), "error_msg": f"Error in obtaining market depth for {symbol}"}
+        api = {
+            "func": self._market_book_get,
+            "args": (symbol,),
+            "error_msg": f"Error in obtaining market depth for {symbol}",
+        }
         res = await self._handler(api)
         return res
 
     async def market_book_release(self, symbol: str) -> bool:
-        api = {"func": self._market_book_release, "args": (symbol,), "error_msg": f"Error in releasing market depth for {symbol}"}
+        api = {
+            "func": self._market_book_release,
+            "args": (symbol,),
+            "error_msg": f"Error in releasing market depth for {symbol}",
+        }
         res = await self._handler(api)
         return res
 
-    async def copy_rates_from(self, symbol: str, timeframe: int, date_from: datetime | float, count: int) -> np.ndarray | None:
-        api = {"func": self._copy_rates_from, "args": (symbol, timeframe, date_from, count), "error_msg": f"Error in obtaining rates for {symbol}"}
+    async def copy_rates_from(
+        self, symbol: str, timeframe: int, date_from: datetime | float, count: int
+    ) -> np.ndarray | None:
+        api = {
+            "func": self._copy_rates_from,
+            "args": (symbol, timeframe, date_from, count),
+            "error_msg": f"Error in obtaining rates for {symbol}",
+        }
         res = await self._handler(api)
         return res
 
@@ -270,18 +314,36 @@ class MetaTrader(MetaCore):
         res = await self._handler(api)
         return res
 
-    async def copy_rates_range(self, symbol: str, timeframe: int, date_from: datetime | float, date_to: datetime | float) -> np.ndarray | None:
-        api = {"func": self._copy_rates_range, "args": (symbol, timeframe, date_from, date_to), "error_msg": f"Error in obtaining rates for {symbol}"}
+    async def copy_rates_range(
+        self, symbol: str, timeframe: int, date_from: datetime | float, date_to: datetime | float
+    ) -> np.ndarray | None:
+        api = {
+            "func": self._copy_rates_range,
+            "args": (symbol, timeframe, date_from, date_to),
+            "error_msg": f"Error in obtaining rates for {symbol}",
+        }
         res = await self._handler(api)
         return res
 
-    async def copy_ticks_from(self, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks) -> np.ndarray | None:
-        api = {"func": self._copy_ticks_from, "args": (symbol, date_from, count, flags), "error_msg": f"Error in obtaining ticks for {symbol}"}
+    async def copy_ticks_from(
+        self, symbol: str, date_from: datetime | float, count: int, flags: CopyTicks
+    ) -> np.ndarray | None:
+        api = {
+            "func": self._copy_ticks_from,
+            "args": (symbol, date_from, count, flags),
+            "error_msg": f"Error in obtaining ticks for {symbol}",
+        }
         res = await self._handler(api)
         return res
 
-    async def copy_ticks_range(self, symbol: str, date_from: datetime | float, date_to: datetime | float, flags: CopyTicks) -> np.ndarray | None:
-        api = {"func": self._copy_ticks_range, "args": (symbol, date_from, date_to, flags), "error_msg": f"Error in obtaining ticks for {symbol}"}
+    async def copy_ticks_range(
+        self, symbol: str, date_from: datetime | float, date_to: datetime | float, flags: CopyTicks
+    ) -> np.ndarray | None:
+        api = {
+            "func": self._copy_ticks_range,
+            "args": (symbol, date_from, date_to, flags),
+            "error_msg": f"Error in obtaining ticks for {symbol}",
+        }
         res = await self._handler(api)
         return res
 
@@ -296,13 +358,24 @@ class MetaTrader(MetaCore):
         res = await self._handler(api)
         return res
 
-    async def order_calc_margin(self, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float, price: float) -> float | None:
-        api = {"func": self._order_calc_margin, "args": (action, symbol, volume, price), "error_msg": "Error in calculating margin."}
+    async def order_calc_margin(
+        self, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float, price: float
+    ) -> float | None:
+        api = {
+            "func": self._order_calc_margin,
+            "args": (action, symbol, volume, price),
+            "error_msg": "Error in calculating margin.",
+        }
         res = await self._handler(api)
         return res
 
     async def order_calc_profit(
-        self, action: Literal[OrderType.BUY, OrderType.SELL], symbol: str, volume: float, price_open: float, price_close: float
+        self,
+        action: Literal[OrderType.BUY, OrderType.SELL],
+        symbol: str,
+        volume: float,
+        price_open: float,
+        price_close: float,
     ) -> float | None:
         api = {
             "func": self._order_calc_profit,
@@ -334,29 +407,57 @@ class MetaTrader(MetaCore):
         return res
 
     async def history_orders_total(self, date_from: datetime | float, date_to: datetime | float) -> int:
-        api = {"func": self._history_orders_total, "args": (date_from, date_to), "error_msg": "Error in obtaining total history orders."}
+        api = {
+            "func": self._history_orders_total,
+            "args": (date_from, date_to),
+            "error_msg": "Error in obtaining total history orders.",
+        }
         res = await self._handler(api)
         return res
 
     async def history_orders_get(
-        self, date_from: datetime | float = None, date_to: datetime | float = None, group: str = "", ticket: int = None, position: int = None
+        self,
+        date_from: datetime | float = None,
+        date_to: datetime | float = None,
+        group: str = "",
+        ticket: int = None,
+        position: int = None,
     ) -> tuple[TradeOrder] | None:
         kwargs = {key: value for key, value in (("group", group), ("ticket", ticket), ("position", position)) if value}
         args = tuple(arg for arg in (date_from, date_to) if arg)
-        api = {"func": self._history_orders_get, "args": args, "kwargs": kwargs, "error_msg": "Error in obtaining history orders"}
+        api = {
+            "func": self._history_orders_get,
+            "args": args,
+            "kwargs": kwargs,
+            "error_msg": "Error in obtaining history orders",
+        }
         res = await self._handler(api)
         return res
 
     async def history_deals_total(self, date_from: datetime | float, date_to: datetime | float) -> int:
-        api = {"func": self._history_deals_total, "args": (date_from, date_to), "error_msg": "Error in obtaining total history deals"}
+        api = {
+            "func": self._history_deals_total,
+            "args": (date_from, date_to),
+            "error_msg": "Error in obtaining total history deals",
+        }
         res = await self._handler(api)
         return res
 
     async def history_deals_get(
-        self, date_from: datetime | float = None, date_to: datetime | float = None, group: str = "", ticket: int = None, position: int = None
+        self,
+        date_from: datetime | float = None,
+        date_to: datetime | float = None,
+        group: str = "",
+        ticket: int = None,
+        position: int = None,
     ) -> tuple[TradeDeal] | None:
         kwargs = {key: value for key, value in (("group", group), ("ticket", ticket), ("position", position)) if value}
         args = tuple(arg for arg in (date_from, date_to) if arg)
-        api = {"func": self._history_deals_get, "args": args, "kwargs": kwargs, "error_msg": "Error in obtaining history deals"}
+        api = {
+            "func": self._history_deals_get,
+            "args": args,
+            "kwargs": kwargs,
+            "error_msg": "Error in obtaining history deals",
+        }
         res = await self._handler(api)
         return res

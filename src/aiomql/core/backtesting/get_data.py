@@ -19,6 +19,7 @@ logger = getLogger(__name__)
 
 class Cursor(NamedTuple):
     """A cursor to iterate over the data. Marks the current position."""
+
     index: int
     time: int
 
@@ -45,6 +46,7 @@ class BackTestData:
         margins (dict): The margins data.
         fully_loaded (bool): A flag to indicate if the data is fully loaded
     """
+
     name: str = ""
     terminal: dict[str, [str | int | bool | float]] = field(default_factory=dict)
     version: tuple[int, int, str] = (0, 0, "")
@@ -93,10 +95,12 @@ class GetData:
         mt5 (MetaTrader): The MetaTrader5 instance.
         task_queue (TaskQueue): The task queue to handle the requests.
     """
+
     data: BackTestData
 
-    def __init__(self, *, start: datetime, end: datetime, symbols: Iterable[str],
-                 timeframes: Iterable[TimeFrame], name: str = ""):
+    def __init__(
+        self, *, start: datetime, end: datetime, symbols: Iterable[str], timeframes: Iterable[TimeFrame], name: str = ""
+    ):
         """
         Get the backtesting data from the MetaTrader5 terminal.
 
@@ -170,7 +174,11 @@ class GetData:
         if workers:
             self.task_queue.workers = workers
 
-        q_items = [QueueItem(self.get_symbols_rates), QueueItem(self.get_symbols_ticks), QueueItem(self.get_symbols_info)]
+        q_items = [
+            QueueItem(self.get_symbols_rates),
+            QueueItem(self.get_symbols_ticks),
+            QueueItem(self.get_symbols_info),
+        ]
 
         [self.task_queue.add(item=item, priority=0, must_complete=True) for item in q_items]
 
@@ -214,12 +222,18 @@ class GetData:
         self.data.set_attrs(account=res)
 
     async def get_symbols_info(self):
-        [self.task_queue.add(item=QueueItem(self.get_symbol_info, symbol=symbol)) for symbol in self.symbols
-         if self.data.symbols.get(symbol) is None]
+        [
+            self.task_queue.add(item=QueueItem(self.get_symbol_info, symbol=symbol))
+            for symbol in self.symbols
+            if self.data.symbols.get(symbol) is None
+        ]
 
     async def get_symbols_ticks(self):
-        [self.task_queue.add(item=QueueItem(self.get_symbol_ticks, symbol=symbol)) for symbol in self.symbols if
-         self.data.ticks.get(symbol) is None]
+        [
+            self.task_queue.add(item=QueueItem(self.get_symbol_ticks, symbol=symbol))
+            for symbol in self.symbols
+            if self.data.ticks.get(symbol) is None
+        ]
 
     async def get_symbols_rates(self):
         [

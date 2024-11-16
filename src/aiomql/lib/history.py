@@ -34,7 +34,9 @@ class History:
     total_orders: int
     group: str
 
-    def __init__(self, *, date_from: datetime | float, date_to: datetime | float, group: str = "", use_utc: bool = True):
+    def __init__(
+        self, *, date_from: datetime | float, date_to: datetime | float, group: str = "", use_utc: bool = True
+    ):
         """
         Args:
             date_from (datetime, float): Date the orders are requested from. Set by the 'datetime' object or as a
@@ -122,4 +124,6 @@ class History:
 
     def get_orders_by_position(self, *, position: int) -> tuple[TradeOrder, ...]:
         """filter orders by position"""
-        return tuple(sorted((order for order in self.orders if order.position_id == position), key=lambda x: x.time_done_msc))
+        return tuple(
+            sorted((order for order in self.orders if order.position_id == position), key=lambda x: x.time_done_msc)
+        )

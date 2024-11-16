@@ -19,14 +19,18 @@ class FingerTrap(Strategy):
     fast_ema: int
     slow_ema: int
     entry_ema: int
-    parameters: dict
     ecc: int
     tcc: int
     trader: Trader
     tracker: Tracker
-    parameters = {"fast_ema": 8, "slow_ema": 20, "etf": TimeFrame.M5, "ttf": TimeFrame.H1, "entry_ema": 5, "tcc": 672, "ecc": 3360}
 
-    def __init__(self, *, symbol: Symbol, params: dict | None = None, trader: Trader = None, sessions: Sessions = None, name: str = "FingerTrap"):
+    # The default parameters for the strategy. You can override these in the constructor.
+    # via the `params` argument.
+    parameters = {"fast_ema": 8, "slow_ema": 20, "etf": TimeFrame.M5, "ttf": TimeFrame.H1,
+                  "entry_ema": 5, "tcc": 720, "ecc": 8640}
+
+    def __init__(self, *,symbol: Symbol, params: dict | None = None, trader: Trader = None, sessions: Sessions = None,
+                 name: str = "FingerTrap"):
         super().__init__(symbol=symbol, params=params, sessions=sessions, name=name)
         self.trader = trader or SimpleTrader(symbol=self.symbol)
         self.tracker: Tracker = Tracker(snooze=self.ttf.seconds)
@@ -37,6 +41,7 @@ class FingerTrap(Strategy):
             if (current := candles[-1]) and current.time < self.tracker.trend_time:
                 self.tracker.update(new=False, order_type=None)
                 return
+
             self.tracker.update(new=True, trend_time=current.time, last_trend_price=current.close)
             candles.ta.ema(length=self.slow_ema, append=True, fillna=0)
             candles.ta.ema(length=self.fast_ema, append=True, fillna=0)
@@ -46,14 +51,17 @@ class FingerTrap(Strategy):
             fbs = candles.ta_lib.below(candles.fast, candles.slow)
             caf = candles.ta_lib.above(candles.close, candles.fast)
             cbf = candles.ta_lib.below(candles.close, candles.fast)
-            current = candles[-2]
-            if fas.iloc[-1] and caf.iloc[-1] and current.is_bullish():
+
+            if fas.iloc[-1] and caf.iloc[-1]:
                 self.tracker.update(trend="bullish")
-            elif fbs.iloc[-1] and cbf.iloc[-1] and current.is_bearish():
+
+            elif fbs.iloc[-1] and cbf.iloc[-1]:
                 self.tracker.update(trend="bearish")
+
             else:
                 self.tracker.update(trend="ranging", snooze=self.ttf.seconds, order_type=None)
-            self.tracker.update(trend="bullish")  # remove this line
+
+            self.tracker.update(trend="bullish")  #Todo remove this line
         except Exception as err:
             logger.error(f"{err} for {self.symbol} in {self.__class__.__name__}.check_trend")
             self.tracker.update(snooze=self.ttf.seconds, order_type=None)
@@ -64,16 +72,18 @@ class FingerTrap(Strategy):
             if (current := candles[-1]) and current.time < self.tracker.entry_time:
                 self.tracker.update(new=False, order_type=None)
                 return
-            self.tracker.update(new=True, trend_time=current.time, last_entry_price=current.close)
+
+            self.tracker.update(new=True, entry_time=current.time, last_entry_price=current.close)
             candles.ta.ema(length=self.entry_ema, append=True)
             candles.rename(**{f"EMA_{self.entry_ema}": "ema"})
             candles["cae"] = candles.ta_lib.cross(candles.close, candles.ema)
             candles["cbe"] = candles.ta_lib.cross(candles.close, candles.ema, above=False)
             current = candles[-1]
-            if self.tracker.bullish and True or current.cae:  # change True to current.cae
+
+            if True or self.tracker.bullish and current.cae:
                 sl = find_bullish_fractal(candles).low
                 self.tracker.update(snooze=self.ttf.seconds, order_type=OrderType.BUY, sl=sl)
-            elif self.tracker.bearish and current.cbe:
+            elif True or self.tracker.bearish and current.cbe:
                 sl = find_bearish_fractal(candles).high
                 self.tracker.update(snooze=self.ttf.seconds, order_type=OrderType.SELL, sl=sl)
             else:
@@ -84,11 +94,10 @@ class FingerTrap(Strategy):
 
     async def watch_market(self):
         await self.check_trend()
-        if not self.tracker.ranging:
+        if self.tracker.ranging is False:
             await self.confirm_trend()
 
     async def trade(self):
-        logger.info(f"Trading {self.symbol}")
         try:
             await self.watch_market()
             if self.tracker.new is False:
@@ -97,7 +106,8 @@ class FingerTrap(Strategy):
             if self.tracker.order_type is None:
                 await self.sleep(secs=self.tracker.snooze)
                 return
-            await self.trader.place_trade(order_type=self.tracker.order_type, parameters=self.parameters, sl=self.tracker.sl)
+            await self.trader.place_trade(order_type=self.tracker.order_type, parameters=self.parameters,
+                                          sl=self.tracker.sl)
             await self.sleep(secs=self.tracker.snooze)
         except Exception as err:
             logger.error(f"{err} For {self.symbol} in {self.__class__.__name__}.trade")

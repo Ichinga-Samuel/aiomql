@@ -114,7 +114,12 @@ class TradeRecords:
             deals = [
                 deal
                 for deal in deals
-                if (deal.order != deal.position_id and deal.position_id == order and deal.entry == 1 and deal.position_id not in position_ids)
+                if (
+                    deal.order != deal.position_id
+                    and deal.position_id == order
+                    and deal.entry == 1
+                    and deal.position_id not in position_ids
+                )
             ]
             deals.sort(key=lambda deal: deal.time_msc)
             deal = deals[-1]

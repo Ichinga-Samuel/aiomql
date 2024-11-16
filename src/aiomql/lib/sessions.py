@@ -120,7 +120,10 @@ class Session:
         return Duration(hours=hours, minutes=minutes, seconds=seconds)
 
     async def close_positions(self, *, positions: tuple[TradePosition, ...]):
-        results = asyncio.gather(*(self.positions_manager.close_position(position=position) for position in positions), return_exceptions=True)
+        results = asyncio.gather(
+            *(self.positions_manager.close_position(position=position) for position in positions),
+            return_exceptions=True,
+        )
         closed = pending = 0
         for result in results:
             if isinstance(result, OrderSendResult) and result.retcode == 10009:

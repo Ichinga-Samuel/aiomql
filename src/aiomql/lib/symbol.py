@@ -175,7 +175,9 @@ class Symbol(_Base, SymbolInfo):
     async def amount_in_quote_currency(self, *, amount: float) -> float:
         """Convert the amount to the quote currency of the symbol."""
         if self.currency_profit != self.account.currency:
-            amount = await self.convert_currency(amount=amount, from_currency=self.account.currency, to_currency=self.currency_profit)
+            amount = await self.convert_currency(
+                amount=amount, from_currency=self.account.currency, to_currency=self.currency_profit
+            )
         return amount
 
     async def compute_volume(self) -> float:
@@ -257,7 +259,9 @@ class Symbol(_Base, SymbolInfo):
         raise ValueError(f"Could not get rates for {self.name}.")
 
     @backoff_decorator
-    async def copy_rates_range(self, *, timeframe: TimeFrame, date_from: datetime | int, date_to: datetime | int) -> Candles:
+    async def copy_rates_range(
+        self, *, timeframe: TimeFrame, date_from: datetime | int, date_to: datetime | int
+    ) -> Candles:
         """Get bars in the specified date range from the MetaTrader 5 terminal.
 
         Args:
@@ -277,13 +281,17 @@ class Symbol(_Base, SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        rates = await self.mt5.copy_rates_range(symbol=self.name, timeframe=timeframe, date_from=date_from, date_to=date_to)
+        rates = await self.mt5.copy_rates_range(
+            symbol=self.name, timeframe=timeframe, date_from=date_from, date_to=date_to
+        )
         if rates is not None:
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
     @backoff_decorator
-    async def copy_ticks_from(self, *, date_from: datetime | int, count: int = 100, flags: CopyTicks = CopyTicks.ALL) -> Ticks:
+    async def copy_ticks_from(
+        self, *, date_from: datetime | int, count: int = 100, flags: CopyTicks = CopyTicks.ALL
+    ) -> Ticks:
         """
         Get ticks from the MetaTrader 5 terminal starting from the specified date.
 
@@ -306,7 +314,9 @@ class Symbol(_Base, SymbolInfo):
         raise ValueError(f"Could not get ticks for {self.name}.")
 
     @backoff_decorator
-    async def copy_ticks_range(self, *, date_from: datetime | int, date_to: datetime | int, flags: CopyTicks = CopyTicks.ALL) -> Ticks:
+    async def copy_ticks_range(
+        self, *, date_from: datetime | int, date_to: datetime | int, flags: CopyTicks = CopyTicks.ALL
+    ) -> Ticks:
         """Get ticks for the specified date range from the MetaTrader 5 terminal.
 
         Args:

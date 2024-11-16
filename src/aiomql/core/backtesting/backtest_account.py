@@ -7,6 +7,7 @@ from ..constants import AccountTradeMode, AccountMarginMode, AccountStopOutMode
 @dataclass
 class BackTestAccount:
     """Account data for backtesting"""
+
     login: int = 0
     trade_mode: AccountTradeMode = AccountTradeMode.DEMO
     leverage: float = 1
@@ -40,7 +41,7 @@ class BackTestAccount:
 
     def get_dict(self, exclude: set = None, include: set = None):
         """Returns a dictionary of the account data. Using the exclude and include arguments, you can filter the data
-        
+
         Args:
             exclude (set): A set of keys to exclude
             include (set): A set of keys to include

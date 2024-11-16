@@ -1,4 +1,5 @@
 import asyncio
+import time
 from concurrent.futures import ProcessPoolExecutor
 from typing import Type, Iterable, Callable, Coroutine
 import logging
@@ -66,7 +67,9 @@ class Bot:
             self.add_coroutine(coroutine=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
-                logger.warning("No strategies were added to the bot")
+                logger.warning("No strategies were added to the bot. Exiting after 10 seconds")
+                await asyncio.sleep(10)
+                raise SystemExit
         except Exception as err:
             logger.error("%s: Bot initialization failed", err)
             raise SystemExit
@@ -90,7 +93,8 @@ class Bot:
             self.add_coroutine(coroutine=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
-                logger.warning("No strategies were added to the bot")
+                logger.warning("No strategies were added to the bot. Exiting after 10 seconds")
+                time.sleep(10)
         except Exception as err:
             logger.error("%s: Bot initialization failed", err)
             raise SystemExit
@@ -146,7 +150,9 @@ class Bot:
         """
         [self.add_strategy(strategy=strategy) for strategy in strategies]
 
-    def add_strategy_all(self, *, strategy: Type[Strategy], params: dict | None = None, symbols: list[Symbol] = None, **kwargs):
+    def add_strategy_all(
+        self, *, strategy: Type[Strategy], params: dict | None = None, symbols: list[Symbol] = None, **kwargs
+    ):
         """Use this to run a single strategy on multiple symbols with the same parameters and keyword arguments.
 
         Keyword Args:

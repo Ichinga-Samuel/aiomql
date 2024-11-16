@@ -50,7 +50,9 @@ async def close_all_positions():
 @pytest.fixture(scope="package", autouse=True)
 async def config(request):
     Path("tests/backtest/configs").mkdir(exist_ok=True)
-    with open("aiomql.json", "r") as fh, open("tests/backtest/configs/test2.json", "w") as fh1, open("tests/backtest/test.json", "w") as fh2:
+    with open("aiomql.json", "r") as fh, open("tests/backtest/configs/test2.json", "w") as fh1, open(
+        "tests/backtest/test.json", "w"
+    ) as fh2:
         data = json.load(fh)
         data["mode"] = "backtest"
         json.dump(data, fh1, indent=2)

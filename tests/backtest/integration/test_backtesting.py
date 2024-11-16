@@ -112,7 +112,11 @@ async def test_account(backtest_engine, positions):
     deal = backtest_engine.deals.history_deals_get(position=bo.order)
     bo_profit = deal[-1].profit
     assert len(all_pos) == 1
-    assert backtest_engine.positions.margin == backtest_engine._account.margin == backtest_engine.positions.margins[so.order]
+    assert (
+        backtest_engine.positions.margin
+        == backtest_engine._account.margin
+        == backtest_engine.positions.margins[so.order]
+    )
     profit = sum([pos.profit for pos in all_pos])
     n_balance = backtest_engine._account.balance
     n_equity = backtest_engine._account.equity

@@ -17,7 +17,7 @@ class ForexSymbol(Symbol):
 
     def compute_points(self, *, amount: float, volume: float) -> float:
         """Compute the number of points required for a trade. Given the amount and the volume of the trade.
-        
+
         Args:
             amount (float): Amount to trade
             volume (float): Volume to trade
@@ -38,13 +38,13 @@ class ForexSymbol(Symbol):
 
     async def compute_volume_sl(self, *, amount: float, price: float, sl: float, round_down: bool = False) -> float:
         """Compute the volume required for a trade. Given the amount, the price and the stop loss.
-        
+
         Args:
             amount (float): Amount to trade
             price (float): The price of the trade
             sl (float): The stop loss of the trade
             round_down (bool): round down the computed volume to the nearest step default to False
-        
+
         Returns:
             float: The volume required for the trade
         """

@@ -142,7 +142,9 @@ class BackTester:
         """
         [self.add_strategy(strategy=strategy) for strategy in strategies]
 
-    def add_strategy_all(self, *, strategy: Type[Strategy], params: dict | None = None, symbols: list[Symbol] = None, **kwargs):
+    def add_strategy_all(
+        self, *, strategy: Type[Strategy], params: dict | None = None, symbols: list[Symbol] = None, **kwargs
+    ):
         """Use this to run a single strategy on multiple symbols with the same parameters and keyword arguments.
 
         Keyword Args:
