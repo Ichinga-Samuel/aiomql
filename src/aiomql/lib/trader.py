@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, UTC
+from string import digits
 from typing import TypeVar
 from logging import getLogger
 
@@ -198,7 +199,7 @@ class Trader(ABC):
         """
         if self.config.record_trades is False or result.retcode != 10009:
             return
-        params = {**parameters} or {}
+        params = {**parameters} if isinstance(parameters, dict) else {}
         profit = await self.order.calc_profit()
         params["expected_profit"] = profit
         date = (
