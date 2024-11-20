@@ -50,6 +50,7 @@ class Config:
     login: int
     trade_record_mode: Literal["csv", "json"]
     password: str
+    config_file: str | Path
     server: str
     path: str | Path
     timeout: int
@@ -72,6 +73,7 @@ class Config:
     _defaults = {
         "timeout": 60000,
         "record_trades": True,
+        "config_file": None,
         "trade_record_mode": "csv",
         "mode": "live",
         "filename": "aiomql.json",
@@ -85,6 +87,7 @@ class Config:
         "records_dir": None,
         "shutdown": False,
         "force_shutdown": False,
+        "root": '.',
     }
 
     def __new__(cls, *args, **kwargs):
@@ -100,8 +103,9 @@ class Config:
     def __init__(self, **kwargs):
         """Initialize the Config object. The root directory can be set here or in the load_config method."""
         root = kwargs.pop("root", None)
-        if root is not None:
-            self.load_config(root=root, **kwargs)
+        config_file = kwargs.pop("config_file", None)
+        if root is not None or config_file is not None:
+            self.load_config(root=root, file=config_file, **kwargs)
         else:
             self.set_attributes(**kwargs)
 
@@ -142,6 +146,10 @@ class Config:
 
     def find_config_file(self):
         try:
+            current = Path.cwd()
+            parents = current.parents
+            for dir in parents:
+                
             for dirname in self.walk_to_root(self.root):
                 check_path = os.path.join(dirname, self.filename)
                 if os.path.isfile(check_path):
@@ -173,6 +181,7 @@ class Config:
                 file = self.find_config_file()
             else:
                 self.filename = file.name
+                self.config_file = file
         else:
             self.filename = filename or self.filename
             file = self.find_config_file()
@@ -197,7 +206,7 @@ class Config:
             self.records_dir = self.root / self.records_dir_name
             self.records_dir.mkdir(parents=True, exist_ok=True)
 
-        if not hasattr(self, "backtest_dir") or root is not None:
+        if hasattr(self, "backtest_dir") is False or root is not None:
             self.backtest_dir = self.root / self.backtest_dir_name
             self.backtest_dir.mkdir(parents=True, exist_ok=True)
 
