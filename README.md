@@ -201,7 +201,7 @@ class EMAXOver(Strategy):
 Run the tests with pytest
 
 ```bash
-pytest test 
+pytest tests
 ```
 
 ### API Documentation

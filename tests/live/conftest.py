@@ -53,7 +53,7 @@ async def config(request):
         data = json.load(fh)
         json.dump(data, fh1, indent=2)
         json.dump(data, fh2, indent=2)
-    config = Config(root="tests/live", filename="test.json")
+    config = Config(root="tests/live", config_file="tests/live/test.json")
     yield config
     await cleanup()
 

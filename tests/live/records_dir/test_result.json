@@ -1,0 +1,24 @@
+[
+  {
+    "deal": 0,
+    "order": 0,
+    "volume": 0.0,
+    "price": 0.0,
+    "bid": 0.0,
+    "ask": 0.0,
+    "actual_profit": 0,
+    "closed": false,
+    "win": false
+  },
+  {
+    "deal": 0,
+    "order": 0,
+    "volume": 0.0,
+    "price": 0.0,
+    "bid": 0.0,
+    "ask": 0.0,
+    "actual_profit": 0,
+    "closed": false,
+    "win": false
+  }
+]

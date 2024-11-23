@@ -17,7 +17,7 @@ def back_tester():
     start = datetime(2024, 5, 1, tzinfo=UTC)
     stop_time = datetime(2024, 5, 2, tzinfo=UTC)
     end = datetime(2024, 5, 7, tzinfo=UTC)
-    back_test_engine = BackTestEngine(start=start, end=end, speed=3600, stop_time=stop_time,
+    back_test_engine = BackTestEngine(start=start, end=end, speed=3600,
                                       close_open_positions_on_exit=True, assign_to_config=True, preload=True,
                                       account_info={"balance": 350})
     backtester = BackTester(backtest_engine=back_test_engine)

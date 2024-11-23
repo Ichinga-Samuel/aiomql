@@ -158,7 +158,7 @@ class Symbol(_Base, SymbolInfo):
         if check := self.volume_min <= volume <= self.volume_max:
             return check, volume
         else:
-            return (check, self.volume_min if volume <= self.volume_min else self.volume_max)
+            return check, self.volume_min if volume <= self.volume_min else self.volume_max
 
     def round_off_volume(self, *, volume: float, round_down: bool = False) -> float:
         """Round off the volume to the nearest volume step.

@@ -27,7 +27,8 @@ async def make_buy_sell_orders():
     return {"buy": Order(**buy_req), "sell": Order(**sell_req)}
 
 
-def test_trade_mode(config, backtest_engine, history, positions, order_sell, order_buy, btc_usd):
+def test_trade_mode(config, backtest_engine, history, positions, order_sell, order_buy, btc_usd, capsys):
+    print(config.filename, config.root)
     assert config.mode == "backtest"
     assert isinstance(backtest_engine, BackTestEngine)
     assert isinstance(history.mt5, MetaBackTester)

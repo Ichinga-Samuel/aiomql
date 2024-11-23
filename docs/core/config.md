@@ -29,9 +29,7 @@ A single instance of this class is created and used per bot instance.
 | `root`                         | `Path`                        | The root directory of the project                                       |
 | `record_trades`                | `bool`                        | To record trades or not. Default is True                                |
 | `records_dir`                  | `Path`                        | The directory to store trade records, relative to the root directory    |
-| `records_dir_name`             | `str`                         | The name of the trade records directory                                 |
 | `backtest_dir`                 | `Path`                        | The directory to store backtest results, relative to the root directory |
-| `backtest_dir_name`            | `str`                         | The name of the backtest directory                                      |
 | `task_queue`                   | `TaskQueue`                   | The TaskQueue object for handling background tasks                      |
 | `_backtest_engine`             | `BackTestEngine`              | The backtest engine object                                              |
 | `bot`                          | `Bot`                         | The bot object                                                          |
@@ -71,8 +69,8 @@ def backtest_engine(self)
 Returns the backtest engine object.
 
 #### Returns:
-| Type            | Description            |
-|-----------------|------------------------|
+| Type             | Description                |
+|------------------|----------------------------|
 | `BackTestEngine` | The backtest engine object |
 
 
@@ -98,14 +96,14 @@ Set attributes on the config object. The root folder attribute can't be set here
 <a id="config.load_config"></a>
 ### load_config
 ```python
-def load_config(*, file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Config
+def load_config(*, config_file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Config
 ```
 Load configuration settings from a file and reset the config object.
 
 #### Parameters:
-| Name       | Type          | Description                                                                                        |
-|------------|---------------|----------------------------------------------------------------------------------------------------|
-| `file`     | `str \| Path` | The absolute path to the config file.                                                              |
-| `filename` | `str`         | The name of the file to load if file path is not specified. If not provided `aiomql.json` is used. |
-| `root`     | `str`         | The root directory of the project.                                                                 |
-| `**kwargs` | `dict`        | Additional keyword arguments to be set on the config object.                                       |
+| Name          | Type          | Description                                                                                        |
+|---------------|---------------|----------------------------------------------------------------------------------------------------|
+| `config_file` | `str \| Path` | The absolute path to the config file.                                                              |
+| `filename`    | `str`         | The name of the file to load if file path is not specified. If not provided `aiomql.json` is used. |
+| `root`        | `str`         | The root directory of the project.                                                                 |
+| `**kwargs`    | `dict`        | Additional keyword arguments to be set on the config object.                                       |

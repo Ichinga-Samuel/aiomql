@@ -1,11 +1,12 @@
-from datetime import datetime, UTC
 import asyncio
 import json
 import shutil
+from datetime import datetime, UTC
 from logging import getLogger
 from pathlib import Path
 
 import pytest
+
 from aiomql.core import Config
 from aiomql.core.meta_backtester import MetaBackTester
 from aiomql.core.backtesting.backtest_engine import BackTestEngine
@@ -57,7 +58,7 @@ async def config(request):
         data["mode"] = "backtest"
         json.dump(data, fh1, indent=2)
         json.dump(data, fh2, indent=2)
-    config = Config(filename="test.json", root="tests/backtest")
+    config = Config(config_file="tests/backtest/test.json", root="tests/backtest", filename="test.json")
     yield config
     await cleanup()
 
@@ -73,7 +74,8 @@ async def mt():
 
 @pytest.fixture(scope="package")
 async def period():
-    return {"start": datetime(2024, 2, 1, hour=8, tzinfo=UTC), "end": datetime(2024, 2, 7, hour=16, tzinfo=UTC)}
+    return {"start": datetime(2024, 2, 1, hour=8, tzinfo=UTC),
+            "end": datetime(2024, 2, 7, hour=16, tzinfo=UTC)}
 
 
 @pytest.fixture(scope="package")
