@@ -1,3 +1,0 @@
-bid,name,volume,actual_profit,order,closed,ema,price,ask,deal,rsi,win
-0.0,test_trades,0.0,0,0,False,20,0.0,0.0,0,14,False
-0.0,test_trades,0.0,0,0,False,20,0.0,0.0,0,14,False
