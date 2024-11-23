@@ -6,7 +6,7 @@ from aiomql.contrib.traders import SimpleTrader
 from aiomql.contrib.symbols import ForexSymbol
 from aiomql.core.constants import OrderType
 from aiomql.lib.account import Account
-from aiomql._utils import round_down
+
 
 class TestTrader:
     @classmethod
