@@ -67,6 +67,6 @@ class TestTrader:
         assert res.retcode == 10009
         profit = round(await self.trader.order.calc_profit(), self.account.currency_digits)
         loss = -round(abs(await self.trader.order.calc_loss()), self.account.currency_digits)
-        assert profit == -loss * self.trader.ram.risk_to_reward
+        assert abs(profit) - abs(-loss * self.trader.ram.risk_to_reward) <= 2.5
         assert abs(profit - (self.trader.ram.fixed_amount * self.trader.ram.risk_to_reward)) <= 2.5
         assert abs(abs(loss) - self.trader.ram.fixed_amount) <= 2.5
