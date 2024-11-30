@@ -13,7 +13,7 @@ logger = getLogger(__name__)
 
 class BackTestController:
     """The controller for the backtesting engine.
-    It also act's as a synchronizier for running multiple strategies (tasks) using a threading.Barrier primitive.
+    It also acts as a synchronizer for running multiple strategies (tasks) using a threading.Barrier primitive.
     It handles the updating of open positions and close them when necessary.
     It handles the iterator for the backtesting engine and handles it movement in time by moving it to the next time step.
 
@@ -33,6 +33,7 @@ class BackTestController:
         if not hasattr(cls, "_instance"):
             cls._instance = super().__new__(cls)
             cls._instance.config = Config()
+            cls._instance.config.backtest_controller = cls._instance
             cls._instance.barrier = Barrier(1)
             cls._instance.tasks = []
         return cls._instance

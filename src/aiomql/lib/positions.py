@@ -24,23 +24,38 @@ class Positions:
 
     mt5: MetaTrader | MetaBackTester
     positions: tuple[TradePosition, ...]
+    total_positions: int
 
     def __init__(self):
         """Get Open Positions"""
         self.config = Config()
         self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
         self.positions = ()
+        self.total_positions = 0
 
     @backoff_decorator
-    async def get_positions(self) -> tuple[TradePosition, ...]:
-        """Get open positions with the ability to filter by symbol or ticket.
+    async def get_positions(self, *, symbol: str = None, ticket: int = None, group: str = None) -> tuple[TradePosition, ...]:
+        """Get open positions with the ability to filter by symbol, ticket or group of symbols.
+        Args:
+            symbol (Optional[str]): Financial instrument name. If symbol is provided, ticket is ignored.
+            ticket (Optional[int]): Position ticket.
+            group (Optional[str]): Group of symbols.
 
         Returns:
             tuple[TradePosition, ...]: A tuple of open trade positions
         """
-        positions = await self.mt5.positions_get()
+        kwargs = {}
+        if symbol is not None:
+            kwargs["symbol"] = symbol
+            ticket = None
+        if ticket is not None:
+            kwargs["ticket"] = ticket
+        if group is not None:
+            kwargs["group"] = group
+        positions = await self.mt5.positions_get(**kwargs)
         if positions is not None:
             self.positions = tuple(TradePosition(**pos._asdict()) for pos in positions)
+            self.total_positions = len(self.positions)
             return self.positions
         logger.warning("Failed to get open positions")
         return ()
@@ -130,3 +145,9 @@ class Positions:
             *(self.close_position(position=position) for position in positions), return_exceptions=True
         )
         return len([res for res in results if (isinstance(res, OrderSendResult) and res.retcode == 10009)])
+
+    async def get_total_positions(self) -> int:
+        """Get total number of open positions."""
+        total = await self.mt5.positions_total()
+        self.total_positions = total or self.total_positions
+        return self.total_positions

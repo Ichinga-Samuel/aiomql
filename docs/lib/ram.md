@@ -6,6 +6,7 @@
 - [get_amount](#ram.get_amount)
 - [check_losing_positions](#ram.check_losing_positions)
 - [check_open_positions](#ram.check_open_positions)
+- [modify_ram](#ram.modify_ram)
 
 <a id="ram.ram"></a>
 ### RAM
@@ -75,3 +76,11 @@ Check if the number of open positions is less than or equal the loss limit.
 | Type   | Description                                                                           |
 |--------|---------------------------------------------------------------------------------------|
 | `bool` | True if the number of open losing trades is more than the loss limit, False otherwise |
+
+
+<a id="ram.modify_ram"></a>
+### modify_ram
+```python
+def modify_ram(**kwargs):
+```
+Modify the RAM attributes. All provided keyword arguments are set as attributes.

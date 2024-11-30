@@ -183,6 +183,7 @@ class BackTester:
                 self.executor.add_strategy(strategy=strategy)
                 return True
             else:
+                self.mt._symbol_select(strategy.symbol.name, True)
                 self.mt._market_book_add(strategy.symbol.name)
                 info = self.mt._symbol_info(strategy.symbol.name)
                 time = datetime.fromtimestamp(self.backtest_engine.cursor.time, tz=UTC)

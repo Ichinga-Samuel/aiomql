@@ -5,7 +5,8 @@ from aiomql.contrib.strategies import Chaos
 from aiomql.contrib.symbols import ForexSymbol
 
 
-async def test_bot():
+async def test_bot(capsys):
+    print('testing')
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     syms = ["BTCUSD", "SOLUSD", "ETHUSD"]
     symbols = [ForexSymbol(name=sym) for sym in syms]
@@ -14,6 +15,7 @@ async def test_bot():
     bot.config.task_queue.worker_timeout = 2
     bot.executor.timeout = 10
     bot.add_strategies(strategies=strategies)
+    print(bot.executor.strategy_runners)
     await bot.initialize()
     bot.executor.execute()
     assert len(bot.executor.coroutines) == 1

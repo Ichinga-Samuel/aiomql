@@ -68,7 +68,7 @@ class Bot:
 
             if len(self.executor.strategy_runners) == 0:
                 logger.warning("No strategies were added to the bot. Exiting in five seconds")
-                await asyncio.sleep(5)
+                await asyncio.sleep(1)
                 self.config.shutdown = True
         except Exception as err:
             logger.error("%s: Bot initialization failed", err)
@@ -94,7 +94,7 @@ class Bot:
 
             if len(self.executor.strategy_runners) == 0:
                 logger.warning("No strategies were added to the bot. Exiting in 5 seconds")
-                time.sleep(5)
+                time.sleep(1)
                 self.config.shutdown = True
         except Exception as err:
             logger.error("%s: Bot initialization failed", err)

@@ -28,6 +28,15 @@ class Order(_Base, TradeRequest):
         kwargs = {"action": TradeAction.DEAL, "type_time": OrderTime.DAY, "type_filling": OrderFilling.FOK, **kwargs}
         super().__init__(**kwargs)
 
+    def modify(self, **kwargs):
+        """Modify the order object with keyword arguments.
+
+        Args:
+            **kwargs: Keyword arguments must match the attributes of TradeRequest as well as the attributes of
+             Order class as specified in the annotations in the class definition.
+        """
+        self.set_attributes(**kwargs)
+
     async def orders_total(self):
         """Get the number of active pending orders.
 
