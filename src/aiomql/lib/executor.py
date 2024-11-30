@@ -78,9 +78,16 @@ class Executor:
 
     async def create_coroutines_task(self):
         """"""
-        task = asyncio.create_task(asyncio.gather(*self.coroutines, return_exceptions=True))
+        coros = [asyncio.create_task(coroutine) for coroutine in self.coroutines]
+        # task = asyncio.create_task(asyncio.gather(*coros, return_exceptions=False))
+        self.tasks.extend(coros)
+        # loop = asyncio.get_running_loop()
+        # loop.run_in_executor()
+        task = asyncio.gather(*coros, return_exceptions=True)
         self.tasks.append(task)
         await task
+        # await task
+        # return task
 
     def run_coroutine_tasks(self):
         """Run all coroutines in the executor"""
@@ -109,12 +116,19 @@ class Executor:
             while self.config.shutdown is False and self.config.force_shutdown is False:
                 if self.timeout is not None and self.timeout < (asyncio.get_event_loop().time() - start):
                     self.config.shutdown = True
+                timeout = self.timeout or 120
+                await asyncio.sleep(timeout)
 
+            print("Shutting down executor")
             for strategy in self.strategy_runners:
                 strategy.running = False
+            self.executor.shutdown(wait=False, cancel_futures=True)
+
             for task in self.tasks:
                 task.cancel()
-            self.executor.shutdown(wait=False, cancel_futures=True)
+
+
+            # self.executor.shutdown(wait=False, cancel_futures=True)
             if self.config.force_shutdown:
                 os._exit(1)
         except Exception as err:
