@@ -126,13 +126,14 @@ class Strategy(ABC):
 
     async def _backtest_sleep(self, *, secs: float):
         try:
-            if self.backtest_controller.parties == 2:
-                steps = int(secs) // self.config.backtest_engine.speed
-                steps = max(steps, 1)
-                self.config.backtest_engine.fast_forward(steps=steps)
-                self.backtest_controller.wait()
+            # if self.backtest_controller.parties == 2:
+                # this is not needed, as the backtest_engine iterator will handle this
+                # steps = int(secs) // self.config.backtest_engine.speed
+                # steps = max(steps, 1)
+                # self.config.backtest_engine.fast_forward(steps=steps)
+                # self.backtest_controller.wait()
 
-            elif self.backtest_controller.parties > 2:
+            if self.backtest_controller.parties >= 2:
                 _time = self.config.backtest_engine.cursor.time + secs
                 while _time > self.config.backtest_engine.cursor.time:
                     self.backtest_controller.wait()
