@@ -105,7 +105,6 @@ class Bot:
 
         Args:
             function (Callable): A function to be executed
-            **kwargs: Keyword arguments for the function
         """
         self.executor.add_function(function=function, kwargs=kwargs)
 
@@ -115,8 +114,6 @@ class Bot:
         Args:
             coroutine (Coroutine): A coroutine to be executed
             on_separate_thread (bool): Run the coroutine
-            **kwargs (dict): keyword arguments for the coroutine
-
         Returns:
 
         """
@@ -189,6 +186,7 @@ class Bot:
                 info["select"] = select
                 tick = Tick(**tick._asdict())
                 strategy.symbol.tick = tick
+                strategy.symbol.initialized = True
                 strategy.symbol.set_attributes(**info)
                 self.executor.add_strategy(strategy=strategy)
                 return True
