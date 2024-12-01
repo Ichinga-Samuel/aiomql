@@ -22,7 +22,7 @@ class Executor:
     """
 
     executor: ThreadPoolExecutor
-    tasks: list[asyncio.Task]
+    tasks: list[asyncio.Task | asyncio.Future]
     config: Config
 
     def __init__(self):
@@ -42,7 +42,6 @@ class Executor:
     def add_coroutine(self, *, coroutine: Callable | Coroutine, kwargs: dict = None, on_separate_thread=False):
         kwargs = kwargs or {}
         coroutine = coroutine(**kwargs)
-        print('coroutine', coroutine)
         self.coroutines.append(coroutine) if on_separate_thread is False else self.coroutine_threads.append(coroutine)
 
     def add_strategies(self, *, strategies: tuple[Strategy]):
@@ -81,11 +80,11 @@ class Executor:
 
     async def create_coroutines_task(self):
         """"""
-        task = asyncio.create_task(asyncio.gather(*self.coroutines, return_exceptions=True))
-        print('task', task)
+        tasks = [asyncio.create_task(coroutine) for coroutine in self.coroutines]
+        self.tasks.extend(tasks)
+        task = asyncio.gather(*tasks, return_exceptions=True)
         self.tasks.append(task)
-        res = await task
-        print('res', res)
+        await task
 
     def run_coroutine_tasks(self):
         """Run all coroutines in the executor"""
@@ -108,38 +107,33 @@ class Executor:
             logger.error(f"Error: {err}. Unable to run function: {function.__name__}")
 
     def sigint_handle(self, signum, frame):
-        print("SIGINT")
         self.config.shutdown = True
 
     async def exit(self):
         """Shutdown the executor"""
         start = asyncio.get_event_loop().time()
-        print('exit', start)
         try:
             while self.config.shutdown is False and self.config.force_shutdown is False:
-                print('running exits')
-                print("Timeout", self.timeout, asyncio.get_event_loop().time() - start)
                 if self.timeout is not None and self.timeout < (asyncio.get_event_loop().time() - start):
-                    print("light Timeout", self.timeout, asyncio.get_event_loop().time() - start)
                     self.config.shutdown = True
-                await asyncio.sleep(10)
-            print('exiting')
+                    break
+                timeout = self.timeout or 30
+                await asyncio.sleep(timeout)
             for strategy in self.strategy_runners:
                 strategy.running = False
 
             if self.config.backtest_engine is not None:
                 self.config.backtest_engine.stop_testing = True
 
-            self.executor.shutdown(wait=False, cancel_futures=True)
+            self.executor.shutdown(wait=False, cancel_futures=False)
 
-            # for task in self.tasks:
-            #     task.cancel()
+            for task in self.tasks:
+                task.cancel()
 
             if self.config.force_shutdown:
                 os._exit(1)
         except Exception as err:
-            print('error in timeout')
-            # logger.error(f"Error: {err}. Unable to shutdown executor")
+            logger.error("%s: Unable to shutdown executor", err)
             os._exit(1)
 
     def execute(self, *, workers: int = 5):

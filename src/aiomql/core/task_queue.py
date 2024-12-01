@@ -83,7 +83,7 @@ class TaskQueue:
         except asyncio.QueueFull:
             logger.error("Queue is full")
 
-    async def worker(self, wid=None):
+    async def worker(self):
         """Worker function to run tasks in the queue."""
         while True:
             try:
@@ -156,9 +156,6 @@ class TaskQueue:
             logger.warning("%s: An error occurred in %s.run", err, self.__class__.__name__)
             self.stop = True
             await self.clean_up()
-
-        finally:
-            print("Finally")
 
 
     async def clean_up(self):

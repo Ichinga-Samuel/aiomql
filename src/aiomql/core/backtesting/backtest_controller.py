@@ -80,8 +80,7 @@ class BackTestController:
                 if pending == 0:
                     await self.backtest_engine.tracker()
                     self.backtest_engine.next()
-                    # gives an output every 6 hours
-                    if self.backtest_engine.cursor.time % (3600 * 6) == 0:
+                    if self.backtest_engine.cursor.time % (3600 * 12) == 0:
                         logger.info(
                             datetime.strftime(
                                 datetime.fromtimestamp(self.backtest_engine.cursor.time), "%Y-%m-%d %H:%M:%S"

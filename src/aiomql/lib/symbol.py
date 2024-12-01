@@ -53,14 +53,19 @@ class Symbol(_Base, SymbolInfo):
             None: If request was unsuccessful
         """
         try:
-            tick = await self.mt5.symbol_info_tick(name or self.name)
+            if not name:
+                tick = await self.mt5.symbol_info_tick(self.name)
+            else:
+                await self.mt5.symbol_select(name, True)
+                await self.mt5.market_book_add(name)
+                tick = await self.mt5.symbol_info_tick(name)
             if tick is not None:
                 tick = Tick(**tick._asdict())
                 setattr(self, "tick", tick) if not name else ...
                 return tick
             return None
         except Exception as err:
-            logger.warning(f"{err}: Unable to get tick for {self.name}")
+            logger.warning("%s: Unable to get tick for %s", err, self.name)
             return None
 
     async def symbol_select(self, *, enable: bool = True) -> bool:

@@ -2,6 +2,7 @@
 Utils is a collection of utility functions that are used throughout the codebase. It is a collection of functions.
 
 ## Table of Contents
+- [backtest_sleep](#_utils.backtest_sleep)
 - [round_off](#_utiils.round_off)
 - [dict_to_string](#_utils.dict_to_string)
 - [round_down](#_utils.round_down)
@@ -126,3 +127,15 @@ A decorator to handle exceptions in an async function.
 def error_handler_sync(func=None, *, msg="", exe=Exception, response=None, log_error_msg=True) -> Callable:
 ```
 A decorator to handle exceptions in a sync function.
+
+<a id="_utils.backtest_sleep"></a>
+### backtest_sleep
+```python
+def backtest_sleep(seconds: float) -> None:
+```
+Sleeps for a given number of seconds in backtest mode.
+
+#### Parameters:
+| Name    | Type  | Description                      |
+|---------|-------|----------------------------------|
+| seconds | float | The number of seconds to sleep.  |
