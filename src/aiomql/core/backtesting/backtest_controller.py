@@ -108,6 +108,7 @@ class BackTestController:
         self.abort()
         self.config.shutdown = True
 
+    # should this be async?
     def wait(self):
         """Called by individual tasks to indicate completion of their cycle"""
         try:
