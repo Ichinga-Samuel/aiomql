@@ -105,8 +105,6 @@ class BackTester:
         Args:
             coroutine (Coroutine): A coroutine to be executed
             on_separate_thread (bool): Run the coroutine
-            **kwargs (dict): keyword arguments for the coroutine
-
         Returns:
 
         """
@@ -200,6 +198,7 @@ class BackTester:
                     "volume_real": tick.volume_real,
                 }
                 strategy.symbol.set_attributes(**info)
+                strategy.symbol.initialized = True
                 self.executor.add_strategy(strategy=strategy)
                 return True
         except Exception as err:

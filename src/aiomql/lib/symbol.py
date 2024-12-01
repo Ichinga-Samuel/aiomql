@@ -27,7 +27,7 @@ class Symbol(_Base, SymbolInfo):
         Full properties are on the SymbolInfo Object.
         Make sure Symbol is always initialized with a name argument
     """
-
+    initialized: bool
     tick: Tick
     account: Account
 
@@ -109,6 +109,7 @@ class Symbol(_Base, SymbolInfo):
             info_tick = await self.info_tick()
             await self.book_add()
             if info is not None and info_tick is not None:
+                self.initialized = True
                 return True
             logger.warning("Unable to initialize %s", self.name)
             return False
