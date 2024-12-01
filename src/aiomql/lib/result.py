@@ -78,7 +78,8 @@ class Result:
         """Serialize the trade records and strategy parameters"""
         try:
             return str(value)
-        except (ValueError, TypeError) as _:
+        except Exception as err:
+            logger.error("%s: Unable to serialize value", err)
             return ""
 
     async def to_json(self):

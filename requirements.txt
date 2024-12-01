@@ -1,4 +1,3 @@
--e git+https://github.com/Ichinga-Samuel/aiomql.git@3143ca9936e2f791798b4944bf0df7225c4c6a78#egg=aiomql
 anyio==4.3.0
 argon2-cffi==23.1.0
 argon2-cffi-bindings==21.2.0

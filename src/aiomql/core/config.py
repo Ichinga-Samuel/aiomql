@@ -9,6 +9,7 @@ from .task_queue import TaskQueue
 logger = getLogger(__name__)
 Bot = TypeVar("Bot")
 BackTestEngine = TypeVar("BackTestEngine")
+BackTestController = TypeVar("BackTestController")
 
 
 class Config:
@@ -28,6 +29,7 @@ class Config:
     task_queue: TaskQueue
     _backtest_engine: BackTestEngine
     bot: Bot
+    backtest_controller: BackTestController
     _instance: Self
     mode: Literal["backtest", "live"]
     use_terminal_for_backtesting: bool
@@ -54,9 +56,11 @@ class Config:
         if not hasattr(cls, "_instance"):
             cls._instance = super().__new__(cls)
             cls._instance.state = {}
-            cls._instance.task_queue = TaskQueue()
+            cls._instance.task_queue = TaskQueue(mode='infinite', workers=10)
             cls._instance.set_attributes(**cls._defaults)
             cls._instance._backtest_engine = None
+            cls._instance.bot = None
+            cls._instance.backtest_controller = None
             # cls._instance.load_config(**kwargs)
         return cls._instance
 

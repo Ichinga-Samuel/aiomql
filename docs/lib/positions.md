@@ -10,6 +10,7 @@
 - [close_position_by_ticket](#positions.close_position_by_ticket)
 - [close_position](#positions.close_position)
 - [close_all](#positions.close_all)
+- [get_total_positions](#positions.get_total_positions)
 
 <a id="positions.positions"></a>
 ### Positions
@@ -19,10 +20,11 @@ class Positions
 Get and handle Open positions.
 
 #### Attributes
-| Name        | Type                        | Description                |
-|-------------|-----------------------------|----------------------------|
-| `positions` | `tuple[TradePosition, ...]` | Financial instrument name. |
-| `mt5`       | `MetaTrader`                | MetaTrader instance.       |
+| Name        | Type                        | Description                                                                         |
+|-------------|-----------------------------|-------------------------------------------------------------------------------------|
+| `positions` | `tuple[TradePosition, ...]` | Financial instrument name.                                                          |
+| `mt5`       | `MetaTrader`                | MetaTrader instance.                                                                |
+|`total_positions`| `int`                    | Total number of open positions. Can be set in `get_positions` or `get_total_positions`. |
 
 <a id="positions.__init__"></a>
 ### \_\_init\_\_
@@ -35,11 +37,19 @@ Initialize a position instance
 <a id="positions.get_position"></a> 
 ### get_positions
 ```python
-async def get_positions(self) -> tuple[TradePosition, ...]:
+async def get_positions(*, symbol: str = None, ticket: int = None, group: str = None) -> tuple[TradePosition, ...]:
 ```
-Get open positions
+Get open positions, with the ability to filter by symbol, ticket, or group.
 
-#### Returns
+#### Parameters:
+| Name     | Type  | Description     |
+|----------|-------|-----------------|
+| `symbol` | `str` | Symbol          |
+| `ticket` | `int` | Position ticket |
+| `group`  | `str` | Group name      |
+
+
+#### Returns:
 | Type                        | Description                    |
 |-----------------------------|--------------------------------|
 | `tuple[TradePosition, ...]` | A list of open trade positions |
@@ -150,3 +160,16 @@ Close all open positions for the trading account.
 | Type  | Description                          |
 |-------|--------------------------------------|
 | `int` | Return total number of closed trades |
+
+
+<a id="positions.get_total_positions"></a>
+### get_total_positions
+```python
+async def get_total_positions() -> int
+```
+Get the total number of open positions and set the `total_positions` attribute.
+
+#### Returns:
+| Type  | Description                          |
+|-------|--------------------------------------|
+| `int` | Return total number of open trades   |

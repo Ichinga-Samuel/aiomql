@@ -1,0 +1,17 @@
+{
+    "balance": 504.26,
+    "profit": 0,
+    "equity": 504.26,
+    "margin": 0.0,
+    "margin_free": 504.26,
+    "margin_level": 0,
+    "wins": 12,
+    "losses": 15,
+    "total": 27,
+    "win_percentage": 44.44,
+    "win": 326.55,
+    "loss": -172.29,
+    "net_profit": 154.26,
+    "profit_factor": 1.9,
+    "profitability": 44.07
+}

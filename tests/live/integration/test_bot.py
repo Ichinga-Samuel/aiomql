@@ -11,8 +11,7 @@ async def test_bot():
     symbols = [ForexSymbol(name=sym) for sym in syms]
     strategies = [Chaos(symbol=symbol, name="test_chaos") for symbol in symbols]
     bot = Bot()
-    bot.config.task_queue.worker_timeout = 2
-    bot.executor.timeout = 10
+    bot.executor.timeout = 5
     bot.add_strategies(strategies=strategies)
     await bot.initialize()
     bot.executor.execute()

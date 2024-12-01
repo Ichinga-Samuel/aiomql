@@ -36,6 +36,11 @@ class RAM:
         self.open_limit = kwargs.get("open_limit", 3)
         self.fixed_amount = kwargs.get("fixed_amount", None)
 
+    def modify_ram(self, **kwargs):
+        """Modify the Risk Assessment and Management with the provided keyword arguments.
+        """
+        [setattr(self, key, value) for key, value in kwargs.items()]
+
     async def get_amount(self) -> float:
         """Calculate the amount to risk per trade as a percentage of margin_free.
 

@@ -12,6 +12,7 @@
 - [calc_profit](#order.calc_profit)
 - [calc_loss](#order.calc_loss)
 - [request](#order.request)
+- [modify](#order.modify)
 
 <a id="order.order"></a>
 ### Order
@@ -160,3 +161,11 @@ Return the trade request object as a dict
 | Type   | Description                      |
 |--------|----------------------------------|
 | `dict` | Returns the trade request object |
+
+
+<a id="order.modify"></a>
+### modify
+```python
+def modify(**kwargs)
+```
+Modify the order object with keyword arguments.

@@ -123,7 +123,8 @@ class OrderType(Repr, IntEnum):
         Returns:
             int: integer value of opposite order type
         """
-        return {0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4, 6: 7, 7: 6, 8: 8}[self]
+        _type = {0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4, 6: 7, 7: 6, 8: 8}[self]
+        return OrderType(_type)
 
 
 class BookType(Repr, IntEnum):

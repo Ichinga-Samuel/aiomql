@@ -1,7 +1,8 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from typing import Coroutine, Callable
 import os
+from concurrent.futures import ThreadPoolExecutor
+from signal import signal, SIGINT
+from typing import Coroutine, Callable
 from logging import getLogger
 
 from ..core.config import Config
@@ -21,7 +22,7 @@ class Executor:
     """
 
     executor: ThreadPoolExecutor
-    tasks: list[asyncio.Task]
+    tasks: list[asyncio.Task | asyncio.Future]
     config: Config
 
     def __init__(self):
@@ -32,6 +33,7 @@ class Executor:
         self.tasks = []
         self.config = Config()
         self.timeout = None  # Timeout for the executor. For testing purposes only
+        signal(SIGINT, self.sigint_handle)
 
     def add_function(self, *, function: Callable, kwargs: dict = None):
         kwargs = kwargs or {}
@@ -78,16 +80,11 @@ class Executor:
 
     async def create_coroutines_task(self):
         """"""
-        coros = [asyncio.create_task(coroutine) for coroutine in self.coroutines]
-        # task = asyncio.create_task(asyncio.gather(*coros, return_exceptions=False))
-        self.tasks.extend(coros)
-        # loop = asyncio.get_running_loop()
-        # loop.run_in_executor()
-        task = asyncio.gather(*coros, return_exceptions=True)
+        tasks = [asyncio.create_task(coroutine) for coroutine in self.coroutines]
+        self.tasks.extend(tasks)
+        task = asyncio.gather(*tasks, return_exceptions=True)
         self.tasks.append(task)
         await task
-        # await task
-        # return task
 
     def run_coroutine_tasks(self):
         """Run all coroutines in the executor"""
@@ -109,6 +106,9 @@ class Executor:
         except Exception as err:
             logger.error(f"Error: {err}. Unable to run function: {function.__name__}")
 
+    def sigint_handle(self, signum, frame):
+        self.config.shutdown = True
+
     async def exit(self):
         """Shutdown the executor"""
         start = asyncio.get_event_loop().time()
@@ -116,23 +116,25 @@ class Executor:
             while self.config.shutdown is False and self.config.force_shutdown is False:
                 if self.timeout is not None and self.timeout < (asyncio.get_event_loop().time() - start):
                     self.config.shutdown = True
-                timeout = self.timeout or 120
+                    break
+                timeout = self.timeout or 30
                 await asyncio.sleep(timeout)
-
-            print("Shutting down executor")
             for strategy in self.strategy_runners:
                 strategy.running = False
-            self.executor.shutdown(wait=False, cancel_futures=True)
+
+            if self.config.backtest_engine is not None:
+                self.config.backtest_engine.stop_testing = True
+
+            self.executor.shutdown(wait=False, cancel_futures=False)
 
             for task in self.tasks:
                 task.cancel()
 
-
-            # self.executor.shutdown(wait=False, cancel_futures=True)
             if self.config.force_shutdown:
                 os._exit(1)
         except Exception as err:
-            logger.error(f"Error: {err}. Unable to shutdown executor")
+            logger.error("%s: Unable to shutdown executor", err)
+            os._exit(1)
 
     def execute(self, *, workers: int = 5):
         """Run the strategies with a threadpool executor.
@@ -143,7 +145,7 @@ class Executor:
         Notes:
             No matter the number specified, the executor will always use a minimum of 5 workers.
         """
-        workers_ = len(self.strategy_runners) + len(self.functions) + len(self.coroutine_threads) + 2
+        workers_ = len(self.strategy_runners) + len(self.functions) + len(self.coroutine_threads) + 3
         workers = max(workers, workers_)
         with ThreadPoolExecutor(max_workers=workers) as executor:
             self.executor = executor

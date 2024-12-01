@@ -38,7 +38,7 @@ class Account(_Base, AccountInfo):
         await self.mt5.initialize()
         self.connected = await self.mt5.login()
         if not self.connected:
-            raise LoginError("Login failed")
+            raise LoginError(f"Login failed: {self.mt5.error}")
         await self.refresh()
         return self
 
