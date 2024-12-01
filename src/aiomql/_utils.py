@@ -10,35 +10,33 @@ from .core.config import Config
 
 logger = getLogger(__name__)
 
-
-async def backtest_sleep(secs: float):
+async def backtest_sleep(secs):
+    """An async sleep function for use during backtesting."""
     config = Config()
-    btc = config.backtest_controller
-    try:
-        if btc.parties == 2:
-            steps = int(secs) // config.backtest_engine.speed
-            steps = max(steps, 1)
-            config.backtest_engine.fast_forward(steps=steps)
-            btc.wait()
-
-        elif btc.parties > 2:
-            _time = config.backtest_engine.cursor.time + secs
-            while _time > config.backtest_engine.cursor.time:
-                btc.wait()
-        else:
-            btc.wait()
-    except Exception as err:
-        btc.wait()
-        logger.error("Error: %s in backtest_sleep", err)
+    sleep = config.backtest_engine.cursor.time + secs
+    while sleep > config.backtest_engine.cursor.time:
+        await asyncio.sleep(0)
 
 
-# async def backtest_sleep(secs):
-#     """An async sleep function for use during backtesting."""
-#     btc = BackTestController()
+# async def backtest_sleep(secs: float):
 #     config = Config()
-#     sleep = config.backtest_engine.cursor.time + secs
-#     while sleep > config.backtest_engine.cursor.time:
+#     btc = config.backtest_controller
+#     try:
+#         if btc.parties == 2:
+#             steps = int(secs) // config.backtest_engine.speed
+#             steps = max(steps, 1)
+#             config.backtest_engine.fast_forward(steps=steps)
+#             btc.wait()
+#
+#         elif btc.parties > 2:
+#             _time = config.backtest_engine.cursor.time + secs
+#             while _time > config.backtest_engine.cursor.time:
+#                 btc.wait()
+#         else:
+#             btc.wait()
+#     except Exception as err:
 #         btc.wait()
+#         logger.error("Error: %s in backtest_sleep", err)
 
 
 def dict_to_string(data: dict, multi=False) -> str:

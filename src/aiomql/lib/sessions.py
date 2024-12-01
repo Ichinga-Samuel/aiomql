@@ -6,7 +6,6 @@ from logging import getLogger
 from ..core.models import OrderSendResult, TradePosition
 from ..core.config import Config
 from .positions import Positions
-from .._utils import backtest_sleep
 
 logger = getLogger(__name__)
 
@@ -26,13 +25,13 @@ def delta(obj: time) -> timedelta:
     return timedelta(hours=obj.hour, minutes=obj.minute, seconds=obj.second, microseconds=obj.microsecond)
 
 
-# async def backtest_sleep(secs):
-#     """An async sleep function for use during backtesting."""
-#     btc = BackTestController()
-#     config = Config()
-#     sleep = config.backtest_engine.cursor.time + secs
-#     while sleep > config.backtest_engine.cursor.time:
-#         btc.wait()
+async def backtest_sleep(secs):
+    """An async sleep function for use during backtesting."""
+    config = Config()
+    btc = config.backtest_controller
+    sleep = config.backtest_engine.cursor.time + secs
+    while sleep > config.backtest_engine.cursor.time:
+        btc.wait()
 
 
 class Session:
