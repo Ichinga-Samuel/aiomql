@@ -220,5 +220,4 @@ Feeling generous, like the package or want to see it become a more mature packag
 
 Consider supporting the project by buying me a coffee.
 
-
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ichingasamuel)

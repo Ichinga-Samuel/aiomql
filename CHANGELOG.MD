@@ -1,6 +1,6 @@
 # Changelog
 
-## [4.0.7](https://github.com/Ichinga-Samuel/aiomql/releases/edit/untagged-7d784e53ee13316aac97) - 2025-01-16
+## [4.0.7](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.7) - 2025-01-16
 
 ### Changed
 - Candles underlying DataFrame is now indexed by datetime.
