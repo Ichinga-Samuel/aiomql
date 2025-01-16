@@ -95,6 +95,8 @@ class BackTestController:
             await self.backtest_engine.wrap_up()
             self.stop_backtesting()
         except BrokenBarrierError:
+            await self.backtest_engine.wrap_up()
+            self.stop_backtesting()
             return
 
         except Exception as err:

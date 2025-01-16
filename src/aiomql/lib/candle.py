@@ -5,6 +5,7 @@ from typing import Type, Self, Iterable
 from logging import getLogger
 
 from pandas import DataFrame, Series
+import pandas as pd
 import pandas_ta as ta
 
 from ..core.constants import TimeFrame
@@ -27,8 +28,7 @@ class Candle:
         spread (float): Spread
         Index (int): Custom attribute representing the position of the candle in a sequence.
     """
-
-    time: float
+    time: int
     open: float
     high: float
     low: float
@@ -47,8 +47,8 @@ class Candle:
         """
         if not all(i in kwargs for i in ["open", "high", "low", "close"]):
             raise ValueError("Candle must be instantiated with open, high, low and close prices")
-        self.time = kwargs.pop("time", time.monotonic_ns())
-        self.Index = kwargs.pop("Index", 0)
+        self.time = kwargs.pop("time", int(time.time()))
+        self.Index = kwargs.pop("Index", self.time)
         self.real_volume = kwargs.pop("real_volume", 0)
         self.spread = kwargs.pop("spread", 0)
         self.tick_volume = kwargs.pop("tick_volume", 0)
@@ -188,7 +188,9 @@ class Candles:
         else:
             raise ValueError(f"Cannot create DataFrame from object of {type(data)}")
 
-        self._data = data.loc[::-1].reset_index(drop=True) if flip else data
+        self._data = data.loc[::-1] if flip else data
+        if 'time' in self._data.columns and self._data.index.name != 'time':
+            self._data.set_index('time', inplace=True, drop=False)
         self.Candle = candle_class or Candle
 
     def __repr__(self):
@@ -198,13 +200,12 @@ class Candles:
         return len(self._data.index)
 
     def __contains__(self, item: Candle):
-        return item.time == self[item.Index].time
+        return item.time == self._data.loc[int(item.Index)].time
 
     def __getitem__(self, index: slice | int | str) -> Self | Series | Candle:
         if isinstance(index, slice):
             cls = self.__class__
             data = self._data.iloc[index]
-            data.reset_index(drop=True, inplace=True)
             return cls(data=data)
 
         elif isinstance(index, str):
@@ -213,8 +214,8 @@ class Candles:
             return self._data[index]
 
         elif isinstance(index, int):
-            index_ = index if index >= 0 else len(self) + index
-            return self.Candle(**self._data.iloc[index], Index=index_)
+            candle = self._data.iloc[index]
+            return self.Candle(**candle, Index=int(candle.time))
         raise TypeError(f"Expected int, slice or str got {type(index)}")
 
     def __setitem__(self, index, value: Series):
@@ -236,7 +237,7 @@ class Candles:
 
     @property
     def timeframe(self):
-        tf = self.time[1] - self.time[0]
+        tf = self.time.iloc[1] - self.time.iloc[0]
         return TimeFrame.get_timeframe(abs(tf))
 
     @property
@@ -278,3 +279,39 @@ class Candles:
         """
         res = self._data.rename(columns=kwargs, inplace=inplace)
         return self if inplace else self.__class__(data=res)
+
+    def __iadd__(self, row: DataFrame | Series):
+        """Add a new row to the candles class."""
+        # self._data = pd.concat([self._data, row])
+        if isinstance(row, Series):
+            self._data.loc[int(row.time)] = row
+
+        elif isinstance(row, DataFrame):
+            for r in row.iloc:
+                self._data.loc[int(r.time)] = r
+
+        return self
+
+    def __add__(self, row: DataFrame | Series):
+        """Add a new row to the candles class."""
+        if isinstance(row, Series):
+            return pd.concat([self._data, pd.DataFrame(row).T])
+
+        elif isinstance(row, DataFrame):
+            return pd.concat([self._data, row])
+
+
+    def add(self, row: DataFrame | Series) -> bool:
+        """Add a new row to the candles class."""
+        new = True
+        if isinstance(row, Series):
+            if (index := int(row.time)) in self._data.index:
+                new = False
+            self._data.loc[index] = row
+
+        elif isinstance(row, DataFrame):
+            for r in row.iloc:
+                if (index := int(r.time)) in self._data.index:
+                    new = False
+                self._data.loc[index] = r
+        return new

@@ -210,6 +210,11 @@ see [API Documentation](docs) for more details
 ### Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
+
+### Changelog
+
+See [CHANGELOG](CHANGELOG.md) for more details
+
 ### Support
 Feeling generous, like the package or want to see it become a more mature package?
 

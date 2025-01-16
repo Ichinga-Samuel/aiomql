@@ -14,12 +14,12 @@ def back_tester():
     syms = ["Volatility 75 Index", "Volatility 100 Index", "Volatility 25 Index", "Volatility 10 Index"]
     symbols = [ForexSymbol(name=sym) for sym in syms]
     strategies = [FingerTrap(symbol=symbol) for symbol in symbols]
-    start = datetime(2024, 5, 1, tzinfo=UTC)
-    stop_time = datetime(2024, 5, 2, tzinfo=UTC)
+    start = datetime(2024, 1, 1, tzinfo=UTC)
+    stop_time = datetime(2024, 12, 2, tzinfo=UTC)
     end = datetime(2024, 5, 7, tzinfo=UTC)
-    back_test_engine = BackTestEngine(start=start, end=end, speed=7200,
+    back_test_engine = BackTestEngine(start=start, end=end, speed=3600,
                                       close_open_positions_on_exit=True, assign_to_config=True, preload=True,
-                                      account_info={"balance": 350})
+                                      account_info={"balance": 750})
     backtester = BackTester(backtest_engine=back_test_engine)
     backtester.add_strategies(strategies=strategies)
     backtester.execute()

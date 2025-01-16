@@ -71,6 +71,7 @@ class BackTestEngine:
     preload: bool
     account_lock: RLock
     account_info: dict
+    checkpoint: float
 
     def __init__(
         self,
@@ -87,6 +88,7 @@ class BackTestEngine:
         preload=True,
         assign_to_config: bool = True,
         account_info: dict = None,
+        checkpoint: float = 0.02
     ):
         self._data = data or BackTestData()
         self.mt5 = MetaTrader()
@@ -115,6 +117,7 @@ class BackTestEngine:
         self.preloaded_ticks = {}
         self.account_lock = RLock()
         self.account_info = account_info or {}
+        self.checkpoint = checkpoint
 
     def __next__(self) -> Cursor:
         try:
@@ -252,6 +255,8 @@ class BackTestEngine:
             profit = sum(pos.profit for pos in self.positions.open_positions)
             self.update_account(profit=profit)
             self.check_account()
+            if int(self.cursor.index % (self.range.stop * self.checkpoint)) == 0:
+                await asyncio.to_thread(self.save_result_to_json)
         except Exception as exe:
             logger.critical("Error in tracker: %s at %d", exe, self.cursor.time)
 

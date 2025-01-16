@@ -66,7 +66,6 @@ class TestCandles:
         candle = candles[10]
         assert isinstance(candle, Candle)
         assert candle in candles
-        assert candle.Index == 10
 
     def test_slice(self, candles):
         sliced = candles[10:15]

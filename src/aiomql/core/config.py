@@ -26,6 +26,8 @@ class Config:
     record_trades: bool
     records_dir: Path
     backtest_dir: Path
+    records_dir_name: str
+    backtest_dir_name: str  #Todo: add to docs
     task_queue: TaskQueue
     _backtest_engine: BackTestEngine
     bot: Bot
@@ -38,6 +40,8 @@ class Config:
     _defaults = {
         "timeout": 60000,
         "record_trades": True,
+        "records_dir_name": "trade_records",
+        "backtest_dir_name": "backtesting",
         "config_file": None,
         "trade_record_mode": "csv",
         "mode": "live",
@@ -168,13 +172,13 @@ class Config:
 
     @property
     def records_dir(self):
-        rec_dir = self.root / 'trade_records'
+        rec_dir = self.root / self.records_dir_name or 'trade_records'
         rec_dir.mkdir(parents=True, exist_ok=True) if rec_dir.exists() is False else ...
         return rec_dir
 
     @property
     def backtest_dir(self) -> Path:
-        b_dir = self.root / 'backtesting'
+        b_dir = self.root / self.backtest_dir_name or 'backtesting'
         b_dir.mkdir(parents=True, exist_ok=True) if b_dir.exists() is False else ...
         return b_dir
 

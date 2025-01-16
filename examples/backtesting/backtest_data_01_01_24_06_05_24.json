@@ -1,0 +1,17 @@
+{
+    "balance": 297007.45,
+    "profit": 0,
+    "equity": 297007.45,
+    "margin": 0.0,
+    "margin_free": 297007.45,
+    "margin_level": 0,
+    "wins": 307,
+    "losses": 336,
+    "total": 643,
+    "win_percentage": 47.74,
+    "win": 619421.92,
+    "loss": -323164.47,
+    "net_profit": 296257.45,
+    "profit_factor": 1.92,
+    "profitability": 39500.99
+}

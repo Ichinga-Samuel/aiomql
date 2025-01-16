@@ -13,7 +13,6 @@ def sample_bot():
     strategies = [Chaos(symbol=symbol) for symbol in symbols]
     bot = Bot()
     bot.executor.timeout = 10
-
     bot.add_coroutine(coroutine=sleep_run)
     bot.add_strategies(strategies=strategies)
     bot.execute()

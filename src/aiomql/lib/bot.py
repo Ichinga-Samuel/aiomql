@@ -157,7 +157,6 @@ class Bot:
             strategy (Strategy): Strategy class
             params (dict): A dictionary of parameters for the strategy
             symbols (list): A list of symbols to run the strategy on
-            **kwargs: Additional keyword arguments for the strategy
         """
         [self.add_strategy(strategy=strategy(symbol=symbol, params=params, **kwargs)) for symbol in symbols]
 

@@ -19,7 +19,6 @@ logger = getLogger(__name__)
 
 class Cursor(NamedTuple):
     """A cursor to iterate over the data. Marks the current position."""
-
     index: int
     time: int
 

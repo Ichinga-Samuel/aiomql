@@ -60,10 +60,10 @@ class Executor:
         """
         self.strategy_runners.append(strategy)
 
-    async def create_strategy_task(self, strategy: Strategy):
-        task = asyncio.create_task(strategy.run_strategy())
-        self.tasks.append(task)
-        await task
+    # async def create_strategy_task(self, strategy: Strategy):
+    #     task = asyncio.create_task(strategy.run_strategy())
+    #     self.tasks.append(task)
+    #     await task
 
     def run_strategy(self, strategy: Strategy):
         """Wraps the coroutine trade method of each strategy with 'asyncio.run'.
@@ -71,7 +71,7 @@ class Executor:
         Args:
             strategy (Strategy): A strategy object
         """
-        asyncio.run(self.create_strategy_task(strategy))
+        asyncio.run(strategy.run_strategy())
 
     async def create_coroutine_task(self, coroutine: Coroutine):
         task = asyncio.create_task(coroutine)
