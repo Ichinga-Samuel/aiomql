@@ -48,7 +48,7 @@ class Candle:
         if not all(i in kwargs for i in ["open", "high", "low", "close"]):
             raise ValueError("Candle must be instantiated with open, high, low and close prices")
         self.time = kwargs.pop("time", int(time.time()))
-        self.Index = kwargs.pop("Index", self.time)
+        self.Index = kwargs.pop("Index", 0)
         self.real_volume = kwargs.pop("real_volume", 0)
         self.spread = kwargs.pop("spread", 0)
         self.tick_volume = kwargs.pop("tick_volume", 0)
@@ -200,7 +200,7 @@ class Candles:
         return len(self._data.index)
 
     def __contains__(self, item: Candle):
-        return item.time == self._data.loc[int(item.Index)].time
+        return item.time == self._data.loc[int(item.time)].time
 
     def __getitem__(self, index: slice | int | str) -> Self | Series | Candle:
         if isinstance(index, slice):
@@ -215,7 +215,8 @@ class Candles:
 
         elif isinstance(index, int):
             candle = self._data.iloc[index]
-            return self.Candle(**candle, Index=int(candle.time))
+            _index = index if index >= 0 else len(self) + index
+            return self.Candle(**candle, Index=_index)
         raise TypeError(f"Expected int, slice or str got {type(index)}")
 
     def __setitem__(self, index, value: Series):
@@ -233,7 +234,8 @@ class Candles:
         raise AttributeError(f"Attribute {item} not defined on class {self.__class__.__name__}")
 
     def __iter__(self):
-        return (self.Candle(**row._asdict()) for row in self._data.itertuples())
+        return (self.Candle(**row.to_dict(), Index=ind) for ind, row in enumerate(self._data.iloc))
+        # return (self.Candle(**row._asdict()) for row in self._data.itertuples())
 
     @property
     def timeframe(self):
@@ -295,11 +297,12 @@ class Candles:
     def __add__(self, row: DataFrame | Series):
         """Add a new row to the candles class."""
         if isinstance(row, Series):
-            return pd.concat([self._data, pd.DataFrame(row).T])
+            data = self. pd.concat([self._data, pd.DataFrame(row).T])
+            return self.Candle(data=data)
 
         elif isinstance(row, DataFrame):
-            return pd.concat([self._data, row])
-
+            data = pd.concat([self._data, row])
+            return self.Candle(data=data)
 
     def add(self, row: DataFrame | Series) -> bool:
         """Add a new row to the candles class."""
