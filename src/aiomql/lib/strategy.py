@@ -91,6 +91,10 @@ class Strategy(ABC):
         except Exception as err:
             logger.error(f"Error: {err}")
 
+    async def initialize(self):
+        """Perform any initialization tasks here."""
+        ...
+
     @staticmethod
     async def live_sleep(*, secs: float):
         """Sleep for the needed amount of seconds in between requests to the terminal.
@@ -168,6 +172,7 @@ class Strategy(ABC):
         """Run the strategy."""
         async with self as _:
             logger.info("Running %s strategy on %s", self.name, self.symbol.name)
+            await self.initialize()
             while self.running:
                 try:
                     await self.sessions.check()

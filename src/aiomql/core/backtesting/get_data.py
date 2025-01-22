@@ -200,7 +200,7 @@ class GetData:
         terminal = await self.mt5.terminal_info()
         if terminal is None:
             self.data.fully_loaded = False
-            self.task_queue.stop_queue()
+            self.task_queue.stop = True
         terminal = terminal._asdict()
         self.data.set_attrs(terminal=terminal)
 
@@ -208,7 +208,7 @@ class GetData:
         version = await self.mt5.version()
         if version is None:
             self.data.fully_loaded = False
-            self.task_queue.stop_queue()
+            self.task_queue.stop = True
         self.data.set_attrs(version=version)
 
     @backoff_decorator
@@ -216,7 +216,7 @@ class GetData:
         res = await self.mt5.account_info()
         if res is None:
             self.data.fully_loaded = False
-            self.task_queue.stop_queue()
+            self.task_queue.stop = True
         res = res._asdict()
         self.data.set_attrs(account=res)
 
@@ -247,7 +247,7 @@ class GetData:
         res = await self.mt5.symbol_info(symbol)
         if res is None:
             self.data.fully_loaded = False
-            self.task_queue.stop_queue()
+            self.task_queue.stop = True
         self.data.symbols[symbol] = res._asdict()
 
     @backoff_decorator
@@ -255,7 +255,7 @@ class GetData:
         res = await self.mt5.copy_ticks_range(symbol, self.start, self.end, MetaTrader5.COPY_TICKS_ALL)
         if res is None:
             self.data.fully_loaded = False
-            self.task_queue.stop_queue()
+            self.task_queue.stop = True
         self.data.ticks[symbol] = res
 
     @backoff_decorator
@@ -263,5 +263,5 @@ class GetData:
         res = await self.mt5.copy_rates_range(symbol, timeframe, self.start, self.end)
         if res is None:
             self.data.fully_loaded = False
-            self.task_queue.stop_queue()
+            self.task_queue.stop = True
         self.data.rates.setdefault(symbol, {})[int(timeframe)] = res
