@@ -8,7 +8,6 @@ from .executor import Executor
 from ..core.config import Config
 from ..core.meta_trader import MetaTrader
 from .symbol import Symbol as Symbol
-from .ticks import Tick
 from .strategy import Strategy as Strategy
 
 logger = logging.getLogger(__name__)
@@ -67,7 +66,7 @@ class Bot:
             self.add_coroutine(coroutine=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
-                logger.warning("No strategies were added to the bot. Exiting in five seconds")
+                logger.warning("No strategies were added to the bot. Exiting in one second")
                 await asyncio.sleep(1)
                 self.config.shutdown = True
         except Exception as err:
@@ -76,7 +75,8 @@ class Bot:
 
     def initialize_sync(self):
         """Prepares the bot by signing in to the trading account and initializing the symbols for each strategy.
-        Only strategies with successfully initialized symbols will be added to the executor. Starts the global task queue.
+        Only strategies with successfully initialized symbols will be added to the executor.
+        Starts the global task queue.
 
         Raises:
             SystemExit if sign in was not successful
@@ -93,7 +93,7 @@ class Bot:
             self.add_coroutine(coroutine=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
-                logger.warning("No strategies were added to the bot. Exiting in 5 seconds")
+                logger.warning("No strategies were added to the bot. Exiting in one second")
                 time.sleep(1)
                 self.config.shutdown = True
         except Exception as err:
@@ -120,14 +120,16 @@ class Bot:
         self.executor.add_coroutine(coroutine=coroutine, kwargs=kwargs, on_separate_thread=on_separate_thread)
 
     def execute(self):
-        """Execute the bot using asyncio.run"""
+        """Start the bot in sync mode"""
         self.initialize_sync()
-        self.executor.execute()
+        if self.config.shutdown is False:
+            self.executor.execute()
 
     async def start(self):
         """Initialize the bot and call the executor it."""
         await self.initialize()
-        self.executor.execute()
+        if self.config.shutdown is False:
+            self.executor.execute()
 
     def add_strategy(self, *, strategy: Strategy):
         """Add a strategy to the list of strategies.
@@ -174,25 +176,10 @@ class Bot:
 
     def init_strategy_sync(self, *, strategy: Strategy) -> bool:
         """Initialize a single strategy. This method is called internally by the bot."""
-        try:
-            select = self.mt5._symbol_select(strategy.symbol.name, True)
-            info = self.mt5._symbol_info(strategy.symbol.name)
-            tick = self.mt5._symbol_info_tick(strategy.symbol.name)
-            self.mt5._market_book_add(strategy.symbol.name)
-            if info is not None and tick is not None:
-                info = info._asdict()
-                info["swap_rollover3days"] = info.get("swap_rollover3days", 0) % 7
-                info["select"] = select
-                tick = Tick(**tick._asdict())
-                strategy.symbol.tick = tick
-                strategy.symbol.initialized = True
-                strategy.symbol.set_attributes(**info)
-                self.executor.add_strategy(strategy=strategy)
-                return True
-            return False
-        except Exception as err:
-            logger.warning("%s: Unable to initialize strategy", err)
-            return False
+        res = strategy.symbol.initialize_sync()
+        if res:
+            self.executor.add_strategy(strategy=strategy)
+        return res
 
     def init_strategies_sync(self):
         """Initialize the symbols for the current trading session. This method is called internally by the bot."""

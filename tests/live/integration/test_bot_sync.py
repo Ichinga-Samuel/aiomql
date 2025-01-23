@@ -9,9 +9,8 @@ def test_bot_sync():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     syms = ["BTCUSD", "SOLUSD", "ETHUSD"]
     symbols = [ForexSymbol(name=sym) for sym in syms]
-    strategies = [Chaos(symbol=symbol, name="test_chaos") for symbol in symbols]
+    strategies = [Chaos(symbol=symbol, name="test_chaos", params={"interval": 3}) for symbol in symbols]
     bot = Bot()
-    bot.config.task_queue.worker_timeout = 2
     bot.executor.timeout = 10
     bot.add_strategies(strategies=strategies)
     bot.initialize_sync()

@@ -1,6 +1,21 @@
 # Changelog
 
-## [4.0.7](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.8) - 2025-01-21
+## [4.0.9](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.8) - 2025-01-23
+
+### Fixed
+
+- Fixed `__add__` to return a new Candles object
+
+### Changed
+
+- Removed tasks attribute from executor class
+
+### Added
+
+- Added `initialize_sync` method for synchronous initialization of a symbol
+
+
+## [4.0.8](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.8) - 2025-01-21
 
 ### Fixed
 

@@ -20,11 +20,13 @@ class Chaos(Strategy):
     fast_ema: int
     slow_ema: int
     tracker: Tracker
-    parameters = {"fast_ema": 8, "slow_ema": 20, "ltf": TimeFrame.M1, "htf": TimeFrame.M2, "lcc": 100, "hcc": 100}
+    interval: int
+    parameters = {"fast_ema": 8, "slow_ema": 20, "ltf": TimeFrame.M1, "htf": TimeFrame.M2, "lcc": 100, "hcc": 100,
+                  "interval": 0}
 
     def __init__(self, *, symbol: ForexSymbol, params: dict = None, sessions=None, name="Chaos"):
         super().__init__(symbol=symbol, params=params, sessions=sessions, name=name)
-        self.tracker = Tracker(snooze=self.ltf.seconds)
+        self.tracker = Tracker(snooze=self.interval or self.ltf.seconds)
         self.trader = ScalpTrader(symbol=self.symbol)
 
     async def check_trend(self):
@@ -43,12 +45,12 @@ class Chaos(Strategy):
             candles.rename(inplace=True, **{f"EMA_{self.fast_ema}": "fast", f"EMA_{self.slow_ema}": "slow"})
             order_type = random.choice([OrderType.BUY, OrderType.SELL])
             if order_type == OrderType.BUY:
-                self.tracker.update(trend="bullish", snooze=self.htf.seconds, order_type=OrderType.BUY)
+                self.tracker.update(trend="bullish", snooze=self.interval or self.htf.seconds, order_type=OrderType.BUY)
             else:
-                self.tracker.update(trend="bearish", snooze=self.htf.seconds, order_type=OrderType.SELL)
+                self.tracker.update(trend="bearish", snooze=self.interval or self.htf.seconds, order_type=OrderType.SELL)
         except Exception as err:
             logger.error(f"{err}. Failed to check trend")
-            self.tracker.update(trend="ranging", snooze=self.ltf.seconds, order_type=None)
+            self.tracker.update(trend="ranging", snooze=self.interval or self.ltf.seconds, order_type=None)
 
     async def trade(self):
         try:

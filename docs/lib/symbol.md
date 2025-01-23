@@ -7,6 +7,7 @@ Symbol class for handling a financial instrument.
 - [symbol_select](#symbol.symbol_select)
 - [info](#symbol.info)
 - [initialize](#symbol.initialize)
+- [initialize_sync](#symbol.initialize_sync)
 - [book_add](#symbol.book_add)
 - [book_get](#symbol.book_get)
 - [book_release](#symbol.book_release)
@@ -94,11 +95,22 @@ Get data on the specified financial instrument and update the symbol object prop
 
 
 <a id="symbol.initialize"></a>
-### init
+### initialize
 ```python
 async def initialize() -> bool
 ```
 
+Initialized the symbol by pulling properties from the terminal
+#### Returns:
+| Type   | Description                                            |
+|--------|--------------------------------------------------------|
+| `bool` | Returns True if symbol info was successful initialized |
+
+<a id="symbol.initialize_sync"></a>
+### initialize_sync
+```python
+def initialize_sync() -> bool
+```
 Initialized the symbol by pulling properties from the terminal
 #### Returns:
 | Type   | Description                                            |

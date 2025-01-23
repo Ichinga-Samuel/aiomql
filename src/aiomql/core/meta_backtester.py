@@ -87,6 +87,15 @@ class MetaBackTester(MetaTrader):
             return super().login_sync(login=login, password=password, server=server, timeout=timeout)
         return True
 
+    def _symbol_select(self, symbol: str, enable: bool) -> bool:
+        return self.backtest_engine.symbol_select_sync(symbol=symbol, enable=enable)
+
+    def _market_book_add(self, symbol: str) -> bool:
+        return True
+
+    async def market_book_add(self, symbol: str) -> bool:
+        return True
+
     async def login(self, *, login: int = 0, password: str = "", server: str = "", timeout: int = 60000) -> bool:
         if self.config.use_terminal_for_backtesting:
             return await super().login(login=login, password=password, server=server, timeout=timeout)
@@ -120,6 +129,12 @@ class MetaBackTester(MetaTrader):
     async def symbol_info(self, symbol: str) -> SymbolInfo | None:
         sym = await self.backtest_engine.get_symbol_info(symbol=symbol)
         return sym
+
+    def _symbol_info(self, symbol) -> SymbolInfo | None:
+        return self.backtest_engine.symbol_info_sync(symbol=symbol)
+
+    def _symbol_info_tick(self, symbol) -> Tick | None:
+        return self.backtest_engine.symbol_info_tick_sync(symbol=symbol)
 
     @error_handler(msg="test data not available")
     async def symbol_info_tick(self, symbol: str) -> Tick | None:

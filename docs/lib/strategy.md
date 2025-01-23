@@ -13,6 +13,7 @@ The base class for creating strategies.
 - [backtest_strategy](#strategy.backtest_strategy)
 - [trade](#strategy.trade)
 - [test](#strategy.test)
+- [initialize](#strategy.initialize)
 
 
 <a id="strategy.strategy"></a>
@@ -134,3 +135,10 @@ Runs the strategy in live mode.
 async def live_strategy()
 ```
 Runs the strategy in backtest mode.
+
+<a id="strategy.initialize"></a>
+### initialize
+```python
+async def initialize()
+```
+Initialize a strategy

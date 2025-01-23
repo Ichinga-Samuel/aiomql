@@ -1067,6 +1067,54 @@ class BackTestEngine:
         tick = await self.get_price_tick(symbol=symbol, time=self.cursor.time)
         return tick
 
+    async def symbol_select(self, *, symbol: str, enable: bool) -> bool:
+        if self.use_terminal:
+            info = await self.mt5.symbol_select(symbol, enable)
+            return info
+        else:
+            return symbol in self._data.symbols.keys()
+
+    def symbol_select_sync(self, *, symbol: str, enable: bool = True) -> bool:
+        if self.use_terminal:
+            info = self.mt5._symbol_select(symbol, enable)
+            return info
+        else:
+            return symbol in self._data.symbols.keys()
+
+    def symbol_info_tick_sync(self, *, symbol) -> Tick | None:
+        if self.use_terminal:
+            time = datetime.fromtimestamp(self.cursor.time, tz=UTC)
+            tick = self.mt5._copy_ticks_from(symbol, time, 1, CopyTicks.ALL)
+            tick = Tick(tick[-1]) if tick is not None else None
+        else:
+            tick = self.prices[symbol].loc[self.cursor.time]
+            tick = Tick(tick) if tick is not None else None
+        return tick
+
+    def symbol_info_sync(self, *, symbol) -> SymbolInfo | None:
+        if self.use_terminal:
+            info = self.mt5._symbol_info(symbol)
+            time = datetime.fromtimestamp(self.cursor.time, tz=UTC)
+            tick = self.mt5._copy_ticks_from(symbol, time, 1, CopyTicks.ALL)
+            tick = Tick(tick[-1]) if tick is not None else None
+        else:
+            info = self.symbols[symbol]
+            tick = self.prices[symbol].loc[self.cursor.time]
+            tick = Tick(tick) if tick is not None else None
+
+        if info and tick:
+            info = info._asdict() | {
+            "bid": tick.bid,
+            "bidhigh": tick.bid,
+            "bidlow": tick.bid,
+            "ask": tick.ask,
+            "askhigh": tick.ask,
+            "asklow": tick.bid,
+            "last": tick.last,
+            "volume_real": tick.volume_real,
+            }
+            return SymbolInfo((info.get(key) for key in SymbolInfo.__match_args__))
+
     @async_cache
     async def _symbol_info(self, *, symbol: str) -> SymbolInfo:
         if self.use_terminal:

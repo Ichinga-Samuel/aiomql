@@ -17,7 +17,6 @@ from MetaTrader5 import (
     OrderSendResult,
     OrderCheckResult,
 )
-import MetaTrader5 as mt5
 
 from .constants import OrderType, CopyTicks
 
@@ -111,7 +110,7 @@ class MetaTrader(MetaCore):
         login = login or acc_details.get("login", 0)
         password = password or acc_details.get("password", "")
         server = server or acc_details.get("server", "")
-        res = mt5.login(login, password=password, server=server, timeout=timeout)
+        res = self._login(login, password=password, server=server, timeout=timeout)
         return res
 
     async def initialize(
@@ -200,7 +199,7 @@ class MetaTrader(MetaCore):
             )
             if key is not None
         }
-        res = mt5.initialize(*args, **kwargs)
+        res = self._initialize(*args, **kwargs)
         if res is False:
             self._shutdown()
         if not res:

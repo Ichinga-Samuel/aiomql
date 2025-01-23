@@ -17,20 +17,18 @@ class Executor:
     Attributes:
         executor (ThreadPoolExecutor): The executor object.
         strategy_runners (list): List of strategies.
-        coroutines (list[Coroutine]): A list of coroutines to run in the executor
+        coroutines (dict[Coroutine, dict]): A list of coroutines to run in the executor
+        coroutine_threads (dict[Coroutine, dict]): A list of coroutines to run in the executor
         functions (dict[Callable, dict]): A dictionary of functions to run in the executor
     """
-
     executor: ThreadPoolExecutor
-    tasks: list[asyncio.Task | asyncio.Future]
     config: Config
 
     def __init__(self):
         self.strategy_runners: list[Strategy] = []
-        self.coroutines: list[Coroutine] = []
-        self.coroutine_threads: list[Coroutine] = []
+        self.coroutines: dict[Coroutine: dict] = {}
+        self.coroutine_threads: dict[Coroutine: dict] = {}
         self.functions: dict[Callable:dict] = {}
-        self.tasks = []
         self.config = Config()
         self.timeout = None  # Timeout for the executor. For testing purposes only
         signal(SIGINT, self.sigint_handle)
@@ -41,8 +39,10 @@ class Executor:
 
     def add_coroutine(self, *, coroutine: Callable | Coroutine, kwargs: dict = None, on_separate_thread=False):
         kwargs = kwargs or {}
-        coroutine = coroutine(**kwargs)
-        self.coroutines.append(coroutine) if on_separate_thread is False else self.coroutine_threads.append(coroutine)
+        if on_separate_thread:
+            self.coroutine_threads[coroutine] = kwargs
+        else:
+            self.coroutines[coroutine] = kwargs
 
     def add_strategies(self, *, strategies: tuple[Strategy]):
         """Add multiple strategies at once
@@ -60,12 +60,8 @@ class Executor:
         """
         self.strategy_runners.append(strategy)
 
-    # async def create_strategy_task(self, strategy: Strategy):
-    #     task = asyncio.create_task(strategy.run_strategy())
-    #     self.tasks.append(task)
-    #     await task
-
-    def run_strategy(self, strategy: Strategy):
+    @staticmethod
+    def run_strategy(strategy: Strategy):
         """Wraps the coroutine trade method of each strategy with 'asyncio.run'.
 
         Args:
@@ -73,38 +69,23 @@ class Executor:
         """
         asyncio.run(strategy.run_strategy())
 
-    async def create_coroutine_task(self, coroutine: Coroutine):
-        task = asyncio.create_task(coroutine)
-        self.tasks.append(task)
-        await task
-
-    async def create_coroutines_task(self):
-        """"""
-        tasks = [asyncio.create_task(coroutine) for coroutine in self.coroutines]
-        self.tasks.extend(tasks)
-        task = asyncio.gather(*tasks, return_exceptions=True)
-        self.tasks.append(task)
-        await task
-
-    def run_coroutine_tasks(self):
+    async def run_coroutine_tasks(self):
         """Run all coroutines in the executor"""
-        asyncio.run(self.create_coroutines_task())
+        await asyncio.gather(*[coroutine(**kwargs) for coroutine, kwargs in self.coroutines.items()],
+                             return_exceptions=True)
 
-    def run_coroutine_task(self, coroutine):
-        asyncio.run(self.create_coroutine_task(coroutine))
+    @staticmethod
+    def run_coroutine_task(coroutine, kwargs):
+        asyncio.run(coroutine(**kwargs))
 
     @staticmethod
     def run_function(function: Callable, kwargs: dict):
         """Run a function
-
         Args:
             function: The function to run
             kwargs: A dictionary of keyword arguments for the function
         """
-        try:
-            function(**kwargs)
-        except Exception as err:
-            logger.error(f"Error: {err}. Unable to run function: {function.__name__}")
+        function(**kwargs)
 
     def sigint_handle(self, signum, frame):
         self.config.shutdown = True
@@ -117,18 +98,19 @@ class Executor:
                 if self.timeout is not None and self.timeout < (asyncio.get_event_loop().time() - start):
                     self.config.shutdown = True
                     break
-                timeout = self.timeout or 30
+
+                timeout = 1 if self.timeout else 30
                 await asyncio.sleep(timeout)
+
             for strategy in self.strategy_runners:
                 strategy.running = False
+
+            self.config.task_queue.cancel()
 
             if self.config.backtest_engine is not None:
                 self.config.backtest_engine.stop_testing = True
 
             self.executor.shutdown(wait=False, cancel_futures=False)
-
-            for task in self.tasks:
-                task.cancel()
 
             if self.config.force_shutdown:
                 os._exit(1)
@@ -151,5 +133,6 @@ class Executor:
             self.executor = executor
             [self.executor.submit(self.run_strategy, strategy) for strategy in self.strategy_runners]
             [self.executor.submit(function, **kwargs) for function, kwargs in self.functions.items()]
-            [self.executor.submit(self.run_coroutine_task, coroutine) for coroutine in self.coroutine_threads]
-            self.executor.submit(self.run_coroutine_tasks)
+            [self.executor.submit(self.run_coroutine_task, coroutine, kwargs) for coroutine, kwargs in
+             self.coroutine_threads.items()]
+            self.executor.submit(asyncio.run, self.run_coroutine_tasks())

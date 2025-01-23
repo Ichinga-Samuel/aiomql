@@ -40,6 +40,7 @@ class Symbol(_Base, SymbolInfo):
         assert "name" in kwargs, "Symbol Object Must be initialized with a name"
         super().__init__(**kwargs)
         self.account = Account()
+        self.initialized = False
 
     @backoff_decorator
     async def info_tick(self, *, name: str = "") -> Tick | None:
@@ -63,7 +64,6 @@ class Symbol(_Base, SymbolInfo):
                 tick = Tick(**tick._asdict())
                 setattr(self, "tick", tick) if not name else ...
                 return tick
-            return None
         except Exception as err:
             logger.warning("%s: Unable to get tick for %s", err, self.name)
             return None
@@ -92,8 +92,7 @@ class Symbol(_Base, SymbolInfo):
         info = await self.mt5.symbol_info(self.name)
         if info is not None:
             info = info._asdict()
-            info["swap_rollover3days"] = info.get("swap_rollover3days", 0) % 7
-            self.set_attributes(**info)
+            # self.set_attributes(**info)
             return SymbolInfo(**info)
         return None
 
@@ -104,10 +103,44 @@ class Symbol(_Base, SymbolInfo):
              bool: Returns True if symbol info was successful initialized
         """
         try:
-            await self.symbol_select()
-            info = await self.info()
-            info_tick = await self.info_tick()
-            await self.book_add()
+            select = await self.mt5.symbol_select(self.name, True)
+            self.select = select
+
+            await self.mt5.market_book_add(self.name)
+
+            info = await self.mt5.symbol_info(self.name)
+            if info is not None:
+                self.set_attributes(**info._asdict())
+
+            info_tick = await self.mt5.symbol_info_tick(self.name)
+            if info_tick:
+                self.tick = Tick(**info_tick._asdict())
+
+            if info is not None and info_tick is not None:
+                self.initialized = True
+                return True
+            logger.warning("Unable to initialize %s", self.name)
+            return False
+        except Exception as err:
+            logger.warning("%s: Unable to initialize %s", err, self.name)
+            return False
+
+    def initialize_sync(self) -> bool:
+        """Synchronous version of the initialize method"""
+        try:
+            select = self.mt5._symbol_select(self.name, True)
+            self.select = select
+
+            self.mt5._market_book_add(self.name)
+
+            info = self.mt5._symbol_info(self.name)
+            if info is not None:
+                self.set_attributes(**info._asdict())
+
+            info_tick = self.mt5._symbol_info_tick(self.name)
+            if info_tick:
+                self.tick = Tick(**info_tick._asdict())
+
             if info is not None and info_tick is not None:
                 self.initialized = True
                 return True

@@ -1,16 +1,13 @@
 import asyncio
 import logging
+import time
 from typing import Type, Iterable, Callable, Coroutine
-from datetime import datetime, UTC
-
-from MetaTrader5 import Tick
 
 from .executor import Executor
 from ..core.config import Config
 from ..core.backtesting.backtest_controller import BackTestController
 from ..core.meta_backtester import MetaBackTester
 from ..core.backtesting.backtest_engine import BackTestEngine
-from ..core.constants import CopyTicks
 from .symbol import Symbol as Symbol
 from .strategy import Strategy as Strategy
 
@@ -58,8 +55,10 @@ class BackTester:
             self.backtest_engine.setup_account_sync()
             self.init_strategies_sync()
             if (strategies := len(self.executor.strategy_runners)) == 0:
-                logger.warning("No strategies were added to the backtester. Exiting ...")
-                raise Exception("No strategies added to the backtester")
+                self.config.shutdown = True
+                logger.warning("No strategies were added to the backtester. Exiting in one second")
+                time.sleep(1)
+                return
             self.config.task_queue.worker_timeout = 5
             self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
             self.add_coroutine(coroutine=self.executor.exit)
@@ -87,8 +86,10 @@ class BackTester:
             await self.backtest_engine.setup_account()
             await self.init_strategies()
             if (strategies := len(self.executor.strategy_runners)) == 0:
-                logger.warning("No strategies were added to the backtester. Exiting ...")
-                raise Exception("No strategies added to the backtester")
+                self.config.shutdown = True
+                logger.warning("No strategies were added to the backtester. Exiting in one second")
+                await asyncio.sleep(1)
+                return
             self.config.task_queue.worker_timeout = 5
             self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
             self.add_coroutine(coroutine=self.executor.exit)
@@ -113,16 +114,19 @@ class BackTester:
     def execute(self):
         """Execute the bot."""
         self.initialize_sync()
-        self.executor.execute()
+        if self.config.shutdown is False:
+            self.executor.execute()
 
     async def start(self):
         """Initialize the bot and execute it. Similar to calling `execute` method but is a coroutine."""
         await self.initialize()
+        if self.config.shutdown is False:
+            self.executor.execute()
         self.executor.execute()
 
     def add_strategy(self, *, strategy: Strategy):
         """Add a strategy to the list of strategies.
-        An added strategy will only run if it's symbol was successfully initialized and it is added to the executor.
+        An added strategy will only run if it's symbol was successfully initialized, and it is added to the executor.
 
         Args:
             strategy (Strategy): A Strategy instance to run on bot
@@ -162,44 +166,10 @@ class BackTester:
     def init_strategy_sync(self, *, strategy: Strategy) -> bool:
         """Initialize a single strategy. This method is called internally by the bot."""
         try:
-            if self.backtest_engine.use_terminal is False:
-                info = self.backtest_engine.symbols[strategy.symbol.name]
-                tick = self.backtest_engine.prices[strategy.symbol.name].loc[self.backtest_engine.cursor.time]
-                tick = Tick(tick)
-                info = info._asdict() | {
-                    "bid": tick.bid,
-                    "bidhigh": tick.bid,
-                    "bidlow": tick.bid,
-                    "ask": tick.ask,
-                    "askhigh": tick.ask,
-                    "asklow": tick.bid,
-                    "last": tick.last,
-                    "volume_real": tick.volume_real,
-                }
-                strategy.symbol.set_attributes(**info)
+            res = strategy.symbol.initialize_sync()
+            if res:
                 self.executor.add_strategy(strategy=strategy)
-                return True
-            else:
-                self.mt._symbol_select(strategy.symbol.name, True)
-                self.mt._market_book_add(strategy.symbol.name)
-                info = self.mt._symbol_info(strategy.symbol.name)
-                time = datetime.fromtimestamp(self.backtest_engine.cursor.time, tz=UTC)
-                tick = self.mt._copy_ticks_from(strategy.symbol.name, time, 1, CopyTicks.ALL)
-                tick = Tick(tick[-1]) if tick is not None else None
-                info = info._asdict() | {
-                    "bid": tick.bid,
-                    "bidhigh": tick.bid,
-                    "bidlow": tick.bid,
-                    "ask": tick.ask,
-                    "askhigh": tick.ask,
-                    "asklow": tick.bid,
-                    "last": tick.last,
-                    "volume_real": tick.volume_real,
-                }
-                strategy.symbol.set_attributes(**info)
-                strategy.symbol.initialized = True
-                self.executor.add_strategy(strategy=strategy)
-                return True
+            return res
         except Exception as err:
             logger.error("%s: Unable to initialize strategy", err)
             return False

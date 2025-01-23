@@ -298,11 +298,11 @@ class Candles:
         """Add a new row to the candles class."""
         if isinstance(row, Series):
             data = self. pd.concat([self._data, pd.DataFrame(row).T])
-            return self.Candle(data=data)
+            return self.__class__(data=data)
 
         elif isinstance(row, DataFrame):
             data = pd.concat([self._data, row])
-            return self.Candle(data=data)
+            return self.__class__(data=data)
 
     def add(self, row: DataFrame | Series) -> bool:
         """Add a new row to the candles class."""

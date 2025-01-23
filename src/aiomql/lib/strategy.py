@@ -177,17 +177,25 @@ class Strategy(ABC):
                 try:
                     await self.sessions.check()
                     await self.trade()
+
                 except StopTrading:
                     self.running = False
                     break
+
+                except asyncio.CancelledError:
+                    self.running = False
+                    break
+
                 except Exception as err:
                     logger.error("Error: %s in live_strategy", err)
-                    return
+                    self.running = False
+                    break
 
     async def backtest_strategy(self):
         """Backtest the strategy."""
         async with self as _:
             logger.info("Testing %s strategy on %s with Backtester", self.name, self.symbol.name)
+            await self.initialize()
             while self.running:
                 try:
                     await self.sessions.check()

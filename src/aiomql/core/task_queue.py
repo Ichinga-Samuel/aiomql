@@ -64,7 +64,7 @@ class TaskQueue:
                  mode: Literal['finite', 'infinite'] = 'finite', worker_timeout: int = 1):
         self.queue = queue or asyncio.PriorityQueue(maxsize=size)
         self.workers = workers
-        self.worker_tasks = {}
+        self.worker_tasks: dict[int|float, asyncio.Task] = {}
         self.queue_timeout = queue_timeout
         self.absolute_timeout = absolute_timeout
         self.stop = False
@@ -72,6 +72,7 @@ class TaskQueue:
         self.mode = mode
         self.worker_timeout = worker_timeout
         self.queue_task_cancelled = False
+        self.start_time = time.perf_counter()
         signal(SIGINT, self.sigint_handle)
 
     def add(self, *, item: QueueItem, priority=3, must_complete=False):
@@ -187,6 +188,14 @@ class TaskQueue:
         wr = range(no_of_workers)
         [self.worker_tasks.setdefault(wi:=ri(), ct(wi)) for _ in wr]
 
+    async def watch(self):
+        while True:
+            await asyncio.sleep(1)
+            if (time.perf_counter() - self.start_time) > self.absolute_timeout:
+                self.stop = True
+                self.cancel()
+                break
+
     async def run(self, queue_timeout: int = None, absolute_timeout: int = None):
         """Run the queue until all tasks are completed or the timeout is reached.
 
@@ -202,6 +211,8 @@ class TaskQueue:
             self.start_timer(queue_timeout=queue_timeout, absolute_timeout=absolute_timeout, start=True)
             await self.add_workers(no_of_workers=self.workers)
             self.queue_task = asyncio.create_task(self.queue.join())
+            if self.absolute_timeout:
+                asyncio.create_task(self.watch())
             await self.queue_task
 
         except asyncio.TimeoutError:
