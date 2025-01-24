@@ -1,6 +1,12 @@
 # Changelog
 
-## [4.0.9](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.8) - 2025-01-23
+## [4.0.10](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.10) - 2025-01-24
+
+### Changed
+
+- Removed backoff decorator from send method of `Order` class
+
+## [4.0.9](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.9) - 2025-01-23
 
 ### Fixed
 

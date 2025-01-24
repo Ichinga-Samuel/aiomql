@@ -93,7 +93,6 @@ class Order(_Base, TradeRequest):
             raise OrderError(f"Order check failed for {self.symbol}")
         return OrderCheckResult(**res._asdict())
 
-    @backoff_decorator
     async def send(self) -> OrderSendResult:
         """Send a request to perform a trading operation from the terminal to the trade server.
 
