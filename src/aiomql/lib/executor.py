@@ -71,8 +71,11 @@ class Executor:
 
     async def run_coroutine_tasks(self):
         """Run all coroutines in the executor"""
-        await asyncio.gather(*[coroutine(**kwargs) for coroutine, kwargs in self.coroutines.items()],
-                             return_exceptions=True)
+        try:
+            await asyncio.gather(*[coroutine(**kwargs) for coroutine, kwargs in self.coroutines.items()],
+                                 return_exceptions=True)
+        except Exception as err:
+            logger.error("%s: Error occurred in run_coroutine_tasks", err)
 
     @staticmethod
     def run_coroutine_task(coroutine, kwargs):
@@ -98,18 +101,14 @@ class Executor:
                 if self.timeout is not None and self.timeout < (asyncio.get_event_loop().time() - start):
                     self.config.shutdown = True
                     break
-
-                timeout = 1 if self.timeout else 30
+                timeout = self.timeout or 1
                 await asyncio.sleep(timeout)
-
             for strategy in self.strategy_runners:
                 strategy.running = False
-
             self.config.task_queue.cancel()
 
             if self.config.backtest_engine is not None:
                 self.config.backtest_engine.stop_testing = True
-
             self.executor.shutdown(wait=False, cancel_futures=False)
 
             if self.config.force_shutdown:
