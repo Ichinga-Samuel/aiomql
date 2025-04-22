@@ -456,7 +456,7 @@ class BackTestEngine:
         self.positions.update(ticket=pos.ticket, **kwargs)
         await self.check_order(ticket=ticket)
 
-    @error_handler_sync
+    @error_handler
     async def close_position_manually(self, *, ticket: int):
         """Close a position manually without. Usually at the end of testing."""
         res = await self.close_position(ticket=ticket)
@@ -532,7 +532,7 @@ class BackTestEngine:
             logger.error("Error Closing Position %d: %s", ticket, exe)
             return False
 
-    @error_handler(response=False)
+    @error_handler_sync(response=False)
     def modify_stops(self, *, ticket: int, sl: int, tp: int) -> bool:
         """
         Modify the stop loss and take profit levels of an open position.

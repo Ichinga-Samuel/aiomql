@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.0.12](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.10) - 2025-03-24
+
+### Fixed
+
+- Use correct error handling decorator for modify_stops in backtester
+
 ## [4.0.10](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.10) - 2025-01-24
 
 ### Changed
