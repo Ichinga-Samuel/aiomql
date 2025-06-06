@@ -11,8 +11,7 @@ class TestSymbol:
     @pytest.fixture(scope="class", autouse=True)
     async def btc(self):
         symbol = Symbol(name="BTCUSD")
-        select = getattr(symbol, "select", False)
-        if select is False:
+        if symbol.initialized is False:
             await symbol.initialize()
         return symbol
 

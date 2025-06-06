@@ -63,7 +63,7 @@ class Symbol(_Base, SymbolInfo):
             if tick is not None:
                 tick = Tick(**tick._asdict())
                 setattr(self, "tick", tick) if not name else ...
-                return tick
+            return tick
         except Exception as err:
             logger.warning("%s: Unable to get tick for %s", err, self.name)
             return None
@@ -92,7 +92,7 @@ class Symbol(_Base, SymbolInfo):
         info = await self.mt5.symbol_info(self.name)
         if info is not None:
             info = info._asdict()
-            # self.set_attributes(**info)
+            self.set_attributes(**info)
             return SymbolInfo(**info)
         return None
 
@@ -100,7 +100,7 @@ class Symbol(_Base, SymbolInfo):
         """Initialize the symbol by pulling properties from the terminal
 
         Returns:
-             bool: Returns True if symbol info was successful initialized
+             bool: Returns True if symbol info was successfully initialized
         """
         try:
             select = await self.mt5.symbol_select(self.name, True)
@@ -229,7 +229,7 @@ class Symbol(_Base, SymbolInfo):
         """
         return self.volume_min
 
-    async def convert_currency(self, *, amount: float, from_currency: str, to_currency: str) -> float:
+    async def convert_currency(self, *, amount: float, from_currency: str, to_currency: str) -> float | None:
         """Convert a given amount from one currency to the other.
         Args:
             amount: Amount to convert
@@ -245,10 +245,10 @@ class Symbol(_Base, SymbolInfo):
 
             pair = f"{base}{quote}"
             tick = await self.info_tick(name=pair)
-            if tick is not None:
-                return round(amount / tick.ask, 2)
+            return round(amount / tick.ask, 2)
         except Exception as err:
             logger.warning(f"{err}: Currency conversion failed: Unable to convert {amount} in {quote} to {base}")
+            return None
 
     @backoff_decorator
     async def copy_rates_from(self, *, timeframe: TimeFrame, date_from: datetime | int, count: int = 500) -> Candles:
