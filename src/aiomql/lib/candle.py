@@ -1,12 +1,12 @@
 """Candle and Candles classes for handling bars from the MetaTrader 5 terminal."""
 
-import time
+from datetime import datetime
 from typing import Type, Self, Iterable
 from logging import getLogger
 
-from pandas import DataFrame, Series
 import pandas as pd
 import pandas_ta as ta
+from pandas import DataFrame, Series, DatetimeIndex, Timestamp
 
 from ..core.constants import TimeFrame
 
@@ -18,17 +18,18 @@ class Candle:
     Candlesticks. You can subclass this class for added customization.
 
     Attributes:
-        time (int): Period start time.
-        open (int): Open price
+        time (float): Period start time.
+        open (float): Open price
         high (float): The highest price of the period
         low (float): The lowest price of the period
         close (float): Close price
         tick_volume (float): Tick volume
         real_volume (float): Trade volume
         spread (float): Spread
-        Index (int): Custom attribute representing the position of the candle in a sequence.
+        index (Timestamp): Index of the object in the DataFrame, a timestamp
+        Index (int): Custom attribute representing the position of the candle for integer-location based indexing
     """
-    time: int
+    time: float
     open: float
     high: float
     low: float
@@ -36,6 +37,7 @@ class Candle:
     real_volume: float
     spread: float
     tick_volume: float
+    index: Timestamp
     Index: int
 
     def __init__(self, **kwargs):
@@ -47,8 +49,9 @@ class Candle:
         """
         if not all(i in kwargs for i in ["open", "high", "low", "close"]):
             raise ValueError("Candle must be instantiated with open, high, low and close prices")
-        self.time = kwargs.pop("time", int(time.time()))
+        self.time = kwargs.pop("time", Timestamp.now().timestamp())
         self.Index = kwargs.pop("Index", 0)
+        self.index = kwargs.pop("index", Timestamp(self.time, unit="s", tz=datetime.now().astimezone().tzinfo))
         self.real_volume = kwargs.pop("real_volume", 0)
         self.spread = kwargs.pop("spread", 0)
         self.tick_volume = kwargs.pop("tick_volume", 0)
@@ -56,7 +59,7 @@ class Candle:
 
     def __repr__(self):
         return (
-            "%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s)"
+            "%(class)s(Index=%(Index)s, time=%(time)s, open=%(open)s, high=%(high)s, low=%(low)s, close=%(close)s, index=%(index)s)"
             % {
                 "class": self.__class__.__name__,
                 "open": self.open,
@@ -64,6 +67,7 @@ class Candle:
                 "low": self.low,
                 "close": self.close,
                 "time": self.time,
+                "index": self.index.isoformat(),
                 "Index": self.Index,
             }
         )
@@ -131,13 +135,18 @@ class Candle:
         keys = include or set(self.__dict__.keys()).difference(exclude)
         return {k: v for k, v in self if k in keys}
 
+    def to_series(self) -> Series:
+        """Returns a Series Object"""
+        return Series(self.dict(exclude={"Index", "index"}))
+
 
 class Candles:
     """An iterable container class of Candle objects in chronological order.
 
     Attributes:
-        Index (Series['int']): A pandas Series of the indexes of all candles in the object.
-        time (Series['int']): A pandas Series of the time of all candles in the object.
+        index (DatetimeIndex): DatetimeIndex of the DataFrame object.
+        Index (Series['int']): A pandas Series of the indexes of all candles in the object:
+        time (Series['float']): A pandas Series of the time of all candles in the object.
         open (Series[float]): A pandas Series of the opening price of all candles in the object.
         high (Series[float]): A pandas Series of the high price of all candles in the object.
         low (Series[float]):  A pandas Series of the low price of all candles in the object.
@@ -155,7 +164,7 @@ class Candles:
         The candle class can be customized by subclassing the Candle class and passing the subclass as the candle
          keyword argument, or defining it on the class body as a class attribute.
     """
-
+    index: DatetimeIndex
     Index: Series
     time: Series
     open: Series
@@ -189,18 +198,20 @@ class Candles:
             raise ValueError(f"Cannot create DataFrame from object of {type(data)}")
 
         self._data = data.loc[::-1] if flip else data
-        if 'time' in self._data.columns and self._data.index.name != 'time':
-            self._data.set_index('time', inplace=True, drop=False)
+        if 'time' in self._data.columns:
+            dtype = pd.DatetimeTZDtype(unit='s', tz=datetime.now().astimezone().tzinfo)
+            self._data.index = pd.DatetimeIndex(self._data.time, dtype=dtype)
+
         self.Candle = candle_class or Candle
 
     def __repr__(self):
-        return self._data.__repr__()
+        return repr(self._data)
 
     def __len__(self):
         return len(self._data.index)
 
     def __contains__(self, item: Candle):
-        return item.time == self._data.loc[int(item.time)].time
+        return item.time == self[item.Index].time
 
     def __getitem__(self, index: slice | int | str) -> Self | Series | Candle:
         if isinstance(index, slice):
@@ -208,15 +219,18 @@ class Candles:
             data = self._data.iloc[index]
             return cls(data=data)
 
-        elif isinstance(index, str):
+        if isinstance(index, str):
+            if index == "index":
+                return self._data.index
             if index == "Index":
-                return Series(self._data.index)
+                return Series(range(len(self._data)))
             return self._data[index]
 
-        elif isinstance(index, int):
+        if isinstance(index, int):
             candle = self._data.iloc[index]
-            _index = index if index >= 0 else len(self) + index
-            return self.Candle(**candle, Index=_index)
+            Index = index if index >= 0 else len(self) + index
+            _index = self._data.index[index]
+            return self.Candle(**candle, Index=Index, index=_index)
         raise TypeError(f"Expected int, slice or str got {type(index)}")
 
     def __setitem__(self, index, value: Series):
@@ -229,13 +243,27 @@ class Candles:
         if item in self._data.columns:
             return self._data[item]
 
+        if item == "index":
+            return self._data.index
+
         if item == "Index":
-            return Series(self._data.index)
+            return Series(range(len(self._data)))
         raise AttributeError(f"Attribute {item} not defined on class {self.__class__.__name__}")
 
+    def __reversed__(self):
+        for index, row in enumerate(iter(self._data[::-1].iloc)):
+            row = row.to_dict()
+            index = len(self._data) - index - 1
+            row["Index"] = index
+            row["index"] = self._data.index[index]
+            yield self.Candle(**row)
+
     def __iter__(self):
-        return (self.Candle(**row.to_dict(), Index=ind) for ind, row in enumerate(self._data.iloc))
-        # return (self.Candle(**row._asdict()) for row in self._data.itertuples())
+        for index, row in enumerate(iter(self._data.iloc)):
+            row = row.to_dict()
+            row["Index"] = index
+            row["index"] = self._data.index[index]
+            yield self.Candle(**row)
 
     @property
     def timeframe(self):
@@ -282,39 +310,39 @@ class Candles:
         res = self._data.rename(columns=kwargs, inplace=inplace)
         return self if inplace else self.__class__(data=res)
 
-    def __iadd__(self, row: DataFrame | Series):
-        """Add a new row to the candles class."""
-        # self._data = pd.concat([self._data, row])
-        if isinstance(row, Series):
-            self._data.loc[int(row.time)] = row
-
-        elif isinstance(row, DataFrame):
-            for r in row.iloc:
-                self._data.loc[int(r.time)] = r
-
+    def __iadd__(self, other: Self) -> Self:
+        """Perform in place addition of candles"""
+        data_copy = self._data.copy()
+        other = other._data
+        for index, row in zip(other.index, iter(other.iloc)):
+            data_copy.loc[index] = row
+        self._data = data_copy.sort_index()
         return self
 
-    def __add__(self, row: DataFrame | Series):
-        """Add a new row to the candles class."""
-        if isinstance(row, Series):
-            data = self. pd.concat([self._data, pd.DataFrame(row).T])
-            return self.__class__(data=data)
+    def __add__(self, other: Self) -> Self:
+        """Add two candles object and return a new one"""
+        data = self._data.copy()
+        for index, row in zip(other._data.index, iter(other._data.iloc)):
+            data.loc[index] = row
+        return self.__class__(data=data.sort_index())
 
-        elif isinstance(row, DataFrame):
-            data = pd.concat([self._data, row])
-            return self.__class__(data=data)
-
-    def add(self, row: DataFrame | Series) -> bool:
-        """Add a new row to the candles class."""
-        new = True
-        if isinstance(row, Series):
-            if (index := int(row.time)) in self._data.index:
-                new = False
-            self._data.loc[index] = row
-
-        elif isinstance(row, DataFrame):
-            for r in row.iloc:
-                if (index := int(r.time)) in self._data.index:
-                    new = False
-                self._data.loc[index] = r
-        return new
+    def add(self, obj: DataFrame | Series | Candle) -> Self:
+        """Add new row(s) to the candles class."""
+        if isinstance(obj, Series):
+            index = Timestamp(obj.time, unit="s", tz=datetime.now().astimezone().tzinfo)
+            self._data.loc[index] = obj
+            self._data = self._data.sort_index()
+            return self
+        elif isinstance(obj, DataFrame):
+            data = self._data.copy()
+            for index, row in zip(obj.index, iter(obj.iloc)):
+                index = index if isinstance(index, Timestamp) else Timestamp(row.time, unit="s", tz=datetime.now().astimezone().tzinfo)
+                data.loc[index] = row
+            self._data = data.sort_index()
+            return self
+        elif isinstance(obj, Candle):
+            self._data.loc[obj.index] = obj.to_series()
+            self._data = self._data.sort_index()
+            return self
+        else:
+            raise TypeError("Expected Series, DataFrame or Candle, got {}".format(type(obj)))
