@@ -1,6 +1,20 @@
 # Changelog
 
-## [4.0.12](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.10) - 2025-03-24
+## [4.0.13](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.12) - 2025-03-24
+
+### Fixed
+
+- Fixed Candles inplace addition and addition to be only between candles objects
+- Index of Candles object dataframe is now a timezone-aware DateTimeIndex
+- Add method can accept addition of either a Series, DataFrame, or Candle, object
+
+### Added 
+
+- A to_series method to both Tick and Candle Classes
+- Index attribute is now strictly for integer-based indexing
+- index attribute maps to the underlying label-based indexing of the dataframe
+
+## [4.0.12](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.12) - 2025-03-24
 
 ### Fixed
 
