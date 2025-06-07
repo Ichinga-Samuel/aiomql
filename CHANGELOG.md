@@ -1,6 +1,6 @@
 # Changelog
 
-## [4.0.13](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.12) - 2025-03-24
+## [4.0.13](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.13) - 2025-03-24
 
 ### Fixed
 
