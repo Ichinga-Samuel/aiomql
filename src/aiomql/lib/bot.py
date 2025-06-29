@@ -21,7 +21,6 @@ class Bot:
         config (Config): Config instance
         mt (MetaTrader): MetaTrader instance
     """
-
     config: Config
     executor: Executor
     mt: MetaTrader
@@ -34,17 +33,17 @@ class Bot:
         self.strategies = []
 
     @classmethod
-    def process_pool(cls, bots: dict[Callable:dict] = None, num_workers: int = None):
-        """Run multiple bots in parallel using a ProcessPoolExecutor. Each bot should be a callable that accepts
+    def process_pool(cls, processes: dict[Callable:dict] = None, num_workers: int = None):
+        """Run multiple processes in parallel using a ProcessPoolExecutor. Each bot should be a callable that accepts
         keyword arguments only.
 
         Args:
-            bots (dict): A dictionary of bots to run with their respective keyword arguments as a dictionary
-            num_workers (int): Number of workers to run the bots
+            processes (dict): A dictionary of processes to run with their respective keyword arguments as a dictionary
+            num_workers (int): Number of workers to run the processes
         """
-        num_workers = num_workers or len(bots) + 1
+        num_workers = num_workers or len(processes) + 1
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            for bot, kwargs in bots.items():
+            for bot, kwargs in processes.items():
                 executor.submit(bot, **kwargs)
 
     async def initialize(self):
