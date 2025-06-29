@@ -25,8 +25,10 @@ class Config:
     root: Path
     record_trades: bool
     records_dir: Path
+    plots_dir: Path
     backtest_dir: Path
     records_dir_name: str
+    plots_dir_name: str
     backtest_dir_name: str  #Todo: add to docs
     task_queue: TaskQueue
     _backtest_engine: BackTestEngine
@@ -54,6 +56,7 @@ class Config:
         "shutdown": False,
         "force_shutdown": False,
         "root": None,
+        "plots_dir_name": "plots"
     }
 
     def __new__(cls, *args, **kwargs):
@@ -110,7 +113,7 @@ class Config:
             if config_file.exists():
                 return config_file
             if current == self.root:
-                return
+                return None
             for dirname in current.parents:
                 config_file = dirname / self.filename
                 if config_file.exists():
@@ -118,9 +121,10 @@ class Config:
 
                 if self.root == dirname:
                     break
+            return None
         except Exception as err:
             logger.debug(f"Error finding config file: {err}")
-
+            return None
 
     def load_config(self, *, config_file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Self:
         """Load configuration settings from a file and reset the config object.
@@ -181,6 +185,12 @@ class Config:
         b_dir = self.root / self.backtest_dir_name or 'backtesting'
         b_dir.mkdir(parents=True, exist_ok=True) if b_dir.exists() is False else ...
         return b_dir
+
+    @property
+    def plots_dir(self):
+        p_dir = self.root / self.plots_dir_name or "plots"
+        p_dir.mkdir(parents=True, exist_ok=True) if p_dir.exists() is False else ...
+        return p_dir
 
     def account_info(self) -> dict[str, int | str]:
         """Returns Account login details as found in the config object if available

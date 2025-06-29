@@ -33,6 +33,7 @@ Price Tick of a Financial Instrument.
 | `flags`       | `TickFlag` | Tick flags                                                            | None    |
 | `volume_real` | `float`    | Volume for the current Last price                                     | None    |
 | `Index`       | `int`      | Custom attribute representing the position of the tick in a sequence. | None    |
+| `index`       | `int`      | Index of the tick in the input dataframe object.                      | None    |
 
 
 <a id="tick.__init__"></a>
@@ -86,12 +87,13 @@ Supports iteration, slicing and assignment. Similar to `Candles` class but for p
 | `flags`       | `Series`    | Tick flags                                                           | None    |
 | `volume_real` | `Series`    | Volume for the current Last price                                    | None    |
 | `Index`       | `Series`    | Custom attribute representing the position of the tick in a sequence | None    |
+| `index`       | `Series`    | Custom attribute representing the index of the tick in the DataFrame | None    |
 
 
 <a id="ticks.__init__"></a>
 ### \__init\__
 ```python
-def __init__(*, data: DataFrame | Iterable, flip=False)
+def __init__(*, data: DataFrame | Iterable, flip=False):
 ```
 Initialize the Ticks class. Creates a DataFrame of price ticks from the data argument.
 #### Arguments:

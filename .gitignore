@@ -78,7 +78,6 @@ aiomql.json
 
 # development 
 terminals/
-*.pkl
 backtesting/
 trade_records/
-
+plots/

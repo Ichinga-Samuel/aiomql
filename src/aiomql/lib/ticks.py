@@ -23,6 +23,7 @@ class Tick:
         flags (TickFlag): Tick flags
         volume_real (float): Volume for the current Last price
         Index (int): Custom attribute representing the position of the tick in a sequence.
+        index (int): Index of the tick in the input dataframe object.
     """
     time: float
     bid: float
