@@ -14,6 +14,8 @@ Candle and Candles classes for handling bars from the MetaTrader 5 terminal.
   - [ta_lib](#candles.ta_lib)
   - [data](#candles.data)
   - [rename](#candles.rename)
+  - [plot](#candles.plot)
+  - [make_subplot](#candles.make_subplot)
 
 <a id="candle.candle"></a>
 ### Candle
@@ -22,18 +24,21 @@ class Candle
 ```
 A class representing bars from the MetaTrader 5 terminal as a customized class analogous to Japanese Candlesticks.
 You can subclass this class for added customization.
+
 ### Attributes
-| Name          | Type    | Description                                                             |
-|---------------|---------|-------------------------------------------------------------------------|
-| `time`        | `int`   | Period start time                                                       |
-| `open`        | `int`   | Open price                                                              |
-| `high`        | `float` | The highest price of the period                                         |
-| `low`         | `float` | The lowest price of the period                                          |
-| `close`       | `float` | Close price                                                             |
-| `tick_volume` | `float` | Tick volume                                                             |
-| `real_volume` | `float` | Trade volume                                                            |
-| `spread`      | `float` | Spread                                                                  |
-| `Index`       | `int`   | Custom attribute representing the position of the candle in a sequence. |
+
+| Name          | Type        | Description                                                             |
+|---------------|-------------|-------------------------------------------------------------------------|
+| `time`        | `int`       | Period start time                                                       |
+| `open`        | `int`       | Open price                                                              |
+| `high`        | `float`     | The highest price of the period                                         |
+| `low`         | `float`     | The lowest price of the period                                          |
+| `close`       | `float`     | Close price                                                             |
+| `tick_volume` | `float`     | Tick volume                                                             |
+| `real_volume` | `float`     | Trade volume                                                            |
+| `spread`      | `float`     | Spread                                                                  |
+| `Index`       | `int`       | Custom attribute representing the position of the candle in a sequence. |
+| `index`       | `Timestamp` | Index of the object in the DataFrame, as a timestamp.                   |
 
 <a id='candle.__init__'></a>
 ### \_\_init\_\_
@@ -118,24 +123,25 @@ object for accessing the columns of the underlying data attribute.
 The attributes of this class vary depending on the columns of underlying **data** attribute. i.e. each column of the **data**
 attribute is an attribute of the class.
 
-| Name          | Type            | Description                                                       |
-|---------------|-----------------|-------------------------------------------------------------------|
-| `data`        | `DataFrame`     | The pandas DataFrame containing the data.                         |
-| `Index`       | `Series['int']` | A pandas Series of the indexes of all candles in the object       |
-| `time`        | `Series['int']` | A pandas Series of the time of all candles in the object          |
-| `open`        | `Series[float]` | A pandas Series of the opening price of all candles in the object |
-| `high`        | `Series[float]` | A pandas Series of the high price of all candles in the object    |
-| `low`         | `Series[float]` | A pandas Series of the low price of all candles in the object     |
-| `close`       | `Series[float]` | A pandas Series of the closing price of all candles in the object |
-| `tick_volume` | `Series[float]` | A pandas Series of the tick volume of all candles in the object   |
-| `real_volume` | `Series[float]` | A pandas Series of the real volume of all candles in the object   |
-| `spread`      | `Series[float]` | A pandas Series of the spread of all candles in the object        |
-| `timeframe`   | `TimeFrame`     | The timeframe of the candles in the object                        |
-| `Candle`      | `Type[Candle]`  | The Candle class for representing the candles in the object.      |
-| `data`        | `DataFrame`     | A pandas DataFrame of all candles in the object.                  |
+| Name          | Type                  | Description                                                       |
+|---------------|-----------------------|-------------------------------------------------------------------|
+| `data`        | `DataFrame`           | The pandas DataFrame containing the data.                         |
+| `Index`       | `Series['int']`       | A pandas Series of the indexes of all candles in the object       |
+| `index`       | `Series['Timestamp']` | DatetimeIndex of the underlying DataFrame object.                 |
+| `time`        | `Series['int']`       | A pandas Series of the time of all candles in the object          |
+| `open`        | `Series[float]`       | A pandas Series of the opening price of all candles in the object |
+| `high`        | `Series[float]`       | A pandas Series of the high price of all candles in the object    |
+| `low`         | `Series[float]`       | A pandas Series of the low price of all candles in the object     |
+| `close`       | `Series[float]`       | A pandas Series of the closing price of all candles in the object |
+| `tick_volume` | `Series[float]`       | A pandas Series of the tick volume of all candles in the object   |
+| `real_volume` | `Series[float]`       | A pandas Series of the real volume of all candles in the object   |
+| `spread`      | `Series[float]`       | A pandas Series of the spread of all candles in the object        |
+| `timeframe`   | `TimeFrame`           | The timeframe of the candles in the object                        |
+| `Candle`      | `Type[Candle]`        | The Candle class for representing the candles in the object.      |
+| `data`        | `DataFrame`           | A pandas DataFrame of all candles in the object.                  |
 
 #### Notes
-When subclassing this class make sure the Candle attribute is set to your desired candle class.
+When subclassing this class, make sure the Candle attribute is set to your desired candle class.
 
 <a id="candles.__init__"></a>
 ### \_\_init\_\_
@@ -203,3 +209,34 @@ Rename columns of the data object.
 | Type      | Description                                                               |
 |-----------|---------------------------------------------------------------------------|
 | `Candles` | A new instance of the class with the renamed columns if inplace is False. |
+
+
+<a id="candles.plot"></a>
+### plot
+```python
+def plot(subplots=None, span: int = None, filename="", **kwargs):
+```
+Create a plot with mplfinance, can be saved as png.
+
+#### Parameters:
+| Name       | Type   | Description             | Default |
+|------------|--------|-------------------------|---------|
+| `subplots` | `dict` | Add subplots            | None    |
+| `span`     | `int`  | Take the last n candles | None    |
+| `filename` | `str`  | A name to save plot     | ""      |
+| `**kwargs` | `Any`  | Kwargs to plot function |         |
+
+
+<a id="candles.make_subplot"></a>
+### make_subplot
+```python
+def make_subplot(column: str | list[str], span: int = None, **kwargs):
+```
+Create a plot with mplfinance, can be saved as png.
+
+#### Parameters:
+| Name       | Type              | Description                                      | Default |
+|------------|-------------------|--------------------------------------------------|---------|
+| `column`   | `list[str]\| str` | An iterable of column names as a list or strings | None    |
+| `span`     | `int`             | Take the last n candles                          | None    |
+| `**kwargs` | `Any`             | Kwargs to plot function                          |         |

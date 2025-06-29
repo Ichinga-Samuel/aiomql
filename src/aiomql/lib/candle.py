@@ -5,10 +5,12 @@ from typing import Type, Self, Iterable
 from logging import getLogger
 
 import pandas as pd
+import mplfinance as mpf
 import pandas_ta as ta
 from pandas import DataFrame, Series, DatetimeIndex, Timestamp
 
 from ..core.constants import TimeFrame
+from ..core._core import Config
 
 logger = getLogger(__name__)
 
@@ -203,6 +205,7 @@ class Candles:
             self._data.index = pd.DatetimeIndex(self._data.time, dtype=dtype)
 
         self.Candle = candle_class or Candle
+        self.config = Config()
 
     def __repr__(self):
         return repr(self._data)
@@ -346,3 +349,39 @@ class Candles:
             return self
         else:
             raise TypeError("Expected Series, DataFrame or Candle, got {}".format(type(obj)))
+
+    def plot(self, subplots: dict = None, span: int = None, filename="", **kwargs):
+        """
+        Create a plot of the candles
+
+        Args:
+            subplots (dict): Subplots to bed added to the main plot
+            span (int): Last 'n' candles to be used for making the subplot
+            filename (str): A filename to saved the plot
+            **kwargs: Kwargs to be passed to the plot
+        """
+        type_ = kwargs.pop("type", "candle")
+        subplots = subplots or []
+        span = 0 if span is None else span
+        data = self._data[-span:]
+        if filename and not kwargs.get("savefig"):
+            kwargs["savefig"] = self.config.plots_dir / filename
+
+        mpf.plot(data, type=type_, addplot=subplots, **kwargs)
+
+    def make_subplot(self, *, column: str | list[str], span: int = None, **kwargs) -> dict:
+        """
+        Create a subplot
+        Args:
+            column (list[str] | str): Name of columns for the subplot
+            span (int): Last 'n' candles to be used for making the subplot
+            **kwargs: Keywords arguments to pass to the subplot
+
+        Returns:
+            dict: Subplots
+        """
+        column = column if isinstance(column, list) else [column]
+        span = 0 if span is None else span
+        data = self._data[-span:]
+        data = data[column]
+        return mpf.make_addplot(data, **kwargs)

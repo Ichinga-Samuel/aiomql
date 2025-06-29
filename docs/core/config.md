@@ -29,6 +29,7 @@ A single instance of this class is created and used per bot instance.
 | `root`                         | `Path`                        | The root directory of the project                                       |
 | `record_trades`                | `bool`                        | To record trades or not. Default is True                                |
 | `records_dir`                  | `Path`                        | The directory to store trade records, relative to the root directory    |
+| `plots_dir`                    | `Path`                        | Save chart plots as images                                              |
 | `backtest_dir`                 | `Path`                        | The directory to store backtest results, relative to the root directory |
 | `task_queue`                   | `TaskQueue`                   | The TaskQueue object for handling background tasks                      |
 | `_backtest_engine`             | `BackTestEngine`              | The backtest engine object                                              |
