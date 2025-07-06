@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.14](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.13) - 2025-03-24
+
+### Added
+
+- Add visualization for `Candles` object.
+- Update `Config` class
+
 ## [4.0.13](https://github.com/Ichinga-Samuel/aiomql/releases/tag/v4.0.13) - 2025-03-24
 
 ### Fixed
@@ -65,5 +72,5 @@
 - `add` method for adding dataframes or series objects to the Candles object.
 
 ### Fixed
-- 
+
 - Candles timeframe attribute returns the correct TimeFrame object.

@@ -53,37 +53,35 @@ def dict_to_string(data: dict, multi=False) -> str:
     return f"{sep}".join(f"{key}: {value}" for key, value in data.items())
 
 
-def backoff_decorator(func=None, *, max_retries: int = 2, retries: int = 0, error="") -> callable:
+def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0) -> callable:
     """A decorator to retry a function a number of times before giving up.
     Args:
         func (callable, optional): The function to decorate. Defaults to None.
-        max_retries (int, optional): The maximum number of retries. Defaults to 2.
-        retries (int, optional): The number of retries. Defaults to 0.
-        error (Any, optional): The error to raise when the maximum number of retries is reached. Defaults to "".
+        max_retries (int, optional): The maximum number of retries. The default is 3.
+        retries (int, optional): The number of retries. The default is 0
     """
     if func is None:
-        return partial(backoff_decorator, max_retries=max_retries, retries=retries, error=error)
+        return partial(backoff_decorator, max_retries=max_retries, retries=retries)
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
         nonlocal retries
-        if max_retries == retries:
-            retries = 0
-            await func(*args, **kwargs)
         try:
-            retries += 1
             res = await func(*args, **kwargs)
-            if error != "" and res == error:
-                raise TypeError("Invalid return type")
-            else:
-                retries = 0
-                return res
+            retries = 0
+            return res
         except Exception as err:
-            logger.error("Error in %s: %s", func.__name__, err)
+            if max_retries == retries:
+                retries = 0
+                logger.error("An Error %s: occurred in %s", err, func.__name__)
+                raise err
+            retries += 1
             if Config().mode != "backtest":
-                await asyncio.sleep(2**retries + random.uniform(0, max_retries))
-            await wrapper(*args, **kwargs)
-
+                delay = 2 ** retries + random.uniform(0, 1)
+                logger.warning("An Error %s: occurred in %s, trying again in %f seconds",
+                               err, func.__name__, delay)
+                await asyncio.sleep(delay)
+            return await wrapper(*args, **kwargs)
     return wrapper
 
 

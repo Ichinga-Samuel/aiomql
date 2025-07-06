@@ -144,9 +144,9 @@ Use this to run a single strategy on multiple symbols with the same parameters a
 <a id='bot.process_pool'></a>
 ```python
 @classmethod
-def process_pool(cls, bots: dict[Callable: dict] = None, num_workers: int = None):
+def process_pool(cls, processes: dict[Callable: dict] = None, num_workers: int = None):
 ```
-Run multiple functions (scripts, bots) at the same time in parallel with different accounts. 
+Run multiple processes (scripts, bots) at the same time in parallel with different accounts. 
 Running multiple functions is useful when you want to run different strategies on different accounts.
 The callable can for example be a bot instance that defines its own Config instance within the function scope.
 The dictionary should contain the callable as the key and the dictionary of keyword arguments to pass to the callable as
@@ -155,7 +155,7 @@ The num_workers parameter specifies the number of workers to use. If not specifi
 number of bots.
 
 #### Parameters
-| Name         | Type                   | Description                                                                     |
-|--------------|------------------------|---------------------------------------------------------------------------------|
-| `bots`       | `dict[Callable: dict]` | A dictionary of callables and their keyword arguments to run as bots            |
+| Name          | Type                   | Description                                                                     |
+|---------------|------------------------|---------------------------------------------------------------------------------|
+| `processes`   | `dict[Callable: dict]` | A dictionary of callables and their keyword arguments to run as processes       |
 | `num_workers` | `int`                  | The number of workers to use. If not specified, the number of bots will be used |
