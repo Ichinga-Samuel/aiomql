@@ -68,17 +68,22 @@ class Config:
             cls._instance._backtest_engine = None
             cls._instance.bot = None
             cls._instance.backtest_controller = None
-            # cls._instance.load_config(**kwargs)
         return cls._instance
 
     def __init__(self, **kwargs):
         """Initialize the Config object. The root directory can be set here or in the load_config method."""
+
         root = kwargs.pop("root", None)
         config_file = kwargs.pop("config_file", None)
         if self.root is None or root is not None or config_file is not None:
             self.load_config(root=root, config_file=config_file, **kwargs)
         else:
             self.set_attributes(**kwargs)
+
+    def __setattr__(self, name, value):
+        """Set all instance attributes class as class attributes."""
+        super().__setattr__(name, value)
+        setattr(self.__class__, name, value)
 
     @property
     def backtest_engine(self):
@@ -126,6 +131,22 @@ class Config:
             logger.debug(f"Error finding config file: {err}")
             return None
 
+    def set_root(self, root: str | Path = None):
+        try:
+            if root is not None:
+                root = Path(root).resolve()
+                root.mkdir(parents=True, exist_ok=True) if not root.exists() else ...
+                self.root = root
+
+            elif self.root is None:
+                self.root = Path.cwd()
+
+            elif not isinstance(self.root, Path):
+                self.root = Path(self.root).resolve()
+        except Exception as err:
+            logger.warning("Error finding root path: %s. The current working directory will be used.", err)
+            self.root = Path.cwd()
+
     def load_config(self, *, config_file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Self:
         """Load configuration settings from a file and reset the config object.
 
@@ -135,12 +156,7 @@ class Config:
             root (str): The root directory of the project.
             **kwargs: Additional keyword arguments to be set on the config object.
         """
-        if root is not None:
-            root = Path(root).resolve()
-            root.mkdir(parents=True, exist_ok=True) if not root.exists() else ...
-            self.root = root
-        else:
-            self.root = self.root if isinstance(self.root, Path) else Path.cwd()
+        self.set_root(root=root)
 
         if config_file is not None:
             config_file = Path(config_file).resolve()
@@ -171,7 +187,6 @@ class Config:
         except Exception as err:
             logger.debug(f"Error setting path: {err}")
             self.path = ""
-
         return self
 
     @property
