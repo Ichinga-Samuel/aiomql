@@ -3,7 +3,7 @@ from math import ceil
 from aiomql import TimeFrame
 from aiomql.core.backtesting import BackTestEngine
 from aiomql.core.backtesting.get_data import GetData
-from aiomql._utils import round_down
+from aiomql.utils import round_down
 from aiomql.core.constants import OrderType, TradeAction
 
 import pytest

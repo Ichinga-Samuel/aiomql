@@ -30,7 +30,8 @@ logger = getLogger()
 class MetaTrader(MetaCore):
     def __init__(self):
         self.config = Config()
-        self.error: Error = Error(1)
+        self.error: Error = Error(code=1)
+        self._lock = asyncio.Lock()
 
     async def __aenter__(self) -> Self:
         """
@@ -50,28 +51,24 @@ class MetaTrader(MetaCore):
         """
         await self.shutdown()
 
-    async def _handler(self, api: dict):
+    async def _handler(self, api: dict, retries=3):
         func = api["func"]
         args = api.get("args", ())
         kwargs = api.get("kwargs", {})
         error_msg = api.get("error_msg", "An error occurred")
-
         res = await asyncio.to_thread(func, *args, **kwargs)
-        if res is None:
+
+        if res is not None:
+            return res
+
+        if res is None and self.error.is_connection_error() and retries > 0:
+            await self.initialize()
+            await self.login()
+            return await self._handler(api, retries=retries - 1)
+        else:
             err = await self.last_error()
             self.error = Error(*err)
-
-            if self.error.is_connection_error():
-                await self.initialize()
-                await self.login()
-                res = await asyncio.to_thread(func, *args, **kwargs)
-
-                if res is None:
-                    err = await self.last_error()
-                    self.error = Error(*err)
-                    logger.warning(f"{error_msg}:{self.error.description}")
-            else:
-                logger.warning(f"{error_msg}:{self.error.description}")
+            logger.warning(f"{error_msg}:{self.error.description}")
         return res
 
     async def login(self, *, login: int = 0, password: str = "", server: str = "", timeout: int = 60000) -> bool:
@@ -87,7 +84,7 @@ class MetaTrader(MetaCore):
         Returns:
             bool: True if successful, False otherwise.
         """
-        acc_details = self.config.account_info()
+        acc_details = self.config.account_info
         login = login or acc_details.get("login", 0)
         password = password or acc_details.get("password", "")
         server = server or acc_details.get("server", "")
@@ -106,70 +103,15 @@ class MetaTrader(MetaCore):
         Returns:
             bool: True if successful, False otherwise.
         """
-        acc_details = self.config.account_info()
+        acc_details = self.config.account_info
         login = login or acc_details.get("login", 0)
         password = password or acc_details.get("password", "")
         server = server or acc_details.get("server", "")
         res = self._login(login, password=password, server=server, timeout=timeout)
         return res
 
-    async def initialize(
-        self,
-        path: str = None,
-        login: int = 0,
-        password: str = "",
-        server: str = "",
-        timeout: int | None = None,
-        portable=False,
-    ) -> bool:
-        """
-        Initializes the connection to the MetaTrader terminal. All parameters are optional.
-
-        Keyword Args:
-            path (str): The path to the MetaTrader terminal executable.
-            login (int): The trading account number.
-            password (str): The trading account password.
-            server (str): The trading server name.
-            timeout (int): The timeout for the connection in milliseconds.
-            portable (bool): If True, the terminal will be launched in portable mode.
-
-        Returns:
-            bool: True if successful, False otherwise.
-        """
-        async with asyncio.Lock() as _:
-            path = self.config.path if path is None else path
-            path = "" if Path(path).exists() is False else path
-            args = (str(path),) if path else ()
-            acc = self.config.account_info()
-            kwargs = {
-                key: value
-                for key, value in (
-                    ("login", login or acc.get("login")),
-                    ("password", password or acc.get("password")),
-                    ("server", server or acc.get("server")),
-                    ("timeout", timeout or 60000),
-                    ("portable", portable),
-                )
-                if key is not None
-            }
-            res = await asyncio.to_thread(self._initialize, *args, **kwargs)
-            if res is False:
-                await self.shutdown()
-                res = await asyncio.to_thread(self._initialize, *args, **kwargs)
-            if not res:
-                err = await self.last_error()
-                self.error = Error(*err)
-            return res
-
-    def initialize_sync(
-        self,
-        path: str = None,
-        login: int = 0,
-        password: str = "",
-        server: str = "",
-        timeout: int | None = None,
-        portable=False,
-    ) -> bool:
+    async def initialize(self, path: str = None, login: int = 0, password: str = "", server: str = "",
+                         timeout: int | None = None, portable=False) -> bool:
         """
         Initializes the connection to the MetaTrader terminal. All parameters are optional.
 
@@ -187,21 +129,42 @@ class MetaTrader(MetaCore):
         path = self.config.path if path is None else path
         path = "" if Path(path).exists() is False else path
         args = (str(path),) if path else ()
-        acc = self.config.account_info()
-        kwargs = {
-            key: value
-            for key, value in (
-                ("login", login or acc.get("login")),
-                ("password", password or acc.get("password")),
-                ("server", server or acc.get("server")),
-                ("timeout", timeout or 60000),
-                ("portable", portable),
-            )
-            if key is not None
-        }
+        acc = self.config.account_info
+        kwargs = {key: value for key, value in (("login", login or acc.get("login")),
+                                                ("password", password or acc.get("password")),
+                                                ("server", server or acc.get("server")), ("timeout", timeout or 45000),
+                                                ("portable", portable)) if key is not None}
+        res = await asyncio.to_thread(self._initialize, *args, **kwargs)
+        if not res:
+            err = await self.last_error()
+            self.error = Error(*err)
+        return res
+
+    def initialize_sync(self, path: str = None, login: int = 0, password: str = "", server: str = "",
+                        timeout: int | None = None, portable=False) -> bool:
+        """
+        Initializes the connection to the MetaTrader terminal. All parameters are optional.
+
+        Keyword Args:
+            path (str): The path to the MetaTrader terminal executable.
+            login (int): The trading account number.
+            password (str): The trading account password.
+            server (str): The trading server name.
+            timeout (int): The timeout for the connection in milliseconds.
+            portable (bool): If True, the terminal will be launched in portable mode.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
+        path = self.config.path if path is None else path
+        path = "" if Path(path).exists() is False else path
+        args = (str(path),) if path else ()
+        acc = self.config.account_info
+        kwargs = {key: value for key, value in (("login", login or acc.get("login")),
+                                                ("password", password or acc.get("password")),
+                                                ("server", server or acc.get("server")), ("timeout", timeout or 45000),
+                                                ("portable", portable)) if key is not None}
         res = self._initialize(*args, **kwargs)
-        if res is False:
-            self._shutdown()
         if not res:
             err = self._last_error()
             self.error = Error(*err)
@@ -216,7 +179,7 @@ class MetaTrader(MetaCore):
             res = await asyncio.to_thread(self._last_error)
             return res
         except Exception as err:
-            logger.warning(f"Error in obtaining last error.")
+            logger.warning("%s: Error in obtaining last error.", err)
             return -1, str(err)
 
     async def version(self) -> tuple[int, int, str] | None:

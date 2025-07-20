@@ -1,10 +1,13 @@
 import os
+import json
 from pathlib import Path
 from typing import Literal, TypeVar, Self
-import json
 from logging import getLogger
+from threading import Lock
 
 from .task_queue import TaskQueue
+from .state import  State
+from .store import Store
 
 logger = getLogger(__name__)
 Bot = TypeVar("Bot")
@@ -14,14 +17,15 @@ BackTestController = TypeVar("BackTestController")
 
 class Config:
     login: int
-    trade_record_mode: Literal["csv", "json"]
+    trade_record_mode: Literal["csv", "json", "sql"]
     password: str
     config_file: str | Path
     server: str
     path: str | Path
     timeout: int
     filename: str
-    state: dict
+    _state: State
+    _store: Store
     root: Path
     record_trades: bool
     records_dir: Path
@@ -30,6 +34,7 @@ class Config:
     records_dir_name: str
     plots_dir_name: str
     backtest_dir_name: str  #Todo: add to docs
+    db_name: str
     task_queue: TaskQueue
     _backtest_engine: BackTestEngine
     bot: Bot
@@ -39,40 +44,46 @@ class Config:
     use_terminal_for_backtesting: bool
     shutdown: bool
     force_shutdown: bool
+    db_commit_interval: float
+    auto_commit: bool = False
+    lock: Lock
     _defaults = {
         "timeout": 60000,
         "record_trades": True,
         "records_dir_name": "trade_records",
         "backtest_dir_name": "backtesting",
         "config_file": None,
-        "trade_record_mode": "csv",
+        "trade_record_mode": "sql",
         "mode": "live",
         "filename": "aiomql.json",
         "use_terminal_for_backtesting": True,
+        "db_name": "",
         "path": "",
-        "login": 0,
+        "login": None,
         "password": "",
         "server": "",
         "shutdown": False,
         "force_shutdown": False,
         "root": None,
-        "plots_dir_name": "plots"
+        "plots_dir_name": "plots",
+        "db_commit_interval": 30,
+        "auto_commit": False
     }
 
     def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, "_instance"):
-            cls._instance = super().__new__(cls)
-            cls._instance.state = {}
-            cls._instance.task_queue = TaskQueue(mode='infinite', workers=10)
-            cls._instance.set_attributes(**cls._defaults)
-            cls._instance._backtest_engine = None
-            cls._instance.bot = None
-            cls._instance.backtest_controller = None
+        with (lock := Lock()) as _:
+            if not hasattr(cls, "_instance"):
+                cls._lock = lock
+                cls._instance = super().__new__(cls)
+                cls._instance.task_queue = TaskQueue(mode='infinite', workers=10)
+                cls._instance.set_attributes(**cls._defaults)
+                cls._instance._backtest_engine = None
+                cls._instance.bot = None
+                cls._instance.backtest_controller = None
         return cls._instance
 
     def __init__(self, **kwargs):
         """Initialize the Config object. The root directory can be set here or in the load_config method."""
-
         root = kwargs.pop("root", None)
         config_file = kwargs.pop("config_file", None)
         if self.root is None or root is not None or config_file is not None:
@@ -123,7 +134,6 @@ class Config:
                 config_file = dirname / self.filename
                 if config_file.exists():
                     return config_file
-
                 if self.root == dirname:
                     break
             return None
@@ -176,11 +186,15 @@ class Config:
         else:
             fh = open(self.config_file, mode="r")
             file_config = json.load(fh)
+            # print(file_config)
             fh.close()
 
         data = file_config | kwargs
         self.set_attributes(**data)
-
+        self.db_name = self.db_name or (f"db_{self.login}.sqlite3" if self.login else "db.sqlite3")
+        os.environ["DB_NAME"] = self.db_name
+        self.init_state()
+        self.init_store()
         try:
             if self.path:
                 self.path = self.root / self.path if not Path(self.path).resolve().exists() else self.path
@@ -188,6 +202,32 @@ class Config:
             logger.debug(f"Error setting path: {err}")
             self.path = ""
         return self
+
+    @property
+    def state(self):
+        if not hasattr(self, "_state"):
+            self.init_state()
+        return self._state
+
+    @state.setter
+    def state(self, value: State):
+        self._state = value
+
+    @property
+    def store(self):
+        if not hasattr(self, "_store"):
+            self.init_store()
+        return self._store
+
+    @store.setter
+    def store(self, value: Store):
+        self._store = value
+
+    def init_state(self):
+        self.state = State(db_name=self.db_name)
+
+    def init_store(self):
+        self.store = Store(db_name=self.db_name)
 
     @property
     def records_dir(self):
@@ -207,6 +247,7 @@ class Config:
         p_dir.mkdir(parents=True, exist_ok=True) if p_dir.exists() is False else ...
         return p_dir
 
+    @property
     def account_info(self) -> dict[str, int | str]:
         """Returns Account login details as found in the config object if available
 
@@ -226,7 +267,7 @@ Config.__doc__ = """A class for handling configuration settings for the aiomql p
         timeout (int): The timeout argument for the terminal
         filename (str): The filename of the config file
         config_file (Path): The config file path
-        state (dict): The
+        state (State): A key-value database
         root (Path): The root directory of the project
         record_trades (bool): To record trades or not. Default is True
         records_dir (Path): The directory to store trade records, relative to the root directory

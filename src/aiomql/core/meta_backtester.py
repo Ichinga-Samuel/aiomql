@@ -17,7 +17,7 @@ from MetaTrader5 import (
 
 from .meta_trader import MetaTrader
 from .constants import TimeFrame, CopyTicks, OrderType
-from .._utils import error_handler
+from ..utils import error_handler
 
 logger = getLogger(__name__)
 

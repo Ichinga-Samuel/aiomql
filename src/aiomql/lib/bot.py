@@ -34,7 +34,7 @@ class Bot:
 
     @classmethod
     def process_pool(cls, processes: dict[Callable:dict] = None, num_workers: int = None):
-        """Run multiple processes in parallel using a ProcessPoolExecutor. Each bot should be a callable that accepts
+        """Run multiple processes in parallel using a ProcessPoolExecutor. Each process should be a callable that accepts
         keyword arguments only.
 
         Args:

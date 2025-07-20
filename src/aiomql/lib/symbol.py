@@ -6,7 +6,7 @@ from logging import getLogger
 from ..core.constants import TimeFrame, CopyTicks
 from ..core.base import _Base
 from ..core.models import SymbolInfo, BookInfo
-from .._utils import round_off, backoff_decorator
+from ..utils import round_off
 from .ticks import Tick
 from .account import Account
 from .candle import Candles
@@ -42,7 +42,6 @@ class Symbol(_Base, SymbolInfo):
         self.account = Account()
         self.initialized = False
 
-    @backoff_decorator
     async def info_tick(self, *, name: str = "") -> Tick | None:
         """Get the current price tick of a financial instrument.
 
@@ -250,7 +249,6 @@ class Symbol(_Base, SymbolInfo):
             logger.warning(f"{err}: Currency conversion failed: Unable to convert {amount} in {quote} to {base}")
             return None
 
-    @backoff_decorator
     async def copy_rates_from(self, *, timeframe: TimeFrame, date_from: datetime | int, count: int = 500) -> Candles:
         """
         Get bars from the MetaTrader 5 terminal starting from the specified date.
@@ -274,7 +272,6 @@ class Symbol(_Base, SymbolInfo):
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
-    @backoff_decorator
     async def copy_rates_from_pos(self, *, timeframe: TimeFrame, count: int = 500, start_position: int = 0) -> Candles:
         """Get bars from the MetaTrader 5 terminal starting from the specified index.
 
@@ -297,7 +294,6 @@ class Symbol(_Base, SymbolInfo):
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
-    @backoff_decorator
     async def copy_rates_range(
         self, *, timeframe: TimeFrame, date_from: datetime | int, date_to: datetime | int
     ) -> Candles:
@@ -327,10 +323,8 @@ class Symbol(_Base, SymbolInfo):
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
-    @backoff_decorator
-    async def copy_ticks_from(
-        self, *, date_from: datetime | int, count: int = 100, flags: CopyTicks = CopyTicks.ALL
-    ) -> Ticks:
+    async def copy_ticks_from(self, *, date_from: datetime | int, count: int = 100,
+                              flags: CopyTicks = CopyTicks.ALL) -> Ticks:
         """
         Get ticks from the MetaTrader 5 terminal starting from the specified date.
 
@@ -352,7 +346,6 @@ class Symbol(_Base, SymbolInfo):
             return Ticks(data=ticks)
         raise ValueError(f"Could not get ticks for {self.name}.")
 
-    @backoff_decorator
     async def copy_ticks_range(
         self, *, date_from: datetime | int, date_to: datetime | int, flags: CopyTicks = CopyTicks.ALL
     ) -> Ticks:

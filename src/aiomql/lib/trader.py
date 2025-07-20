@@ -11,7 +11,8 @@ from .result import Result
 from .order import Order
 from .symbol import Symbol as _Symbol
 from .ram import RAM
-from .._utils import error_handler
+from ..utils import error_handler
+# from .result_db import ResultDB
 
 logger = getLogger(__name__)
 Symbol = TypeVar("Symbol", bound=_Symbol)
@@ -200,14 +201,14 @@ class Trader(ABC):
             return
         params = {**parameters} if isinstance(parameters, dict) else {}
         profit = await self.order.calc_profit()
-        params["expected_profit"] = profit
+        # params["expected_profit"] = profit
         date = (
-            datetime.now(tz=UTC)
+            datetime.now()
             if self.config.mode == "live"
             else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC)
         )
-        params["date"] = date.strftime("%Y-%m-%d %H:%M:%S.%f")
-        res = Result(result=result, parameters=params, name=name)
+        # params["date"] = date.strftime("%Y-%m-%d %H:%M:%S.%f")
+        res = Result(result=result, parameters=params, name=name, date=date, expected=profit)
         self.config.task_queue.add(item=QueueItem(res.save), must_complete=True)
 
     @abstractmethod

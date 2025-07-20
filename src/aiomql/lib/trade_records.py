@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class TradeRecords:
-    """This utility class read trade records from csv files, and update them based on their closing positions.
+    """This utility class read trade records from the csv and json files, and update them based on their closing positions.
 
     Attributes:
         config: Config object

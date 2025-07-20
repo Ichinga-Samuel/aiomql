@@ -15,6 +15,6 @@ class TestAccount:
         assert self.account.connected is True
 
     async def test_account_info(self):
-        acc_info = await self.account.mt5.account_info()
+        acc_info = await self.account.mt5.account_info
         assert acc_info.login == self.account.login
         assert acc_info.server == self.account.server

@@ -19,7 +19,6 @@ class Base:
         include (set [str]): A set of attributes to be included when retrieving attributes
          using the get_dict and dict method.
     """
-
     exclude: set[str]
     include: set[str]
 
@@ -137,8 +136,9 @@ class _Base(Base):
     """Base class that provides access to the MetaTrader and Config classes as well as the MetaBackTester class for
     backtesting mode.
     """
-
+    mt5: MetaTrader | MetaBackTester
+    config: Config
     def __init__(self, **kwargs):
-        self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
+        self.__class__.config = Config()
+        self.__class__.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
         super().__init__(**kwargs)

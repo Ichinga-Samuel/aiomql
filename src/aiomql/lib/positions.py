@@ -7,7 +7,6 @@ from ..core.meta_trader import MetaTrader
 from ..core.models import TradePosition, OrderSendResult
 from ..core.constants import OrderType, TradeAction
 from ..core.config import Config
-from .._utils import backoff_decorator
 from ..core.meta_backtester import MetaBackTester
 from .order import Order
 
@@ -33,7 +32,6 @@ class Positions:
         self.positions = ()
         self.total_positions = 0
 
-    @backoff_decorator
     async def get_positions(self, *, symbol: str = None, ticket: int = None, group: str = None) -> tuple[TradePosition, ...]:
         """Get open positions with the ability to filter by symbol, ticket or group of symbols.
         Args:
@@ -147,7 +145,7 @@ class Positions:
         return len([res for res in results if (isinstance(res, OrderSendResult) and res.retcode == 10009)])
 
     async def get_total_positions(self) -> int:
-        """Get total number of open positions."""
+        """Get the total number of open positions."""
         total = await self.mt5.positions_total()
         self.total_positions = total or self.total_positions
         return self.total_positions

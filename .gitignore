@@ -72,6 +72,7 @@ target/
 .pypirc
 
 .vscode/
+*.sqlite3
 
 # config files
 aiomql.json

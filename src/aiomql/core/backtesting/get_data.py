@@ -12,7 +12,7 @@ from ..meta_trader import MetaTrader
 from ..config import Config
 from ..constants import TimeFrame
 from ..task_queue import TaskQueue, QueueItem
-from ..._utils import backoff_decorator
+from ...utils import backoff_decorator
 
 logger = getLogger(__name__)
 

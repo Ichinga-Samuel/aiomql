@@ -22,12 +22,12 @@ class QueueItem:
 
             - `time` (int): The time the task was added to the queue.
     """
-    def __init__(self, task_item: Callable | Coroutine, *args, **kwargs):
+    def __init__(self, task_item: Callable | Coroutine, *args, on_separate_thread=True, **kwargs):
         self.task_item = task_item
         self.args = args
         self.kwargs = kwargs
-        self.must_complete = False
         self.time = time.time_ns()
+        self.on_separate_thread = on_separate_thread
 
     def __hash__(self):
         return self.time
@@ -45,14 +45,18 @@ class QueueItem:
         try:
             if asyncio.iscoroutinefunction(self.task_item):
                 return await self.task_item(*self.args, **self.kwargs)
-            else:
+            elif self.on_separate_thread:
                 return await asyncio.to_thread(self.task_item, *self.args, **self.kwargs)
+            else:
+                return self.task_item(*self.args, **self.kwargs)
         except asyncio.CancelledError:
             logger.debug("Task %s with args %s and %s was cancelled",
                            self.task_item.__name__, self.args, self.kwargs)
+            return None
         except Exception as err:
             logger.error("Error %s occurred in %s with args %s and %s",
                          err, self.task_item.__name__, self.args, self.kwargs)
+            return None
 
 
 class TaskQueue:
@@ -74,6 +78,10 @@ class TaskQueue:
         self.queue_task_cancelled = False
         self.start_time = time.perf_counter()
         signal(SIGINT, self.sigint_handle)
+
+    def add_task(self, task_item: Callable | Coroutine, *args, on_separate_thread=True, must_complete=True, priority=3,  **kwargs):
+        task_item = QueueItem(task_item, *args, on_separate_thread=on_separate_thread, **kwargs)
+        self.add(item=task_item, priority=priority, must_complete=must_complete)
 
     def add(self, *, item: QueueItem, priority=3, must_complete=False):
         """Add a task to the queue.

@@ -18,7 +18,7 @@ class TestConfig:
         assert config.backtest_engine is engine
 
     def test_account_info(self, config):
-        account_info = config.account_info()
+        account_info = config.account_info
         assert isinstance(account_info, dict)
         assert "login" in account_info
         assert "password" in account_info

@@ -3,7 +3,7 @@ class Error:
 
     descriptions = {
         # common errors
-        1: "Successful",
+        1: "successful",
         -1: "generic fail",
         -2: "invalid arguments/parameters",
         -3: "no memory condition",
@@ -23,9 +23,9 @@ class Error:
 
     conn_errors = (-10000, -10001, -10002, -10003, -10004, -10005, -6)
 
-    def __init__(self, code: int, description: str = ""):
+    def __init__(self, code: int = 1, description: str = ""):
         self.code = code
-        self.description = description or self.descriptions.get(code, "unknown error")
+        self.description = self.descriptions.get(code, description or "unknown error")
 
     def is_connection_error(self):
         return self.code in self.conn_errors

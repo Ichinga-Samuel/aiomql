@@ -1,5 +1,6 @@
 from aiomql import Strategy, ForexSymbol, TimeFrame, Tracker, OrderType, Sessions, Trader, ScalpTrader
 
+from .traders import TestTrader
 
 class EMAXOver(Strategy):
     ttf: TimeFrame  # time frame for the strategy
@@ -12,18 +13,18 @@ class EMAXOver(Strategy):
 
     # default parameters for the strategy
     # they are set as attributes. You can override them in the constructor via the params argument.
-    parameters = {'ttf': TimeFrame.H1, 'tcc': 3000, 'fast_ema': 34, 'slow_ema': 55, 'interval': TimeFrame.M15,
-                  'timeout': 3 * 60 * 60}
+    parameters = {'ttf': TimeFrame.M10, 'tcc': 3000, 'fast_ema': 34, 'slow_ema': 55, 'interval': TimeFrame.M5,
+                  'timeout': 120}
 
     def __init__(self, *, symbol: ForexSymbol, params: dict | None = None, trader: Trader = None,
                  sessions: Sessions = None, name: str = "EMAXOver"):
         super().__init__(symbol=symbol, params=params, sessions=sessions, name=name)
         self.tracker = Tracker(snooze=self.interval.seconds)
-        self.trader = trader or ScalpTrader(symbol=self.symbol)
+        self.trader = trader or TestTrader(symbol=self.symbol)
 
     async def find_entry(self):
         # get the candles
-        candles = await self.symbol.copy_rates_from_pos(timeframe=self.ttf, start_position=0, count=self.tcc)
+        candles = await self.symbol.copy_rates_from_pos(timeframe=self.ttf, count=self.tcc)
 
         # get the fast moving average
         candles.ta.ema(length=self.fast_ema, append=True)
@@ -34,9 +35,9 @@ class EMAXOver(Strategy):
 
         # check for crossovers
         # fast above slow
-        fas = candles.ta_lib.cross(candles.fast_ema, candles.slow_ema, above=True)
+        fas = candles.ta_lib.above(candles.fast_ema, candles.slow_ema)
         # fast below slow
-        fbs = candles.ta_lib.cross(candles.fast_ema, candles.slow_ema, above=False)
+        fbs = candles.ta_lib.below(candles.fast_ema, candles.slow_ema)
 
         ## check for entry signals in the current candle
         if fas.iloc[-1]:

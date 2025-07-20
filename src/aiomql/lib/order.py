@@ -4,7 +4,7 @@ from ..core.models import TradeRequest, TradeOrder, OrderCheckResult, OrderSendR
 from ..core.constants import TradeAction, OrderTime, OrderFilling
 from ..core.exceptions import OrderError
 from ..core.base import _Base
-from .._utils import backoff_decorator, error_handler
+from ..utils import error_handler
 
 logger = getLogger(__name__)
 
@@ -77,7 +77,6 @@ class Order(_Base, TradeRequest):
             return tuple(TradeOrder(**order._asdict()) for order in orders)
         return tuple()
 
-    @backoff_decorator
     async def check(self, **kwargs) -> OrderCheckResult:
         """Check funds sufficiency for performing a required trading operation and the possibility of executing it.
 

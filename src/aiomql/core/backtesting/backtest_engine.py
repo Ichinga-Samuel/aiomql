@@ -38,7 +38,7 @@ from ..constants import (
     CopyTicks,
 )
 
-from ..._utils import round_down, round_up, error_handler, error_handler_sync, async_cache
+from ...utils import round_down, round_up, error_handler, error_handler_sync, async_cache
 
 from .get_data import BackTestData, GetData, Cursor
 from .backtest_account import BackTestAccount

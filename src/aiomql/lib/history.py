@@ -8,7 +8,6 @@ from ..core.config import Config
 from ..core.meta_trader import MetaTrader
 from ..core.models import TradeDeal, TradeOrder
 from ..core.meta_backtester import MetaBackTester
-from .._utils import backoff_decorator
 
 logger = getLogger(__name__)
 
@@ -45,7 +44,7 @@ class History:
             date_to (datetime, float): Date up to which the orders are requested. Set by the 'datetime' object or as a
                 number of seconds elapsed since 1970.01.01. Defaults to the current time in "utc"
 
-            group (str): Filter for selecting history by symbols. Defaults to an empty string
+            group (str): Filter for selecting history by symbols. This defaults to an empty string
         """
         self.config = Config()
         self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
@@ -67,7 +66,6 @@ class History:
         self.total_deals = len(self.deals)
         self.total_orders = len(self.orders)
 
-    @backoff_decorator
     async def get_deals(self) -> tuple[TradeDeal, ...]:
         """Get deals from trading history using the parameters set in the constructor.
 
@@ -103,7 +101,6 @@ class History:
         """
         return tuple(sorted((deal for deal in self.deals if deal.position_id == position), key=lambda x: x.time_msc))
 
-    @backoff_decorator
     async def get_orders(self) -> tuple[TradeOrder, ...]:
         """Get orders from trading history using the parameters set in the constructor or the method arguments.
 

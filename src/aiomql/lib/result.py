@@ -6,6 +6,7 @@ from threading import Lock
 
 from ..core.config import Config
 from ..core.models import OrderSendResult
+from .result_db import ResultDB
 
 logger = getLogger(__name__)
 
@@ -17,11 +18,10 @@ class Result:
         config (Config): The configuration object
         name: Any desired name for the result file object
     """
-
     config: Config
     lock = Lock()
 
-    def __init__(self, *, result: OrderSendResult, parameters: dict = None, name: str = ""):
+    def __init__(self, *, result: OrderSendResult, parameters: dict = None, name: str = "", **kwargs):
         """
         Prepare result data
         Args:
@@ -33,13 +33,28 @@ class Result:
         self.parameters = parameters or {}
         self.result = result
         self.name = name or self.parameters.get("name", "Trades")
+        self.extra_params = kwargs
+
+    def to_sql(self):
+        try:
+            res = self.result.get_dict(include=set(ResultDB.fields()))
+            res["parameters"] = self.parameters
+            res["name"] = self.name
+            res["date"] = self.extra_params.get("date", "")
+            res["symbol"] = self.parameters["symbol"]
+            db = ResultDB(**res)
+            db.save(commit=True)
+            db.close()
+        except Exception as err:
+            logger.error("%s: Error occurred while saving", err)
 
     def get_data(self) -> dict:
         res = self.result.get_dict(exclude={"retcode", "comment", "retcode_external", "request_id", "request"})
-        return self.parameters | res | {"actual_profit": 0, "closed": False, "win": False}
+        return self.parameters | res | {"actual_profit": 0, "closed": False, "win": False} | self.extra_params
 
     async def save(self, *, trade_record_mode: Literal["csv", "json"] = None):
         """Record trade results as a csv or json file
+
         Args:
             trade_record_mode (Literal['csv'|'json']): Mode of saving trade records
         """
@@ -49,6 +64,8 @@ class Result:
                 await self.to_csv()
             elif trade_record_mode == "json":
                 await self.to_json()
+            elif trade_record_mode == "sql":
+                self.to_sql()
             else:
                 logger.error(f"Invalid trade record mode: {trade_record_mode}")
 

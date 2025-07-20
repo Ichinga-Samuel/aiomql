@@ -8,7 +8,7 @@ from ...core.constants import TimeFrame, OrderType
 from ...lib.sessions import Sessions
 from ..candle_patterns import find_bearish_fractal, find_bullish_fractal
 from ..traders import SimpleTrader
-from ..utils.tracker import Tracker
+from ..utils import Tracker
 
 logger = logging.getLogger(__name__)
 

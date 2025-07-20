@@ -1,3 +1,4 @@
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Literal
 
@@ -5,9 +6,8 @@ from ...core.constants import OrderType
 
 
 @dataclass
-class Tracker:
+class StrategyTracker:
     """Keeps track of a strategy's data and state"""
-
     trend: Literal["ranging", "bullish", "bearish"] = "ranging"
     bullish: bool = False
     bearish: bool = False
@@ -21,6 +21,14 @@ class Tracker:
     order_type: OrderType = None
     sl: float = 0
     tp: float = 0
+
+    @property
+    def time(self):
+        return datetime.now()
+
+    @property
+    def timestamp(self):
+        return self.time.timestamp()
 
     def update(self, **kwargs):
         """Updates the tracker with the given kwargs"""

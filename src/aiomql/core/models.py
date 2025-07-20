@@ -412,7 +412,6 @@ class TradeOrder(Base):
         comment: str
         external_id: str
     """
-
     ticket: int
     time_setup: int
     time_setup_msc: int
@@ -529,7 +528,6 @@ class OrderSendResult(Base):
         request_id: int
         retcode_external: int
     """
-
     retcode: int
     deal: int
     order: int
@@ -569,7 +567,6 @@ class TradePosition(Base):
         comment: str
         external_id: str
     """
-
     ticket: int
     time: int
     time_msc: int
