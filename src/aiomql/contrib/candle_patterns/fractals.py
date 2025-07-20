@@ -138,7 +138,7 @@ def find_bearish_fractal(candles: Candles, swing_number: int = 1, max_price: flo
 
 
 def find_double_bearish_fractal(candles: Candles, swing_number: int = 1,
-                                tolerance: float = 0.05, max_price: float = None) -> tuple[Candle, Candles] | None:
+                                tolerance: float = 1, max_price: float = None) -> tuple[Candle, Candles] | None:
     """Find double bearish Fractals"""
     fractal_candles: Candles
     swing_candle: Candle | None = None
@@ -158,7 +158,7 @@ def find_double_bearish_fractal(candles: Candles, swing_number: int = 1,
 
 
 def find_double_bullish_fractal(candles: Candles, swing_number: int = 1,
-                                tolerance: float = 0.05, min_price: float = None) -> tuple[Candle, Candles] | None:
+                                tolerance: float = 1, min_price: float = None) -> tuple[Candle, Candles] | None:
     """Find double bullish Fractals"""
     fractal_candles: Candles
     swing_candle: Candle | None = None
