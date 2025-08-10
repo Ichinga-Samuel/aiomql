@@ -58,6 +58,7 @@ class OpenPosition:
             logger.error("%s: Unable to remove closed position from state", exe)
 
     async def update_position(self) -> bool:
+        # ToDo: remove pending order
         pos = await self.positions.get_position_by_ticket(ticket=self.ticket)
         if pos is not None:
             self.position = pos
@@ -69,6 +70,7 @@ class OpenPosition:
     async def modify_stops(self, *, sl: float = None, tp: float = None,
                            use_stop_levels=False) -> tuple[bool, OrderSendResult | None]:
         try:
+            # todo: add stops
             tick = await self.symbol.info_tick()
 
             # modify stop_loss
@@ -147,7 +149,7 @@ class OpenPosition:
             logger.error("%s: Error occurred in track method of Open Position for %d:%s",
                          exe, self.symbol.name, self.ticket)
 
-    async def get_price_from_profit(self, profit):
+    async def profit_to_price(self, profit):
         action = OrderType.BUY if self.position.type == 0 else OrderType.SELL
         volume = self.position.volume
         price_open = self.position.price_open

@@ -80,9 +80,10 @@ class Order(_Base, TradeRequest):
         return tuple()
 
     @classmethod
-    async def cancel_order(cls, *, ticket: int, symbol: str) -> TradeOrder | None:
+    async def cancel_order(cls, *, order: int, symbol: str) -> OrderSendResult:
         """Cancel an active pending order by ticket number."""
-        order = cls.mt5.order_send({"symbol": symbol, "ticket": ticket, "action": TradeAction.REMOVE})
+        res = await cls.mt5.order_send({"symbol": symbol, "order": order, "action": TradeAction.REMOVE})
+        return res
 
     async def check(self, **kwargs) -> OrderCheckResult:
         """Check funds sufficiency for performing a required trading operation and the possibility of executing it.
