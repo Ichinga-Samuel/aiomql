@@ -6,7 +6,7 @@ from ...core.models import TradePosition, OrderSendResult
 from ...core.constants import OrderType, TradeAction
 from ...core.config import Config
 from ...core.sync.meta_trader import MetaTrader
-from ..order import Order
+from .order import Order
 
 
 logger = getLogger(__name__)
@@ -56,7 +56,25 @@ class Positions:
         logger.warning("Failed to get open positions")
         return ()
 
-    def get_position_by_ticket(self, *, ticket: int) -> TradePosition | None:
+    @classmethod
+    def get_all_positions(cls, *, symbol: str = None, ticket: int = None, group: str = None) -> tuple[
+        TradePosition, ...]:
+        kwargs = {}
+        if symbol is not None:
+            kwargs["symbol"] = symbol
+            ticket = None
+        if ticket is not None:
+            kwargs["ticket"] = ticket
+        if group is not None:
+            kwargs["group"] = group
+        positions = cls.mt5.positions_get(**kwargs)
+        if positions is not None:
+            return cls.positions
+        logger.warning("Failed to get open positions")
+        return ()
+
+    @classmethod
+    def get_position_by_ticket(cls, *, ticket: int) -> TradePosition | None:
         """Get an open position by ticket.
         Args:
             ticket (int): Position ticket.
@@ -64,13 +82,14 @@ class Positions:
         Returns:
             TradePosition: Return an open position
         """
-        positions = self.mt5.positions_get(ticket=ticket)
+        positions = cls.mt5.positions_get(ticket=ticket)
         position = positions[0] if positions else None
         if position is None or position.ticket != ticket:
             return None
         return TradePosition(**position._asdict())
 
-    def get_positions_by_symbol(self, *, symbol: str) -> tuple[TradePosition, ...]:
+    @classmethod
+    def get_positions_by_symbol(cls, *, symbol: str) -> tuple[TradePosition, ...]:
         """Get open positions by symbol.
         Args:
             symbol (str): Financial instrument name.
@@ -78,7 +97,7 @@ class Positions:
         Returns:
             tuple[TradePosition, ...]: A tuple of open trade positions
         """
-        positions = self.mt5.positions_get(symbol=symbol)
+        positions = cls.mt5.positions_get(symbol=symbol)
         return tuple(TradePosition(**pos._asdict()) for pos in (positions or ()))
 
     @staticmethod
@@ -102,9 +121,10 @@ class Positions:
         )
         return order.send()
 
-    def close_position_by_ticket(self, *, ticket: int) -> OrderSendResult | None:
+    @classmethod
+    def close_position_by_ticket(cls, *, ticket: int) -> OrderSendResult | None:
         """Close an open position using the ticket."""
-        position = self.get_position_by_ticket(ticket=ticket)
+        position = cls.get_position_by_ticket(ticket=ticket)
         if position is None:
             return None
         order = Order(
@@ -136,11 +156,17 @@ class Positions:
         Returns:
             int: Return number of positions closed.
         """
-        positions = self.get_positions()
+        positions = self.positions or self.get_positions()
         results = [self.close_position(position=position) for position in positions]
-
         return len([res for res in results if (isinstance(res, OrderSendResult) and res.retcode == 10009)])
 
-    def get_total_positions(self) -> int:
+    @classmethod
+    async def close_all_positions(cls):
+        positions = cls.mt5.positions_get()
+        results = [cls.close_position(position=position) for position in positions]
+        return len([res for res in results if (isinstance(res, OrderSendResult) and res.retcode == 10009)])
+
+    @classmethod
+    def get_total_positions(cls) -> int:
         """Get the total number of open positions."""
-        return self.mt5.positions_total()
+        return cls.mt5.positions_total()

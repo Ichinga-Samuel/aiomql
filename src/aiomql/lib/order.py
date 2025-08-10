@@ -36,15 +36,17 @@ class Order(_Base, TradeRequest):
         """
         self.set_attributes(**kwargs)
 
-    async def orders_total(self):
+    @classmethod
+    async def orders_total(cls):
         """Get the number of active pending orders.
 
         Returns:
             (int): total number of active pending orders
         """
-        return await self.mt5.orders_total()
+        return await cls.mt5.orders_total()
 
-    async def get_pending_order(self, *, ticket: int) -> TradeOrder | None:
+    @classmethod
+    async def get_pending_order(cls, *, ticket: int) -> TradeOrder | None:
         """
         Get a pending order by ticket number.
 
@@ -53,14 +55,15 @@ class Order(_Base, TradeRequest):
 
         Returns:
         """
-        orders = await self.mt5.orders_get(ticket=ticket)
+        orders = await cls.mt5.orders_get(ticket=ticket)
         order = None
         for order_ in orders:
             if order_.ticket == ticket:
                 return TradeOrder(**order_._asdict())
         return order
 
-    async def get_pending_orders(self, *, ticket: int = 0, symbol: str = "", group: str = "") -> tuple[TradeOrder, ...]:
+    @classmethod
+    async def get_pending_orders(cls, *, ticket: int = 0, symbol: str = "", group: str = "") -> tuple[TradeOrder, ...]:
         """Get the list of active pending orders for the current symbol.
 
         Args:
@@ -71,10 +74,15 @@ class Order(_Base, TradeRequest):
         Returns:
             tuple[TradeOrder, ...]: A Tuple of active pending trade orders as TradeOrder objects
         """
-        orders = await self.mt5.orders_get(symbol=symbol, ticket=ticket, group=group)
+        orders = await cls.mt5.orders_get(symbol=symbol, ticket=ticket, group=group)
         if orders is not None:
             return tuple(TradeOrder(**order._asdict()) for order in orders)
         return tuple()
+
+    @classmethod
+    async def cancel_order(cls, *, ticket: int, symbol: str) -> TradeOrder | None:
+        """Cancel an active pending order by ticket number."""
+        order = cls.mt5.order_send({"symbol": symbol, "ticket": ticket, "action": TradeAction.REMOVE})
 
     async def check(self, **kwargs) -> OrderCheckResult:
         """Check funds sufficiency for performing a required trading operation and the possibility of executing it.
@@ -115,7 +123,7 @@ class Order(_Base, TradeRequest):
         res = await self.mt5.order_calc_margin(self.type, self.symbol, self.volume, self.price)
         return res
 
-    @error_handler(response=0, log_error_msg=False)
+    @error_handler(log_error_msg=False)
     async def calc_profit(self) -> float:
         """Return profit in the account currency for a specified trading operation.
 
@@ -127,7 +135,7 @@ class Order(_Base, TradeRequest):
         res = await self.mt5.order_calc_profit(action, symbol, volume, price_open, price_close)
         return res
 
-    @error_handler(response=0, log_error_msg=False)
+    @error_handler(log_error_msg=False)
     async def calc_loss(self) -> float:
         """Return profit in the account currency for a specified trading operation.
 

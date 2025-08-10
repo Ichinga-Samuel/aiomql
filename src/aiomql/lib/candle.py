@@ -6,11 +6,11 @@ from logging import getLogger
 
 import pandas as pd
 import mplfinance as mpf
-import pandas_ta as ta
 from pandas import DataFrame, Series, DatetimeIndex, Timestamp
+from ..talibs import pandas_ta as ta
 
 from ..core.constants import TimeFrame
-from ..core._core import Config
+from ..core.config import Config
 
 logger = getLogger(__name__)
 

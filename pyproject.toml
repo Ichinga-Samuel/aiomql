@@ -16,7 +16,13 @@ classifiers = [
 keywords = ["MetaTrader5", "Asynchronous", "Algorithmic Trading", "Trading Bot", "Backtesting",
             "Technical Analysis", "Forex", "Stocks", "Cryptocurrency", "Futures", "Options", "Crypto", "Algo Trading"]
 
-dependencies = ["MetaTrader5>=5.0.5200", "pandas>=1.5.0", "pandas-ta>=0.3.14b0", "mplfinance>=0.10.1"]
+dependencies = [
+    "MetaTrader5>=5.0.5200",
+    "pandas>=1.5.0",
+    "mplfinance>=0.10.1",
+    "pandas-stubs==2.3.0.250703",
+    "tqdm>=4.67.1",
+]
 
 authors = [{name = "Ichinga Samuel", email = "ichingasamuel@gmail.com"}]
 
@@ -25,3 +31,9 @@ description = "Asynchronous MetaTrader5 library and Algorithmic Trading Framewor
 [project.urls]
 "Homepage" = "https://github.com/Ichinga-Samuel/aiomql"
 "Bug Tracker" = "https://github.com/Ichinga-Samuel/aiomql/issues"
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+    "pytest>=8.4.1",
+]
