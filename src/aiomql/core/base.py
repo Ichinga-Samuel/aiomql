@@ -19,8 +19,8 @@ class Base:
         include (set [str]): A set of attributes to be included when retrieving attributes
          using the get_dict and dict method.
     """
-    exclude: set[str]
-    include: set[str]
+    exclude: set[str] = {"mt5", "config", "exclude", "include", "annotations", "class_vars", "dict", "_instance"}
+    include: set[str] = {}
 
     def __init__(self, **kwargs):
         """
@@ -29,8 +29,6 @@ class Base:
         Args:
             **kwargs: Set instance attributes with keyword arguments. Only if they are annotated on the class body.
         """
-        self.exclude = {"mt5", "config", "exclude", "include", "annotations", "class_vars", "dict", "_instance"}
-        self.include = set()
         self.set_attributes(**kwargs)
 
     def __repr__(self):
@@ -138,7 +136,18 @@ class _Base(Base):
     """
     mt5: MetaTrader | MetaBackTester
     config: Config
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, 'config'):
+            cls.config = Config()
+        if not hasattr(cls, 'mt5'):
+            cls.mt5 = MetaTrader() if cls.config.mode != "backtest" else MetaBackTester()
+        return super().__new__(cls)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop("mt5", None)
+        return state
+
     def __init__(self, **kwargs):
-        self.__class__.config = Config()
-        self.__class__.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
         super().__init__(**kwargs)

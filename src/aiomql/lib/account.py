@@ -1,6 +1,6 @@
 from threading import Lock
 from logging import getLogger
-from typing import Self
+from typing import Self, ClassVar
 
 from ..core.base import _Base
 from ..core.models import AccountInfo
@@ -17,7 +17,7 @@ class Account(_Base, AccountInfo):
         connected (bool): Status of connection to MetaTrader 5 Terminal
     """
     _instance: Self
-    _lock: Lock
+    _lock: ClassVar[Lock]
     connected: bool
 
     def __new__(cls, *args, **kwargs):
@@ -26,6 +26,7 @@ class Account(_Base, AccountInfo):
                 cls._lock = lock
                 cls._instance = super().__new__(cls)
                 cls._instance.connected = False
+                cls._instance.exclude.add("_lock")
         return cls._instance
 
     async def __aenter__(self) -> Self:
@@ -51,7 +52,13 @@ class Account(_Base, AccountInfo):
 
     async def refresh(self):
         """Refreshes the account instance with the latest account details from the MetaTrader 5 terminal"""
-        account_info = await self.mt5.account_info
+        account_info = await self.mt5.account_info()
+        acc = account_info._asdict()
+        self.connected = True
+        self.set_attributes(**acc)
+
+    def refresh_sync(self):
+        account_info = self.mt5._account_info()
         acc = account_info._asdict()
         self.connected = True
         self.set_attributes(**acc)

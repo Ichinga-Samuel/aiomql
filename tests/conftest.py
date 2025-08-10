@@ -8,6 +8,11 @@ def btc_usd():
 
 
 @pytest.fixture(scope="function")
+def eth_usd():
+    return Symbol(name="ETHUSD")
+
+
+@pytest.fixture(scope="function")
 async def buy_order(btc_usd):
     sym = btc_usd
     sym_info = await sym.mt5.symbol_info(sym.name)
@@ -26,8 +31,8 @@ async def buy_order(btc_usd):
 
 
 @pytest.fixture(scope="function")
-async def sell_order(btc_usd):
-    sym = btc_usd
+async def sell_order(eth_usd):
+    sym = eth_usd
     sym_info = await sym.mt5.symbol_info(sym.name)
     return {
         "action": sym.mt5.TRADE_ACTION_DEAL,

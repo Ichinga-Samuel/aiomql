@@ -25,15 +25,13 @@ class TradeAction(Repr, IntEnum):
     """TRADE_REQUEST_ACTION Enum.
 
     Attributes:
-        DEAL (int): Delete the pending order placed previously Place a trade order for an immediate execution with the
-            specified parameters (market order).
-        PENDING (int): Delete the pending order placed previously
+        DEAL (int): Place a trade order for an immediate execution with the specified parameters (market order)
+        PENDING (int): Place a trade order for the execution under specified conditions (pending order)
         SLTP (int): Modify Stop Loss and Take Profit values of an opened position
         MODIFY (int): Modify the parameters of the order placed previously
         REMOVE (int): Delete the pending order placed previously
         CLOSE_BY (int): Close a position by an opposite one
     """
-
     __enum_name__ = "TRADE_ACTION"
     DEAL = mt5.TRADE_ACTION_DEAL
     PENDING = mt5.TRADE_ACTION_PENDING
@@ -93,12 +91,12 @@ class OrderType(Repr, IntEnum):
     Attributes:
         BUY (int): Market buy order
         SELL (int): Market sell order
-        BUY_LIMIT (int): Buy Limit pending order
-        SELL_LIMIT (int): Sell Limit pending order
-        BUY_STOP (int): Buy Stop pending order
-        SELL_STOP (int): Sell Stop pending order
-        BUY_STOP_LIMIT (int): Upon reaching the order price, Buy Limit pending order is placed at StopLimit price
-        SELL_STOP_LIMIT (int): Upon reaching the order price, Sell Limit pending order is placed at StopLimit price
+        BUY_LIMIT (int): Buy Limit pending order, buy when price drops to level below the current price
+        SELL_LIMIT (int): Sell Limit pending order, sell when price rises to a level above the current price
+        BUY_STOP (int): Buy Stop pending order, buy when price rises to a level above the current price
+        SELL_STOP (int): Sell Stop pending order, sell when price drops to a level below the current price
+        BUY_STOP_LIMIT (int): Buy stop limit order, buy when price rises to a level above the current price, with a limit to how far above the current price
+        SELL_STOP_LIMIT (int): Sell stop limit order, sell when price drops to a level below the current price, with a limit to how far below the current price
         CLOSE_BY (int): Order for closing a position by an opposite one
 
     Properties:
@@ -126,6 +124,13 @@ class OrderType(Repr, IntEnum):
         _type = {0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4, 6: 7, 7: 6, 8: 8}[self]
         return OrderType(_type)
 
+    @property
+    def long(self):
+        return self in [0, 2, 4, 6]
+
+    @property
+    def short(self):
+        return self in [1, 3, 5, 7]
 
 class BookType(Repr, IntEnum):
     """BOOK_TYPE Enum.

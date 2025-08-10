@@ -542,6 +542,15 @@ class OrderSendResult(Base):
     profit: float = None
     loss: float = None
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["request"] = state.pop('request')._asdict()
+        return state
+
+    def __setstate__(self, state):
+        state['request'] = mt5.TradeRequest(state['request'])
+        self.__dict__.update(state)
+
 
 class TradePosition(Base):
     """Trade Position

@@ -1,4 +1,4 @@
--e git+ssh://git@github.com/Chimezirim-Bassey/aiomql.git@8e0a5516774894505d8d915bbd510bf88c6e3e48#egg=aiomql
+-e git+ssh://git@github.com/Chimezirim-Bassey/aiomql.git@bae2983bded5b3912f7234fd0acaa89ab84fa1c4#egg=aiomql
 anyio==4.3.0
 argon2-cffi==23.1.0
 argon2-cffi-bindings==21.2.0
@@ -71,7 +71,7 @@ MarkupSafe==2.1.3
 matplotlib==3.8.4
 matplotlib-inline==0.1.6
 mdurl==0.1.2
-MetaTrader5==5.0.4424
+MetaTrader5==5.0.5200
 mistune==3.0.2
 more-itertools==10.1.0
 mplfinance==0.12.10b0

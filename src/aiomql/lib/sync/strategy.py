@@ -1,6 +1,4 @@
 """The base class for creating strategies."""
-
-import asyncio
 import time
 from abc import ABC
 from datetime import time as dtime
@@ -8,11 +6,12 @@ from logging import getLogger
 
 from .sessions import Sessions, Session
 from .symbol import Symbol
-from ..core import Config
-from ..core.backtesting.backtest_controller import BackTestController
-from ..core.exceptions import StopTrading
-from ..core.meta_backtester import MetaBackTester
-from ..core.meta_trader import MetaTrader
+from ...core import Config
+from ...core.backtesting.backtest_controller import BackTestController
+from ...core.exceptions import StopTrading
+from ...core.meta_backtester import MetaBackTester
+from ...core.meta_trader import MetaTrader
+
 
 logger = getLogger(__name__)
 
@@ -34,7 +33,6 @@ class Strategy(ABC):
     Notes:
         Define the name of a strategy as a class attribute. If not provided, the class name will be used as the name.
     """
-
     name: str
     symbol: Symbol
     sessions: Sessions
@@ -77,27 +75,23 @@ class Strategy(ABC):
             self.parameters[key] = value
         super().__setattr__(key, value)
 
-    async def __aenter__(self):
-        await self.sessions.check()
+    def __enter__(self):
+        self.sessions.check()
         self.running = True
         self.current_session = self.sessions.current_session
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         try:
-            await self.current_session.close() if self.current_session else ...
+            self.current_session.close() if self.current_session else ...
             self.running = False
         except Exception as err:
             logger.error(f"Error: {err}")
 
-    async def initialize(self):
-        """Perform any initialization tasks here."""
-        return await self.symbol.initialize()
-
-    def initialize_sync(self):
+    def initialize(self):
         return self.symbol.initialize_sync()
 
     @staticmethod
-    async def live_sleep(*, secs: float):
+    def live_sleep(*, secs: float):
         """Sleep for the needed amount of seconds in between requests to the terminal.
         computes the accurate amount of time needed to sleep ensuring that the next request is made at the start of
         a new bar and making cooperative multitasking possible.
@@ -107,9 +101,9 @@ class Strategy(ABC):
         """
         mod = time.time() % secs
         secs = secs - mod if mod != 0 else mod
-        await asyncio.sleep(secs + 0.1)
+        time.sleep(secs + 0.1)
 
-    async def sleep(self, *, secs: float):
+    def sleep(self, *, secs: float):
         """Sleep for the needed amount of seconds in between requests to the terminal.
         computes the accurate amount of time needed to sleep ensuring that the next request is made at the start of
         a new bar and making cooperative multitasking possible.
@@ -120,14 +114,14 @@ class Strategy(ABC):
         if self.config.mode == "backtest":
             self.backtest_sleep(secs=secs)
         else:
-            await self.live_sleep(secs=secs)
+            self.live_sleep(secs=secs)
 
-    async def delay(self, *, secs: float):
+    def delay(self, *, secs: float):
         """Sleep for the input amount of seconds"""
         if self.config.mode == "backtest":
             self._backtest_sleep(secs=secs)
         else:
-            await asyncio.sleep(secs)
+            time.sleep(secs)
 
     def _backtest_sleep(self, *, secs: float):
         try:
@@ -155,27 +149,23 @@ class Strategy(ABC):
         except Exception as err:
             logger.error("Error: %s in backtest_sleep", err)
 
-    async def run_strategy(self):
+    def run_strategy(self):
         """Run the strategy."""
         if self.config.mode == "live":
-            await self.live_strategy()
+            self.live_strategy()
         elif self.config.mode == "backtest":
-            await self.backtest_strategy()
+            self.backtest_strategy()
 
-    async def live_strategy(self):
+    def live_strategy(self):
         """Run the strategy."""
-        async with self as _:
+        with self as _:
             logger.info("Running %s strategy on %s", self.name, self.symbol.name)
             while self.running:
                 try:
-                    await self.sessions.check()
-                    await self.trade()
+                    self.sessions.check()
+                    self.trade()
 
                 except StopTrading:
-                    self.running = False
-                    break
-
-                except asyncio.CancelledError:
                     self.running = False
                     break
 
@@ -184,16 +174,15 @@ class Strategy(ABC):
                     self.running = False
                     break
 
-    async def backtest_strategy(self):
+    def backtest_strategy(self):
         """Backtest the strategy."""
-        async with self as _:
+        with self as _:
             logger.info("Testing %s strategy on %s with Backtester", self.name, self.symbol.name)
-            await self.initialize()
             while self.running:
                 try:
-                    await self.sessions.check()
+                    self.sessions.check()
                     self.backtest_controller.wait()
-                    await self.test()
+                    self.test()
                 except StopTrading:
                     self.running = False
                     break
@@ -201,11 +190,11 @@ class Strategy(ABC):
                     logger.error(f"Error: {err} in backtest_strategy")
                     return
 
-    async def trade(self):
+    def trade(self):
         """Place trades using this method. This is the main method of the strategy.
         It will be called by the strategy runner.
         """
         raise NotImplementedError("Implement this method in your subclass")
 
-    async def test(self):
-        await self.trade()
+    def test(self):
+        self.trade()

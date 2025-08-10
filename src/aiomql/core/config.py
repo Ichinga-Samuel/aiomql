@@ -45,7 +45,9 @@ class Config:
     shutdown: bool
     force_shutdown: bool
     db_commit_interval: float
-    auto_commit: bool = False
+    auto_commit: bool
+    flush_state: bool
+    stop_trading: bool
     lock: Lock
     _defaults = {
         "timeout": 60000,
@@ -67,7 +69,9 @@ class Config:
         "root": None,
         "plots_dir_name": "plots",
         "db_commit_interval": 30,
-        "auto_commit": False
+        "auto_commit": False,
+        "flush_state": False,
+        "stop_trading": False
     }
 
     def __new__(cls, *args, **kwargs):
@@ -224,10 +228,10 @@ class Config:
         self._store = value
 
     def init_state(self):
-        self.state = State(db_name=self.db_name)
+        self.state = State(db_name=self.root / self.db_name, flush=self.flush_state)
 
     def init_store(self):
-        self.store = Store(db_name=self.db_name)
+        self.store = Store(db_name=self.root / self.db_name, flush=self.flush_state)
 
     @property
     def records_dir(self):

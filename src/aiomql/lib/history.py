@@ -1,8 +1,7 @@
 import asyncio
-from datetime import datetime
+from typing import ClassVar
+from datetime import datetime, UTC
 from logging import getLogger
-
-import pytz
 
 from ..core.config import Config
 from ..core.meta_trader import MetaTrader
@@ -24,34 +23,41 @@ class History:
         mt5 (MetaTrader): MetaTrader instance
         config (Config): Config instance
     """
-
-    mt5: MetaTrader | MetaBackTester
-    config: Config
+    mt5: ClassVar[MetaTrader | MetaBackTester]
+    config: ClassVar[Config]
     deals: tuple[TradeDeal, ...]
     orders: tuple[TradeOrder, ...]
     total_deals: int
     total_orders: int
     group: str
 
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        if not hasattr(instance.__class__, 'config'):
+            instance.__class__.config = Config()
+        if not hasattr(instance.__class__, 'mt5'):
+            instance.__class__.mt5 = MetaTrader() if instance.config.mode != "backtest" else MetaBackTester()
+        return instance
+
     def __init__(
-        self, *, date_from: datetime | float, date_to: datetime | float, group: str = "", use_utc: bool = True
+        self, *, date_from: datetime | float, date_to: datetime | float, group: str = "", use_utc: bool = float
     ):
         """
         Args:
             date_from (datetime, float): Date the orders are requested from. Set by the 'datetime' object or as a
-                number of seconds elapsed since 1970.01.01. Defaults to twenty-four hours from the current time in 'utc'
+                number of seconds elapsed since 1970.01.01.
 
             date_to (datetime, float): Date up to which the orders are requested. Set by the 'datetime' object or as a
-                number of seconds elapsed since 1970.01.01. Defaults to the current time in "utc"
+                number of seconds elapsed since 1970.01.01.
+
+            use_utc (bool): Convert date_from and date_to to UTC. Default is False.
 
             group (str): Filter for selecting history by symbols. This defaults to an empty string
         """
-        self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
         date_from = date_from if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from)
         date_to = date_to if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to)
-        self.date_from = date_from.astimezone(pytz.UTC) if use_utc else date_from
-        self.date_to = date_to.astimezone(pytz.UTC) if use_utc else date_to
+        self.date_from = date_from.astimezone(UTC) if use_utc else date_from
+        self.date_to = date_to.astimezone(UTC) if use_utc else date_to
         self.group = group
         self.deals: tuple[TradeDeal, ...] = ()
         self.orders: tuple[TradeOrder, ...] = ()

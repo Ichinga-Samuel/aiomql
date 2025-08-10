@@ -2,7 +2,7 @@ import asyncio
 from logging import getLogger
 from typing import ClassVar
 
-from ...core import Config, State, Store, sleep
+from ...core import Config, State, sleep
 from ...lib import Positions
 
 
@@ -10,19 +10,20 @@ logger = getLogger(__name__)
 
 
 class OpenPositionsTracker:
-    state: ClassVar[State]
-    store: ClassVar[Store]
     config: ClassVar[Config]
+    positions: ClassVar[Positions]
+    state: ClassVar[State]
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "config"):
             cls.config = Config()
-        if not hasattr(cls, "state"):
-            cls.state = cls.config.state
+
         if not hasattr(cls, "positions"):
             cls.positions = Positions()
-        if not hasattr(cls, "store"):
-            cls.store = cls.config.store
+
+        if not hasattr(cls, "state"):
+            cls.state = State()
+
         return super().__new__(cls)
 
     def __init__(self, interval: int = 10, state_key: str = "tracked_positions", autocommit=False):

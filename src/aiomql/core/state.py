@@ -1,6 +1,7 @@
 import os
 import pickle
 import sqlite3
+from pathlib import Path
 from threading import Lock
 from typing import Self
 from typing import MutableMapping, Iterable, Any, ClassVar
@@ -27,7 +28,7 @@ class State(MutableMapping):
                 cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, db_name: str = "", data: dict = None, flush: bool = False, autocommit: bool = False):
+    def __init__(self, db_name: str | Path = "", data: dict = None, flush: bool = False, autocommit: bool = False):
         with self._lock:
             self.autocommit = autocommit
             self.init(data=data, flush=flush, db_name=db_name)
@@ -99,14 +100,14 @@ class State(MutableMapping):
     def items(self):
         return self.data.items()
 
-    def load(self, *, conn = None, db_name: str = "", data: dict = None):
+    def load(self, *, conn = None, data: dict = None):
         try:
-            db_name = db_name or self.db_name
             conn = conn or self.conn
             res = conn.execute("SELECT value FROM state where key = 'data'").fetchone()
             db_data = pickle.loads(res[0]) if res else {}
             db_data |= (data or {})
             self.update(db_data)
+            conn.close()
         except Exception as err:
             logger.error("%s: Failed to load data from database", err)
 
@@ -121,7 +122,7 @@ class State(MutableMapping):
                 self.commit(conn=conn)
             else:
                 self.load(conn=conn, data=data)
-                conn.close()
+            return
 
         if flush:
             self.data = data or {}

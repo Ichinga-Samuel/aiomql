@@ -2,6 +2,7 @@ import os
 import sqlite3
 from typing import MutableMapping, Iterable, Any
 from logging import getLogger
+from pathlib import Path
 
 
 SENTINEL = object()
@@ -14,7 +15,7 @@ class Store(MutableMapping):
     cursor: sqlite3.Cursor
     conn: sqlite3.Connection
 
-    def __init__(self, db_name: str = "", data: dict = None, flush: bool = False, autocommit: bool = True):
+    def __init__(self, db_name: str | Path = "", data: dict = None, flush: bool = False, autocommit: bool = True):
         self.autocommit = autocommit
         self.db_name = db_name or os.environ.get("DB_NAME", "db.sqlite3")
         self.conn = sqlite3.connect(self.db_name, check_same_thread=False)

@@ -3,14 +3,16 @@
 from datetime import datetime
 from logging import getLogger
 
-from ..core.constants import TimeFrame, CopyTicks
-from ..core.base import _Base
-from ..core.models import SymbolInfo, BookInfo
-from ..utils import round_off
-from .ticks import Tick
-from .account import Account
-from .candle import Candles
-from .ticks import Ticks
+from ...core.constants import TimeFrame, CopyTicks
+from ...core.base import _Base
+from ...core.config import Config
+from ...core.sync.meta_trader import MetaTrader
+from ...core.models import SymbolInfo, BookInfo
+from ...utils import round_off
+from ..ticks import Tick
+from ..account import Account
+from ..candle import Candles
+from ..ticks import Ticks
 
 logger = getLogger(__name__)
 
@@ -30,6 +32,12 @@ class Symbol(_Base, SymbolInfo):
     initialized: bool
     tick: Tick
     account: Account
+    
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        instance.__class__.config = Config()
+        instance.__class__.mt5 = MetaTrader()
+        return instance
 
     def __init__(self, **kwargs):
         """Initialize the Symbol object with the name of the financial instrument.
@@ -42,7 +50,7 @@ class Symbol(_Base, SymbolInfo):
         self.account = Account()
         self.initialized = False
 
-    async def info_tick(self, *, name: str = "") -> Tick | None:
+    def info_tick(self, *, name: str = "") -> Tick | None:
         """Get the current price tick of a financial instrument.
 
         Args:
@@ -54,11 +62,11 @@ class Symbol(_Base, SymbolInfo):
         """
         try:
             if not name:
-                tick = await self.mt5.symbol_info_tick(self.name)
+                tick = self.mt5.symbol_info_tick(self.name)
             else:
-                await self.mt5.symbol_select(name, True)
-                await self.mt5.market_book_add(name)
-                tick = await self.mt5.symbol_info_tick(name)
+                self.mt5.symbol_select(name, True)
+                self.mt5.market_book_add(name)
+                tick = self.mt5.symbol_info_tick(name)
             if tick is not None:
                 tick = Tick(**tick._asdict())
                 setattr(self, "tick", tick) if not name else ...
@@ -67,7 +75,7 @@ class Symbol(_Base, SymbolInfo):
             logger.warning("%s: Unable to get tick for %s", err, self.name)
             return None
 
-    async def symbol_select(self, *, enable: bool = True) -> bool:
+    def symbol_select(self, *, enable: bool = True) -> bool:
         """Select a symbol in the MarketWatch window or remove a symbol from the window.
         Update the select property
 
@@ -78,40 +86,40 @@ class Symbol(_Base, SymbolInfo):
         Returns:
             bool: True if successful, otherwise – False.
         """
-        self.select = await self.mt5.symbol_select(self.name, enable)
+        self.select = self.mt5.symbol_select(self.name, enable)
         return self.select
 
-    async def info(self) -> SymbolInfo | None:
+    def info(self) -> SymbolInfo | None:
         """Get data on the specified financial instrument and update the symbol object properties
 
         Returns:
             (SymbolInfo): SymbolInfo if successful
             (None): If request was unsuccessful
         """
-        info = await self.mt5.symbol_info(self.name)
+        info = self.mt5.symbol_info(self.name)
         if info is not None:
             info = info._asdict()
             self.set_attributes(**info)
             return SymbolInfo(**info)
         return None
 
-    async def initialize(self) -> bool:
+    def initialize(self) -> bool:
         """Initialize the symbol by pulling properties from the terminal
 
         Returns:
              bool: Returns True if symbol info was successfully initialized
         """
         try:
-            select = await self.mt5.symbol_select(self.name, True)
+            select = self.mt5.symbol_select(self.name, True)
             self.select = select
 
-            await self.mt5.market_book_add(self.name)
+            self.mt5.market_book_add(self.name)
 
-            info = await self.mt5.symbol_info(self.name)
+            info = self.mt5.symbol_info(self.name)
             if info is not None:
                 self.set_attributes(**info._asdict())
 
-            info_tick = await self.mt5.symbol_info_tick(self.name)
+            info_tick = self.mt5.symbol_info_tick(self.name)
 
             if info_tick:
                 self.tick = Tick(**info_tick._asdict())
@@ -151,25 +159,25 @@ class Symbol(_Base, SymbolInfo):
             logger.warning("%s: Unable to initialize %s", err, self.name)
             return False
 
-    async def book_add(self) -> bool:
+    def book_add(self) -> bool:
         """Subscribes the MetaTrader 5 terminal to the Market Depth change events for a specified symbol.
         If the symbol is not in the list of instruments for the market, This method will return False
 
         Returns:
              bool: True if successful, otherwise – False.
         """
-        res = await self.mt5.market_book_add(self.name)
+        res = self.mt5.market_book_add(self.name)
         if res is False:
             logger.debug("Could not add %s to market book", self.name)
         return res
 
-    async def book_get(self) -> tuple[BookInfo, ...]:
+    def book_get(self) -> tuple[BookInfo, ...]:
         """Returns a tuple of BookInfo featuring Market Depth entries for the specified symbol.
 
         Returns:
             tuple[BookInfo]: Returns the Market Depth contents as a tuples of BookInfo Objects
         """
-        book_info = await self.mt5.market_book_get(self.name)
+        book_info = self.mt5.market_book_get(self.name)
 
         if book_info is not None:
             book_infos = (BookInfo(**info._asdict()) for info in book_info)
@@ -177,13 +185,13 @@ class Symbol(_Base, SymbolInfo):
 
         raise ValueError(f"Could not get book info for {self.name}")
 
-    async def book_release(self) -> bool:
+    def book_release(self) -> bool:
         """Cancels subscription of the MetaTrader 5 terminal to the Market Depth change events for a specified symbol.
 
         Returns:
             bool: True if successful, otherwise – False.
         """
-        return await self.mt5.market_book_release(self.name)
+        return self.mt5.market_book_release(self.name)
 
     def check_volume(self, *, volume: float) -> tuple[bool, float]:
         """Check if the volume is within the limits of the symbol. If not, return the nearest limit.
@@ -212,15 +220,15 @@ class Symbol(_Base, SymbolInfo):
         """
         return round_off(value=volume, step=self.volume_step, round_down=round_down)
 
-    async def amount_in_quote_currency(self, *, amount: float) -> float:
+    def amount_in_quote_currency(self, *, amount: float) -> float:
         """Convert the amount to the quote currency of the symbol."""
         if self.currency_profit != self.account.currency:
-            amount = await self.convert_currency(
+            amount = self.convert_currency(
                 amount=amount, from_currency=self.account.currency, to_currency=self.currency_profit
             )
         return amount
 
-    async def compute_volume(self) -> float:
+    def compute_volume(self) -> float:
         """Computes the volume required for a trade usually based on the amount and any other keyword arguments.
         This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
         that implements the computation of volume.
@@ -230,7 +238,7 @@ class Symbol(_Base, SymbolInfo):
         """
         return self.volume_min
 
-    async def convert_currency(self, *, amount: float, from_currency: str, to_currency: str) -> float | None:
+    def convert_currency(self, *, amount: float, from_currency: str, to_currency: str) -> float | None:
         """Convert a given amount from one currency to the other.
         Args:
             amount: Amount to convert
@@ -240,18 +248,18 @@ class Symbol(_Base, SymbolInfo):
         base, quote = to_currency, from_currency
         try:
             pair = f"{quote}{base}"
-            tick = await self.info_tick(name=pair)
+            tick = self.info_tick(name=pair)
             if tick is not None:
                 return round(amount * tick.bid, 2)
 
             pair = f"{base}{quote}"
-            tick = await self.info_tick(name=pair)
+            tick = self.info_tick(name=pair)
             return round(amount / tick.ask, 2)
         except Exception as err:
             logger.warning(f"{err}: Currency conversion failed: Unable to convert {amount} in {quote} to {base}")
             return None
 
-    async def copy_rates_from(self, *, timeframe: TimeFrame, date_from: datetime | int, count: int = 500) -> Candles:
+    def copy_rates_from(self, *, timeframe: TimeFrame, date_from: datetime | int, count: int = 500) -> Candles:
         """
         Get bars from the MetaTrader 5 terminal starting from the specified date.
 
@@ -269,12 +277,12 @@ class Symbol(_Base, SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        rates = await self.mt5.copy_rates_from(self.name, timeframe, date_from, count)
+        rates = self.mt5.copy_rates_from(self.name, timeframe, date_from, count)
         if rates is not None:
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
-    async def copy_rates_from_pos(self, *, timeframe: TimeFrame, count: int = 500, start_position: int = 0) -> Candles:
+    def copy_rates_from_pos(self, *, timeframe: TimeFrame, count: int = 500, start_position: int = 0) -> Candles:
         """Get bars from the MetaTrader 5 terminal starting from the specified index.
 
         Args:
@@ -291,12 +299,12 @@ class Symbol(_Base, SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        rates = await self.mt5.copy_rates_from_pos(self.name, timeframe, start_position, count)
+        rates = self.mt5.copy_rates_from_pos(self.name, timeframe, start_position, count)
         if rates is not None:
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
-    async def copy_rates_range(
+    def copy_rates_range(
         self, *, timeframe: TimeFrame, date_from: datetime | int, date_to: datetime | int
     ) -> Candles:
         """Get bars in the specified date range from the MetaTrader 5 terminal.
@@ -318,14 +326,14 @@ class Symbol(_Base, SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        rates = await self.mt5.copy_rates_range(
+        rates = self.mt5.copy_rates_range(
             symbol=self.name, timeframe=timeframe, date_from=date_from, date_to=date_to
         )
         if rates is not None:
             return Candles(data=rates)
         raise ValueError(f"Could not get rates for {self.name}.")
 
-    async def copy_ticks_from(self, *, date_from: datetime | int, count: int = 100,
+    def copy_ticks_from(self, *, date_from: datetime | int, count: int = 100,
                               flags: CopyTicks = CopyTicks.ALL) -> Ticks:
         """
         Get ticks from the MetaTrader 5 terminal starting from the specified date.
@@ -343,12 +351,12 @@ class Symbol(_Base, SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned
         """
-        ticks = await self.mt5.copy_ticks_from(self.name, date_from, count, flags)
+        ticks = self.mt5.copy_ticks_from(self.name, date_from, count, flags)
         if ticks is not None:
             return Ticks(data=ticks)
         raise ValueError(f"Could not get ticks for {self.name}.")
 
-    async def copy_ticks_range(
+    def copy_ticks_range(
         self, *, date_from: datetime | int, date_to: datetime | int, flags: CopyTicks = CopyTicks.ALL
     ) -> Ticks:
         """Get ticks for the specified date range from the MetaTrader 5 terminal.
@@ -369,7 +377,7 @@ class Symbol(_Base, SymbolInfo):
         Raises:
             ValueError: If request was unsuccessful and None was returned.
         """
-        ticks = await self.mt5.copy_ticks_range(self.name, date_from, date_to, flags)
+        ticks = self.mt5.copy_ticks_range(self.name, date_from, date_to, flags)
         if ticks is not None:
             return Ticks(data=ticks)
         raise ValueError(f"Could not get ticks for {self.name}.")

@@ -7,6 +7,7 @@ import logging
 from .executor import Executor
 from ..core.config import Config
 from ..core.meta_trader import MetaTrader
+from ..core.meta_backtester import MetaBackTester
 from .symbol import Symbol as Symbol
 from .strategy import Strategy as Strategy
 
@@ -25,12 +26,16 @@ class Bot:
     executor: Executor
     mt: MetaTrader
     strategies: list[Strategy]
+    initialized: bool
+    login: bool
 
     def __init__(self):
         self.config = Config(bot=self)
         self.executor = Executor()
-        self.mt5 = MetaTrader()
+        self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
         self.strategies = []
+        self.initialized = False
+        self.login = False
 
     @classmethod
     def process_pool(cls, processes: dict[Callable:dict] = None, num_workers: int = None):
@@ -46,17 +51,36 @@ class Bot:
             for bot, kwargs in processes.items():
                 executor.submit(bot, **kwargs)
 
+    async def start_terminal(self):
+        """Start terminal and login asynchronously"""
+        res = await self.mt5.initialize()
+        if res:
+            self.initialized = True
+            res = await self.mt5.login()
+            if res:
+                self.login = True
+        return res
+
+    def start_terminal_sync(self):
+        """Start terminal and login synchronously"""
+        res = self.mt5.initialize_sync()
+        if res:
+            self.initialized = True
+            res = self.mt5.login_sync()
+            if res:
+                self.login = True
+        return res
+
     async def initialize(self):
         """Prepares the bot by signing in to the trading account and initializing the symbols for each strategy.
         Only strategies with successfully initialized symbols will be added to the executor. Starts the global task queue.
 
         Raises:
-            SystemExit if sign in was not successful
+            SystemExit if sign_in was not successful
         """
         try:
-            await self.mt5.initialize()
-            login = await self.mt5.login()
-            if not login:
+            await self.start_terminal()
+            if not self.login:
                 logger.critical("Unable to sign in to MetaTrder 5 Terminal")
                 raise Exception("Unable to sign in to MetaTrader 5 Terminal")
             logger.info("Login Successful")
@@ -78,12 +102,11 @@ class Bot:
         Starts the global task queue.
 
         Raises:
-            SystemExit if sign in was not successful
+            SystemExit if sign_in was not successful
         """
         try:
-            self.mt5.initialize_sync()
-            login = self.mt5.login_sync()
-            if not login:
+            self.start_terminal_sync()
+            if not self.login:
                 logger.critical("Unable to sign in to MetaTrder 5 Terminal")
                 raise Exception("Unable to sign in to MetaTrader 5 Terminal")
             logger.info("Login Successful")
@@ -163,7 +186,7 @@ class Bot:
 
     async def init_strategy(self, *, strategy: Strategy) -> bool:
         """Initialize a single strategy. This method is called internally by the bot."""
-        res = await strategy.symbol.initialize()
+        res = await strategy.initialize()
         if res:
             self.executor.add_strategy(strategy=strategy)
         return res
@@ -171,11 +194,11 @@ class Bot:
     async def init_strategies(self):
         """Initialize the symbols for the current trading session. This method is called internally by the bot."""
         tasks = [self.init_strategy(strategy=strategy) for strategy in self.strategies]
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     def init_strategy_sync(self, *, strategy: Strategy) -> bool:
         """Initialize a single strategy. This method is called internally by the bot."""
-        res = strategy.symbol.initialize_sync()
+        res = strategy.initialize_sync()
         if res:
             self.executor.add_strategy(strategy=strategy)
         return res

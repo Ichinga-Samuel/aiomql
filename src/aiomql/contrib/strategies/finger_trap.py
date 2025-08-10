@@ -1,6 +1,6 @@
 import logging
 
-from ...lib.symbol import Symbol
+from ..symbols import ForexSymbol
 from ...lib.trader import Trader
 from ...lib.candle import Candles
 from ...lib.strategy import Strategy
@@ -29,7 +29,7 @@ class FingerTrap(Strategy):
     parameters = {"fast_ema": 8, "slow_ema": 20, "etf": TimeFrame.M5, "ttf": TimeFrame.H1,
                   "entry_ema": 5, "tcc": 720, "ecc": 8640}
 
-    def __init__(self, *,symbol: Symbol, params: dict | None = None, trader: Trader = None, sessions: Sessions = None,
+    def __init__(self, *, symbol: ForexSymbol, params: dict | None = None, trader: Trader = None, sessions: Sessions = None,
                  name: str = "FingerTrap"):
         super().__init__(symbol=symbol, params=params, sessions=sessions, name=name)
         self.trader = trader or SimpleTrader(symbol=self.symbol)
