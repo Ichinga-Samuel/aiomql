@@ -7,8 +7,7 @@ from logging import getLogger
 import pandas as pd
 import mplfinance as mpf
 from pandas import DataFrame, Series, DatetimeIndex, Timestamp
-from ..talibs import pandas_ta as ta
-
+import pandas_ta as ta
 from ..core.constants import TimeFrame
 from ..core.config import Config
 
