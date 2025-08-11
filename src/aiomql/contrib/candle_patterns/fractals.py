@@ -1,6 +1,6 @@
 from aiomql import Candle, Candles
 
-from ..quants.change import percentage_difference
+from ...utils.change import percentage_difference
 
 
 def is_bullish_fractal(candles: Candles) -> tuple[bool, Candle|None]:

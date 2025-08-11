@@ -1,17 +1,5 @@
-# -*- coding: utf-8 -*-
 from pathlib import Path
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    TextIO,
-    Tuple,
-    TypeVar,
-    Union
-)
+from typing import Any, Iterable, Sequence, TypeVar, Dict, List, Tuple, TextIO, Union, Optional
 
 from numpy import ndarray, recarray, void
 from numpy import bool_ as np_bool_
@@ -21,40 +9,38 @@ from numpy import integer as np_integer
 from numpy import number as np_number
 from pandas import DataFrame, Series
 
-
-
 # Generic types
 T = TypeVar("T")
 
 # Scalars
-Scalar = Union[str, float, int, complex, bool, object, np_generic]
-Number = Union[int, float, complex, np_number, np_bool_]
-Int = Union[int, np_integer]
-Float = Union[float, np_floating]
-IntFloat = Union[Int, Float]
+Scalar = str | float | int | complex | bool | object | np_generic
+Number = int | float | complex | np_number | np_bool_
+Int = int | np_integer
+Float = float | np_floating
+IntFloat = Int | Float
 
 # Basic sequences
-MaybeTuple = Union[T, Tuple[T, ...]]
-MaybeList = Union[T, List[T]]
-TupleList = Union[List[T], Tuple[T, ...]]
-MaybeTupleList = Union[T, List[T], Tuple[T, ...]]
-MaybeIterable = Union[T, Iterable[T]]
-MaybeSequence = Union[T, Sequence[T]]
-ListStr = List[str]
+MaybeTuple = T | tuple[T, ...]
+MaybeList = T | list[T]
+TupleList = list[T] | tuple[T, ...]
+MaybeTupleList = T | list[T] | tuple[T, ...]
+MaybeIterable = T | Iterable[T]
+MaybeSequence = T | Sequence[T]
+ListStr = list[str]
 
-DictLike = Union[None, dict]
+DictLike = None | dict
 DictLikeSequence = MaybeSequence[DictLike]
-Args = Tuple[Any, ...]
-ArgsLike = Union[None, Args]
-Kwargs = Dict[str, Any]
-KwargsLike = Union[None, Kwargs]
+Args = tuple[Any, ...]
+ArgsLike = None | Args
+Kwargs = dict[str, Any]
+KwargsLike = None | Kwargs
 KwargsLikeSequence = MaybeSequence[KwargsLike]
-FileName = Union[str, Path]
+FileName = str | Path
 
 DTypeLike = Any
 PandasDTypeLike = Any
-Shape = Tuple[int, ...]
-RelaxedShape = Union[int, Shape]
+Shape = tuple[int, ...]
+RelaxedShape = int | Shape
 Array = ndarray
 Array1d = ndarray
 Array2d = ndarray
@@ -62,10 +48,10 @@ Array3d = ndarray
 Record = void
 RecordArray = ndarray
 RecArray = recarray
-MaybeArray = Union[T, Array]
-SeriesFrame = Union[Series, DataFrame]
-MaybeSeries = Union[T, Series]
-MaybeSeriesFrame = Union[T, Series, DataFrame]
-AnyArray = Union[Array, Series, DataFrame]
-AnyArray1d = Union[Array1d, Series]
-AnyArray2d = Union[Array2d, DataFrame]
+MaybeArray = T | Array
+SeriesFrame = Series | DataFrame
+MaybeSeries = T | Series
+MaybeSeriesFrame = T | Series | DataFrame
+AnyArray = Array | Series | DataFrame
+AnyArray1d = Array1d | Series
+AnyArray2d = Array2d | DataFrame

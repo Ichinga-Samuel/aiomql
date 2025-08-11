@@ -61,15 +61,32 @@ class Result:
         with self.lock:
             trade_record_mode = trade_record_mode or self.config.trade_record_mode
             if trade_record_mode == "csv":
-                await self.to_csv()
+                self.to_csv()
             elif trade_record_mode == "json":
-                await self.to_json()
+                self.to_json()
             elif trade_record_mode == "sql":
                 self.to_sql()
             else:
                 logger.error(f"Invalid trade record mode: {trade_record_mode}")
 
-    async def to_csv(self):
+    def save_sync(self, *, trade_record_mode: Literal["csv", "json"] = None):
+        """Record trade results as a csv or json file
+
+        Args:
+            trade_record_mode (Literal['csv'|'json']): Mode of saving trade records
+        """
+        with self.lock:
+            trade_record_mode = trade_record_mode or self.config.trade_record_mode
+            if trade_record_mode == "csv":
+                self.to_csv()
+            elif trade_record_mode == "json":
+                self.to_json()
+            elif trade_record_mode == "sql":
+                self.to_sql()
+            else:
+                logger.error(f"Invalid trade record mode: {trade_record_mode}")
+
+    def to_csv(self):
         """Record trade results and associated parameters as a csv file"""
         try:
             data = self.get_data()
@@ -99,7 +116,7 @@ class Result:
             logger.error("%s: Unable to serialize value", err)
             return ""
 
-    async def to_json(self):
+    def to_json(self):
         """Save trades and strategy parameters in a json file"""
         try:
             file = self.config.records_dir / f"{self.name}.json"

@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-# from importlib.metadata import version
-# version = version("pandas-ta")
-
 from pandas_ta.maps import EXCHANGE_TZ, RATE, Category, Imports
 from pandas_ta.utils import *
 from pandas_ta.utils import __all__ as utils_all
@@ -42,7 +38,6 @@ __all__ = [
     "RATE",
     "Category",
     "Imports",
-    # "version",
     "ma",
     "create_dir",
     "import_dir",

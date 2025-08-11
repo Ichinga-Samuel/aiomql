@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from signal import signal, SIGINT
 from typing import Coroutine, Callable
@@ -93,16 +94,16 @@ class Executor:
     def sigint_handle(self, signum, frame):
         self.config.shutdown = True
 
-    async def exit(self):
+    def exit(self):
         """Shutdown the executor"""
-        start = asyncio.get_event_loop().time()
+        start = time.time()
         try:
             while self.config.shutdown is False and self.config.force_shutdown is False:
-                if self.timeout is not None and self.timeout < (asyncio.get_event_loop().time() - start):
+                if self.timeout is not None and self.timeout < (time.time() - start):
                     self.config.shutdown = True
                     break
                 timeout = self.timeout or 1
-                await asyncio.sleep(timeout)
+                time.sleep(timeout)
             for strategy in self.strategy_runners:
                 strategy.running = False
             self.config.task_queue.cancel()

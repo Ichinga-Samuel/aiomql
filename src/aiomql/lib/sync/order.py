@@ -49,6 +49,12 @@ class Order(_Base, TradeRequest):
         return cls.mt5.orders_total()
 
     @classmethod
+    def cancel_order(cls, *, order: int, symbol: str) -> OrderSendResult:
+        """Cancel an active pending order by ticket number."""
+        res = cls.mt5.order_send({"symbol": symbol, "order": order, "action": TradeAction.REMOVE})
+        return res
+
+    @classmethod
     def get_pending_order(cls, *, ticket: int) -> TradeOrder | None:
         """
         Get a pending order by ticket number.

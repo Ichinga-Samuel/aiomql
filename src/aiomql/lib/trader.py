@@ -3,7 +3,6 @@ from datetime import datetime, UTC
 from typing import TypeVar
 from logging import getLogger
 
-
 from ..core.models import OrderType, OrderSendResult, OrderCheckResult
 from ..core.config import Config
 from ..core.task_queue import QueueItem

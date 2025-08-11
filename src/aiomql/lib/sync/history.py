@@ -1,12 +1,11 @@
-import asyncio
 from typing import ClassVar
 from datetime import datetime, UTC
 from logging import getLogger
 
-from ..core.config import Config
-from ..core.meta_trader import MetaTrader
-from ..core.models import TradeDeal, TradeOrder
-from ..core.meta_backtester import MetaBackTester
+from ...core.config import Config
+from ...core.sync.meta_trader import MetaTrader
+from ...core.models import TradeDeal, TradeOrder
+from ...core.meta_backtester import MetaBackTester
 
 logger = getLogger(__name__)
 
@@ -63,21 +62,21 @@ class History:
         self.total_deals: int = 0
         self.total_orders: int = 0
 
-    async def initialize(self):
+    def initialize(self):
         """Get history deals and orders"""
-        deals, orders = await asyncio.gather(self.get_deals(), self.get_orders(), return_exceptions=True)
+        deals, orders = [self.get_deals(), self.get_orders()]
         self.deals = deals if isinstance(deals, tuple) else ()
         self.orders = orders if isinstance(orders, tuple) else ()
         self.total_deals = len(self.deals)
         self.total_orders = len(self.orders)
 
-    async def get_deals(self) -> tuple[TradeDeal, ...]:
+    def get_deals(self) -> tuple[TradeDeal, ...]:
         """Get deals from trading history using the parameters set in the constructor.
 
         Returns:
             tuple[TradeDeal, ...]: A list of trade deals
         """
-        deals = await self.mt5.history_deals_get(date_from=self.date_from, date_to=self.date_to, group=self.group)
+        deals = self.mt5.history_deals_get(date_from=self.date_from, date_to=self.date_to, group=self.group)
         if deals is not None:
             return tuple(TradeDeal(**deal._asdict()) for deal in deals)
         logger.warning(f"Failed to get deals")
@@ -106,13 +105,13 @@ class History:
         """
         return tuple(sorted((deal for deal in self.deals if deal.position_id == position), key=lambda x: x.time_msc))
 
-    async def get_orders(self) -> tuple[TradeOrder, ...]:
+    def get_orders(self) -> tuple[TradeOrder, ...]:
         """Get orders from trading history using the parameters set in the constructor or the method arguments.
 
         Returns:
             list[TradeOrder]: A list of trade orders
         """
-        orders = await self.mt5.history_orders_get(date_from=self.date_from, date_to=self.date_to, group=self.group)
+        orders = self.mt5.history_orders_get(date_from=self.date_from, date_to=self.date_to, group=self.group)
 
         if orders is not None:
             return tuple(TradeOrder(**order._asdict()) for order in orders)

@@ -7,11 +7,10 @@ import csv
 import logging
 from typing import Iterable
 
-from MetaTrader5 import TradePosition
-
 from ..core.config import Config
 from ..core.meta_trader import MetaTrader
 from ..core.meta_backtester import MetaBackTester
+from ..core.models import TradePosition
 
 logger = logging.getLogger(__name__)
 

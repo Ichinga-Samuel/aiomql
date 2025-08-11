@@ -86,7 +86,7 @@ class Bot:
             logger.info("Login Successful")
             await self.init_strategies()
             self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
-            self.add_coroutine(coroutine=self.executor.exit)
+            self.add_function(function=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
                 logger.warning("No strategies were added to the bot. Exiting in one second")
@@ -112,7 +112,7 @@ class Bot:
             logger.info("Login Successful")
             self.init_strategies_sync()
             self.add_coroutine(coroutine=self.config.task_queue.run, on_separate_thread=True)
-            self.add_coroutine(coroutine=self.executor.exit)
+            self.add_function(function=self.executor.exit)
 
             if len(self.executor.strategy_runners) == 0:
                 logger.warning("No strategies were added to the bot. Exiting in one second")

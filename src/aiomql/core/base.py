@@ -119,15 +119,13 @@ class Base:
         Returns:
             dict: A dictionary of instance and class attributes
         """
-        try:
-            _filter = self.exclude.difference(self.include)
-            return {
-                key: value
-                for key, value in (self.class_vars | self.__dict__).items()
-                if key not in _filter and value is not None
-            }
-        except Exception as err:
-            logger.warning(err)
+        _filter = self.exclude.difference(self.include)
+        return {
+            key: value
+            for key, value in (self.class_vars | self.__dict__).items()
+            if key not in _filter and value is not None
+        }
+
 
 
 class _Base(Base):

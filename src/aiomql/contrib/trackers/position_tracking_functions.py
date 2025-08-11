@@ -2,7 +2,7 @@ from logging import getLogger
 
 
 from .open_position import OpenPosition
-from ..quants import extend_interval_by_percentage, get_percentage_position, percentage_position
+from ...utils.change import extend_interval_by_percentage, get_percentage_position, percentage_position
 
 logger = getLogger(__name__)
 
@@ -56,7 +56,7 @@ async def exit_at_checkpoint(pos: OpenPosition, /, start: float = 80, trail: flo
     if is_open is False:
         return
     position = pos.position
-    if position.profit > 0 and percentage_position(position.price_open, position.tp, position.price_current) >= start:
+    if percentage_position(position.price_open, position.tp, position.price_current) >= start:
         new_checkpoint = get_percentage_position(position.price_open, position.price_current, 100-trail)
         change_checkpoint = False
         if position.type.long and new_checkpoint > (pos.checkpoint or position.price_open):
@@ -66,6 +66,7 @@ async def exit_at_checkpoint(pos: OpenPosition, /, start: float = 80, trail: flo
         if change_checkpoint:
             pos.checkpoint = new_checkpoint
             pos.use_checkpoint = True
+            await pos.modify_stops(sl=new_checkpoint, use_stop_levels=True)
             logger.info("New checkpoint created for %s:%d at %f:%f",
                         position.symbol, position.ticket, new_checkpoint, position.profit)
     close = False

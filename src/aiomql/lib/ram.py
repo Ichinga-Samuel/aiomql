@@ -41,6 +41,20 @@ class RAM:
         """
         [setattr(self, key, value) for key, value in kwargs.items()]
 
+    def get_amount_sync(self) -> float:
+        """Calculate the amount to risk per trade as a percentage of margin_free.
+
+        Returns:
+            float: Amount to risk per trade
+        """
+        if self.fixed_amount:
+            return self.fixed_amount
+        self.account.refresh_sync()
+        amount = self.account.margin_free * (self.risk / 100)
+        if self.min_amount and self.max_amount:
+            return max(self.min_amount, min(self.max_amount, amount))
+        return amount
+
     async def get_amount(self) -> float:
         """Calculate the amount to risk per trade as a percentage of margin_free.
 
@@ -61,8 +75,8 @@ class RAM:
         Returns:
             bool: True if the number of losing positions is less than or equal the loss limit
         """
-        positions = await self.positions.get_positions()
-        loosing = [position for position in positions if position.profit < 0]
+        positions = await self.account.mt5.positions_get()
+        loosing = [position for position in positions if position.profit <= 0]
         return len(loosing) <= self.loss_limit
 
     async def check_open_positions(self) -> bool:
@@ -71,5 +85,24 @@ class RAM:
         Returns:
             bool: True if the number of open positions is less than the open limit
         """
-        positions = await self.positions.get_positions()
+        positions = await self.account.mt5.positions_get()
+        return len(positions) <= self.open_limit
+
+    def check_losing_positions_sync(self) -> bool:
+        """Check if the number of losing positions is less than the loss limit
+
+        Returns:
+            bool: True if the number of losing positions is less than or equal the loss limit
+        """
+        positions = self.account.mt5._positions_get()
+        loosing = [position for position in positions if position.profit <= 0]
+        return len(loosing) <= self.loss_limit
+
+    def check_open_positions_sync(self) -> bool:
+        """Check if the number of open positions is less than or equal the loss limit.
+
+        Returns:
+            bool: True if the number of open positions is less than the open limit
+        """
+        positions = self.account.mt5._positions_get()
         return len(positions) <= self.open_limit

@@ -69,7 +69,7 @@ class Positions:
             kwargs["group"] = group
         positions = cls.mt5.positions_get(**kwargs)
         if positions is not None:
-            return cls.positions
+            return tuple(TradePosition(**pos._asdict()) for pos in positions)
         logger.warning("Failed to get open positions")
         return ()
 

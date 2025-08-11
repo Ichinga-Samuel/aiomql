@@ -6,7 +6,7 @@ from ...lib import Symbol, Positions, Order
 from ...core.models import TradePosition, TradeAction, OrderSendResult
 from ...core.constants import OrderType
 from ...core.config import Config
-from ..quants import percentage_increase, percentage_decrease
+from ...utils.change import percentage_increase, percentage_decrease
 from .position_tracker import PositionTracker
 
 logger = getLogger()
@@ -54,26 +54,38 @@ class OpenPosition:
             await self.update_position()
             if not self.is_open:
                 self.remove_from_state()
+                await self.close_pending_order()
         except Exception as exe:
             logger.error("%s: Unable to remove closed position from state", exe)
 
+    async def close_pending_order(self) -> tuple[bool, OrderSendResult | None]:
+        try:
+            if self.pending_hedge:
+                res = await Order.cancel_order(order=self.pending_hedge.order, symbol=self.symbol.name)
+                if res.retcode != 10009:
+                    logger.critical("%s: Unable to cancel pending order", res.comment)
+                    return False, res
+                self.pending_hedge = None
+                return True, res
+        except Exception as exe:
+            logger.error("%s: Unable to cancel pending order", exe)
+        return False, None
+
     async def update_position(self) -> bool:
-        # ToDo: remove pending order
         pos = await self.positions.get_position_by_ticket(ticket=self.ticket)
         if pos is not None:
             self.position = pos
             self.is_open = True
         else:
             self.is_open = False
+            await self.close_pending_order()
         return self.is_open
 
     async def modify_stops(self, *, sl: float = None, tp: float = None,
                            use_stop_levels=False) -> tuple[bool, OrderSendResult | None]:
         try:
-            # todo: add stops
             tick = await self.symbol.info_tick()
 
-            # modify stop_loss
             if sl is not None and use_stop_levels is True:
                 min_stops_value = (self.symbol.trade_stops_level + self.symbol.spread) * self.symbol.point
                 if self.position.type == OrderType.BUY:
@@ -149,8 +161,8 @@ class OpenPosition:
             logger.error("%s: Error occurred in track method of Open Position for %d:%s",
                          exe, self.symbol.name, self.ticket)
 
-    async def profit_to_price(self, profit):
-        action = OrderType.BUY if self.position.type == 0 else OrderType.SELL
+    async def profit_to_price(self, *, profit):
+        action = self.position.type
         volume = self.position.volume
         price_open = self.position.price_open
         price_close = percentage_increase(price_open, 50) if action == 0 else percentage_decrease(price_open, 50)
