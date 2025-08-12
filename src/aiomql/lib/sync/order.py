@@ -1,11 +1,12 @@
 from logging import getLogger
 
 from ...core.models import TradeRequest, TradeOrder, OrderCheckResult, OrderSendResult
-from ...core.constants import TradeAction, OrderTime, OrderFilling
+from ...core.constants import TradeAction, OrderTime, OrderFilling, OrderType
 from ...core.exceptions import OrderError
 from ...core.base import _Base
 from ...core.sync.meta_trader import MetaTrader
 from ...utils import error_handler_sync
+from ...utils.change import percentage_decrease, percentage_increase
 
 logger = getLogger(__name__)
 
@@ -155,3 +156,13 @@ class Order(_Base, TradeRequest):
     def request(self) -> dict:
         """Return the order request as a dictionary."""
         return {key: value for key, value in self.dict.items() if key in self.mt5.TradeRequest.__match_args__}
+
+    @classmethod
+    def profit_to_price(cls, *, profit: float, order_type: OrderType, volume: float, symbol: str,
+                              price_open: float):
+        price_close = percentage_increase(price_open, 50) if order_type == 0 else percentage_decrease(price_open, 50)
+        half_profit = cls.mt5.order_calc_profit(symbol=symbol, action=order_type, volume=volume,
+                                                      price_open=price_open, price_close=price_close)
+        rate = profit / half_profit * 50
+        rate = percentage_increase(price_open, rate) if order_type == 0 else percentage_decrease(price_open, rate)
+        return rate
