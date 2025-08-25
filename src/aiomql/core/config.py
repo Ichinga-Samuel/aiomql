@@ -79,7 +79,7 @@ class Config:
             if not hasattr(cls, "_instance"):
                 cls._lock = lock
                 cls._instance = super().__new__(cls)
-                cls._instance.task_queue = TaskQueue(mode='infinite', workers=10)
+                cls._instance.task_queue = TaskQueue(mode='infinite')
                 cls._instance.set_attributes(**cls._defaults)
                 cls._instance._backtest_engine = None
                 cls._instance.bot = None

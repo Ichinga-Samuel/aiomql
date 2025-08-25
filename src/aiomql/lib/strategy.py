@@ -42,7 +42,7 @@ class Strategy(ABC):
     config: Config
     running: bool
     parameters = {}
-    backtest_controller = BackTestController
+    backtest_controller: BackTestController
     current_session = Session
 
     def __init__(self, *, symbol: Symbol, params: dict = None, sessions: Sessions = None, name=""):
@@ -62,7 +62,8 @@ class Strategy(ABC):
         self.sessions = sessions or Sessions(sessions=[Session(start=0, end=dtime(hour=23, minute=59, second=59))])
         self.config = Config()
         self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
-        self.backtest_controller = BackTestController()
+        if self.config.mode == "backtest":
+            self.backtest_controller = BackTestController()
 
     def __repr__(self):
         return f"{self.name}({self.symbol!r})"

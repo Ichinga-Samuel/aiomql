@@ -38,9 +38,6 @@ class BackTestController:
             cls._instance.tasks = []
         return cls._instance
 
-    def __init__(self):
-        signal(SIGINT, self.sigint_handler)
-
     @property
     def backtest_engine(self):
         """Returns the backtest engine"""
@@ -63,10 +60,6 @@ class BackTestController:
     def parties(self):
         """Returns the number of parties for the barrier"""
         return self.barrier.parties
-
-    def sigint_handler(self, sig, frame):
-        logger.warning("SIGINT received. Stopping the controller.")
-        self.backtest_engine.stop_testing = True
 
     async def control(self):
         """The backtest controller. It controls the backtesting engine and the tasks that are being run.

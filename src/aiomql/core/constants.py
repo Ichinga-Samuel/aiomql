@@ -102,7 +102,6 @@ class OrderType(Repr, IntEnum):
     Properties:
         opposite (int): Gets the opposite of an order type
     """
-
     __enum_name__ = "ORDER_TYPE"
     BUY = mt5.ORDER_TYPE_BUY
     SELL = mt5.ORDER_TYPE_SELL
