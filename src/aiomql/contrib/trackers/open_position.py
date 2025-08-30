@@ -188,6 +188,9 @@ class OpenPosition:
             logger.error("%s: Error occurred in hedge_order method of Open Position for %d:%s", exe, self.symbol.name, self.ticket)
             return False, None
 
+    def update(self, **kwargs):
+        [setattr(self, attr, value) for attr, value in kwargs.items()]
+
     async def hedge_position(self, *, hedge_params: dict = None) -> tuple[bool, Self]:
         try:
             # hedge_params for customizing the hedge

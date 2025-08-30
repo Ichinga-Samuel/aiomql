@@ -33,7 +33,7 @@ class OpenPositionsTracker:
 
     async def track(self):
         conn = self.config.state.conn
-        while self.config.shutdown is False:
+        while not self.config.shutdown:
             try:
                 await sleep(self.interval)
                 tracked_positions = self.state.get("tracked_positions", {})
