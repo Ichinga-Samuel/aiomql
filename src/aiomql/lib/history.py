@@ -1,3 +1,18 @@
+"""History module for accessing trade history.
+
+This module provides the History class for retrieving completed trade
+deals and orders from the trading account history within a specified
+date range.
+
+Example:
+    Getting trade history::
+
+        history = History(date_from=datetime(2024, 1, 1), date_to=datetime.now())
+        await history.initialize()
+        for deal in history.deals:
+            print(f"Deal {deal.ticket}: {deal.profit}")
+"""
+
 import asyncio
 from typing import ClassVar
 from datetime import datetime, UTC
@@ -7,21 +22,48 @@ from ..core.config import Config
 from ..core.meta_trader import MetaTrader
 from ..core.models import TradeDeal, TradeOrder
 from ..core.meta_backtester import MetaBackTester
+from ..core.base import BaseMeta
+from ..core.exceptions import InvalidRequest
 
 logger = getLogger(__name__)
 
 
-class History:
-    """The history class handles completed trade deals and trade orders in the trading history of an account.
+class History(metaclass=BaseMeta):
+    """Handles completed trade deals and orders from account history.
+
+    Provides methods to retrieve and filter historical trade deals and orders
+    within a specified date range. Supports filtering by symbol group, order
+    ticket, and position ID.
 
     Attributes:
-        deals (list[TradeDeal]): Iterable of trade deals
-        orders (list[TradeOrder]): Iterable of trade orders
-        total_deals: Total number of deals
-        total_orders (int): Total number orders
-        group (str): Filter for selecting history by symbols.
-        mt5 (MetaTrader): MetaTrader instance
-        config (Config): Config instance
+        deals: Tuple of trade deals retrieved from history.
+        orders: Tuple of trade orders retrieved from history.
+        total_deals: Total number of deals retrieved.
+        total_orders: Total number of orders retrieved.
+        group: Symbol filter pattern for selecting history.
+        date_from: Start date for history query.
+        date_to: End date for history query.
+        mt5: MetaTrader or MetaBackTester instance (class variable).
+        config: Config instance (class variable).
+
+    Example:
+        Basic usage::
+
+            from datetime import datetime
+            from aiomql.lib.history import History
+
+            history = History(
+                date_from=datetime(2024, 1, 1),
+                date_to=datetime.now()
+            )
+            await history.initialize()
+
+            # Access deals and orders
+            print(f"Total deals: {history.total_deals}")
+            print(f"Total orders: {history.total_orders}")
+
+            # Filter by position
+            position_deals = history.get_deals_by_position(position=12345)
     """
     mt5: ClassVar[MetaTrader | MetaBackTester]
     config: ClassVar[Config]
@@ -31,27 +73,40 @@ class History:
     total_orders: int
     group: str
 
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, 'config'):
-            cls.config = Config()
-        if not hasattr(cls, 'mt5'):
-            cls.mt5 = MetaTrader() if cls.config.mode != "backtest" else MetaBackTester()
-        return super().__new__(cls)
+    def __init__(self, *, date_from: datetime | float, date_to: datetime | float, group: str = "", use_utc: bool = False):
+        """Initialize a History instance with date range and filters.
 
-    def __init__(
-        self, *, date_from: datetime | float, date_to: datetime | float, group: str = "", use_utc: bool = float
-    ):
-        """
         Args:
-            date_from (datetime, float): Date the orders are requested from. Set by the 'datetime' object or as a
-                number of seconds elapsed since 1970.01.01.
+            date_from: Start date for history query. Can be a datetime object
+                or Unix timestamp (seconds since 1970-01-01).
+            date_to: End date for history query. Can be a datetime object
+                or Unix timestamp (seconds since 1970-01-01).
+            group: Symbol filter pattern for selecting history. Use '*' as
+                wildcard. Defaults to empty string (all symbols).
+            use_utc: If True, convert date_from and date_to to UTC timezone.
+                Defaults to False.
 
-            date_to (datetime, float): Date up to which the orders are requested. Set by the 'datetime' object or as a
-                number of seconds elapsed since 1970.01.01.
+        Example:
+            Create history for specific date range::
 
-            use_utc (bool): Convert date_from and date_to to UTC. Default is False.
+                # Using datetime objects
+                history = History(
+                    date_from=datetime(2024, 1, 1),
+                    date_to=datetime(2024, 12, 31)
+                )
 
-            group (str): Filter for selecting history by symbols. This defaults to an empty string
+                # Using timestamps
+                history = History(
+                    date_from=1704067200.0,  # 2024-01-01
+                    date_to=1735689600.0     # 2024-12-31
+                )
+
+                # With symbol filter
+                history = History(
+                    date_from=datetime(2024, 1, 1),
+                    date_to=datetime.now(),
+                    group="*USD*"  # Only USD pairs
+                )
         """
         date_from = date_from if isinstance(date_from, datetime) else datetime.fromtimestamp(date_from)
         date_to = date_to if isinstance(date_to, datetime) else datetime.fromtimestamp(date_to)
@@ -63,8 +118,24 @@ class History:
         self.total_deals: int = 0
         self.total_orders: int = 0
 
-    async def initialize(self):
-        """Get history deals and orders"""
+    async def initialize(self) -> None:
+        """Fetch history deals and orders from the trading account.
+
+        Retrieves both deals and orders concurrently and stores them in
+        the instance attributes. Must be called before accessing deals
+        or orders.
+
+        Note:
+            This method handles exceptions gracefully. If fetching deals
+            or orders fails, the corresponding attribute will be an empty tuple.
+
+        Example:
+            Initialize and access history::
+
+                history = History(date_from=start, date_to=end)
+                await history.initialize()
+                print(f"Found {history.total_deals} deals")
+        """
         deals, orders = await asyncio.gather(self.get_deals(), self.get_orders(), return_exceptions=True)
         self.deals = deals if isinstance(deals, tuple) else ()
         self.orders = orders if isinstance(orders, tuple) else ()
@@ -72,60 +143,69 @@ class History:
         self.total_orders = len(self.orders)
 
     async def get_deals(self) -> tuple[TradeDeal, ...]:
-        """Get deals from trading history using the parameters set in the constructor.
+        """Retrieve trade deals from history.
+
+        Fetches deals from the trading history using the date range and
+        group filter set in the constructor.
 
         Returns:
-            tuple[TradeDeal, ...]: A list of trade deals
+            tuple[TradeDeal, ...]: Tuple of TradeDeal objects. Returns empty
+                tuple if no deals found or on error.
+
+        Note:
+            Logs a warning if fetching deals fails.
         """
         deals = await self.mt5.history_deals_get(date_from=self.date_from, date_to=self.date_to, group=self.group)
-        if deals is not None:
-            return tuple(TradeDeal(**deal._asdict()) for deal in deals)
-        logger.warning(f"Failed to get deals")
-        return tuple()
-
-    def get_deals_by_ticket(self, *, ticket: int) -> tuple[TradeDeal, ...]:
-        """Call specifying the order ticket. Return all deals having the specified order ticket in the DEAL_ORDER
-        property.
-
-        Args:
-            ticket (int): The order ticket
-
-        Returns:
-            tuple[TradeDeal]: A tuple of all deals with the order ticket
-        """
-        return tuple(sorted((deal for deal in self.deals if deal.order == ticket), key=lambda x: x.time_msc))
-
-    def get_deals_by_position(self, *, position: int = None) -> tuple[TradeDeal, ...]:
-        """
-        Get all deals with the specified position ticket in the DEAL_POSITION_ID property
-        Args:
-            position (int): The position ticket
-
-        Returns:
-            tuple[TradeDeal]: A tuple of all deals with the position ticket
-        """
-        return tuple(sorted((deal for deal in self.deals if deal.position_id == position), key=lambda x: x.time_msc))
+        return tuple(TradeDeal(**deal._asdict()) for deal in deals)
 
     async def get_orders(self) -> tuple[TradeOrder, ...]:
-        """Get orders from trading history using the parameters set in the constructor or the method arguments.
+        """Retrieve trade orders from history.
+
+        Fetches orders from the trading history using the date range and
+        group filter set in the constructor.
 
         Returns:
-            list[TradeOrder]: A list of trade orders
+            tuple[TradeOrder, ...]: Tuple of TradeOrder objects. Returns empty
+                tuple if no orders found or on error.
+
+        Note:
+            Logs a warning if fetching orders fails.
         """
         orders = await self.mt5.history_orders_get(date_from=self.date_from, date_to=self.date_to, group=self.group)
+        return tuple(TradeOrder(**order._asdict()) for order in orders)
 
-        if orders is not None:
-            return tuple(TradeOrder(**order._asdict()) for order in orders)
+    def filter_deals_by_ticket(self, *, ticket: int) -> tuple[TradeDeal, ...]:
+        return tuple(deal for deal in self.deals if deal.ticket == ticket)
 
-        logger.warning(f"Failed to get orders")
-        return tuple()
+    def filter_deals_by_position(self, *, position: int) -> tuple[TradeDeal, ...]:
+        return tuple(deal for deal in self.deals if deal.position_id == position)
 
-    def get_orders_by_ticket(self, *, ticket: int) -> tuple[TradeOrder, ...]:
-        """filter orders by ticket"""
-        return tuple(sorted((order for order in self.orders if order.ticket == ticket), key=lambda x: x.time_done_msc))
+    def filter_orders_by_ticket(self, *, ticket: int) -> tuple[TradeOrder, ...]:
+        return tuple(order for order in self.orders if order.ticket == ticket)
 
-    def get_orders_by_position(self, *, position: int) -> tuple[TradeOrder, ...]:
-        """filter orders by position"""
-        return tuple(
-            sorted((order for order in self.orders if order.position_id == position), key=lambda x: x.time_done_msc)
-        )
+    def filter_orders_by_position(self, *, position: int) -> tuple[TradeOrder, ...]:
+        return tuple(order for order in self.orders if order.position_id == position)
+
+    @classmethod
+    async def get_deal_by_ticket(cls, *, ticket: int) -> TradeDeal:
+        deals = await cls.mt5.history_deals_get(ticket=ticket)
+        if (deal := deals[0]).ticket == ticket:
+            return TradeDeal(**deal._asdict())
+        raise InvalidRequest("Ticket not found")
+
+    @classmethod
+    async def get_deals_by_position(cls, *, position: int = None) -> tuple[TradeDeal, ...]:
+        deals = await cls.mt5.history_deals_get(position=position)
+        return tuple(TradeDeal(**deal._asdict()) for deal in deals if deal.position_id == position)
+
+    @classmethod
+    async def get_order_by_ticket(cls, *, ticket: int) -> TradeOrder:
+        orders = await cls.mt5.history_orders_get(ticket=ticket)
+        if (order := orders[0]).ticket == ticket:
+            return TradeOrder(**order._asdict())
+        raise InvalidRequest("Ticket not found")
+
+    @classmethod
+    async def get_orders_by_position(cls, *, position: int) -> tuple[TradeOrder, ...]:
+        orders = await cls.mt5.history_orders_get(position=position)
+        return tuple(TradeOrder(**order._asdict()) for order in orders)

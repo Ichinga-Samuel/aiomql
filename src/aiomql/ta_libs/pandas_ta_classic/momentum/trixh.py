@@ -1,0 +1,111 @@
+# -*- coding: utf-8 -*-
+# TRIX Histogram (TRIXH)
+from pandas import DataFrame
+from ..momentum import trix
+from ..utils import get_offset, verify_series
+
+
+def trixh(
+    close, length=None, signal=None, scalar=None, drift=None, offset=None, **kwargs
+):
+    """Indicator: TRIX Histogram (TRIXH)"""
+    # Validate arguments
+    length = int(length) if length and length > 0 else 18
+    signal = int(signal) if signal and signal > 0 else 9
+    scalar = float(scalar) if scalar else 100
+    close = verify_series(close, length)
+    offset = get_offset(offset)
+
+    if close is None:
+        return
+
+    # Calculate Result
+    # Calculate TRIX (returns DataFrame with TRIX and signal)
+    trix_df = trix(close, length=length, signal=signal, scalar=scalar, drift=drift)
+
+    if trix_df is None:
+        return
+
+    # Extract TRIX line and signal
+    trix_col = f"TRIX_{length}_{signal}"
+    signal_col = f"TRIXs_{length}_{signal}"
+
+    trix_line = trix_df[trix_col]
+    trix_signal = trix_df[signal_col]
+
+    # Calculate histogram
+    histogram = trix_line - trix_signal
+
+    # Offset
+    if offset != 0:
+        trix_line = trix_line.shift(offset)
+        trix_signal = trix_signal.shift(offset)
+        histogram = histogram.shift(offset)
+
+    # Handle fills
+    if "fillna" in kwargs:
+        trix_line.fillna(kwargs["fillna"], inplace=True)
+        trix_signal.fillna(kwargs["fillna"], inplace=True)
+        histogram.fillna(kwargs["fillna"], inplace=True)
+    if "fill_method" in kwargs:
+        if kwargs["fill_method"] == "ffill":
+            trix_line.ffill(inplace=True)
+            trix_signal.ffill(inplace=True)
+            histogram.ffill(inplace=True)
+        elif kwargs["fill_method"] == "bfill":
+            trix_line.bfill(inplace=True)
+            trix_signal.bfill(inplace=True)
+            histogram.bfill(inplace=True)
+
+    # Name and Categorize it
+    trix_line.name = f"TRIX_{length}_{signal}"
+    trix_signal.name = f"TRIXs_{length}_{signal}"
+    histogram.name = f"TRIXh_{length}_{signal}"
+    trix_line.category = trix_signal.category = histogram.category = "momentum"
+
+    # Prepare DataFrame to return
+    data = {
+        trix_line.name: trix_line,
+        trix_signal.name: trix_signal,
+        histogram.name: histogram,
+    }
+    df = DataFrame(data)
+    df.name = f"TRIXH_{length}_{signal}"
+    df.category = "momentum"
+
+    return df
+
+
+trixh.__doc__ = """TRIX Histogram (TRIXH)
+
+TRIX Histogram extends the TRIX indicator by adding a signal line and histogram.
+The histogram represents the difference between TRIX and its signal line,
+similar to MACD histogram, helping identify momentum changes and divergences.
+
+Sources:
+    https://www.investopedia.com/terms/t/trix.asp
+    https://school.stockcharts.com/doku.php?id=technical_indicators:trix
+
+Calculation:
+    Default Inputs:
+        length=18, signal=9, scalar=100
+
+    TRIX = TRIX(close, length, scalar)
+    Signal = EMA(TRIX, signal)
+    Histogram = TRIX - Signal
+
+Args:
+    close (pd.Series): Series of 'close's
+    length (int): TRIX period. Default: 18
+    signal (int): Signal line period. Default: 9
+    scalar (float): Multiplier. Default: 100
+    drift (int): The difference period. Default: 1
+    offset (int): How many periods to offset the result. Default: 0
+
+Kwargs:
+    fillna (value, optional): pd.DataFrame.fillna(value)
+    fill_method (value, optional): Type of fill method
+
+Returns:
+    pd.DataFrame: TRIX, Signal, and Histogram columns.
+"""

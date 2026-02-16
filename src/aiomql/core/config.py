@@ -1,9 +1,39 @@
+"""Configuration module for the aiomql trading library.
+
+This module provides the Config class for managing all configuration settings
+for the aiomql package. Settings can be loaded from a JSON configuration file
+or set programmatically.
+
+By default, the config class looks for a file named aiomql.json. This can be
+changed by setting the filename attribute to the desired file name. The root
+directory of the project can be set by passing the root argument to the
+load_config method or during object instantiation. If not provided it is
+assumed to be the current working directory. All directories and files are
+assumed to be relative to the root directory.
+
+Example:
+    Basic usage::
+
+        from aiomql import Config
+
+        # Load config from default aiomql.json file
+        config = Config()
+
+        # Or specify a custom config file
+        config = Config(config_file="/path/to/config.json")
+
+        # Access configuration values
+        print(config.login)
+        print(config.server)
+"""
+
 import os
 import json
 from pathlib import Path
 from typing import Literal, TypeVar, Self
 from logging import getLogger
 from threading import Lock
+from functools import cached_property
 
 from .task_queue import TaskQueue
 from .state import  State
@@ -16,6 +46,63 @@ BackTestController = TypeVar("BackTestController")
 
 
 class Config:
+    """A singleton class for handling configuration settings for the aiomql package.
+
+    This class manages all configuration settings for the aiomql trading library.
+    It implements the singleton pattern to ensure consistent configuration across
+    the application. Settings can be loaded from a JSON config file or set
+    programmatically.
+
+    Attributes:
+        login (int): The MetaTrader account login number.
+        password (str): The MetaTrader account password.
+        server (str): The MetaTrader account server name.
+        path (str | Path): The path to the MetaTrader terminal executable.
+        timeout (int): The timeout for terminal connection in milliseconds.
+            Defaults to 60000.
+        config_file (str | Path): The absolute path to the configuration file.
+        filename (str): The name of the config file to search for.
+            Defaults to 'aiomql.json'.
+        root (Path): The root directory of the project. All relative paths
+            are resolved from this directory.
+        trade_record_mode (Literal["csv", "json", "sql"]): The format for
+            recording trades. Defaults to 'sql'.
+        record_trades (bool): Whether to record trades. Defaults to True.
+        records_dir (Path): The directory to store trade records.
+        records_dir_name (str): The name of the trade records directory.
+            Defaults to 'trade_records'.
+        backtest_dir (Path): The directory to store backtest results.
+        backtest_dir_name (str): The name of the backtest directory.
+            Defaults to 'backtesting'.
+        plots_dir (Path): The directory to store plot files.
+        plots_dir_name (str): The name of the plots directory.
+            Defaults to 'plots'.
+        db_dir_name (str): The name of the database directory.
+            Defaults to 'db'.
+        db_name (str | Path): The name or path of the SQLite database file.
+        state (State): A singleton key-value store for persistent state data.
+        store (Store): A key-value database store for general data persistence.
+        task_queue (TaskQueue): The TaskQueue object for handling background tasks.
+        bot (Bot): The bot instance associated with this configuration.
+        backtest_controller (BackTestController): The backtest controller instance.
+        mode (Literal["backtest", "live"]): The trading mode. Defaults to 'live'.
+        use_terminal_for_backtesting (bool): Whether to use the terminal for
+            backtesting. Defaults to True.
+        shutdown (bool): A signal to gracefully shut down the bot.
+            Defaults to False.
+        force_shutdown (bool): A signal to forcefully shut down the bot.
+            Defaults to False.
+        stop_trading (bool): A signal to stop opening new trades.
+            Defaults to False.
+        db_commit_interval (float): The interval in seconds for database commits.
+            Defaults to 30.
+        auto_commit (bool): Whether to auto-commit database changes.
+            Defaults to False.
+        flush_state (bool): Whether to flush state data on initialization.
+            Defaults to False.
+        lock (Lock): A threading lock for thread-safe operations.
+    """
+
     login: int
     trade_record_mode: Literal["csv", "json", "sql"]
     password: str
@@ -33,8 +120,9 @@ class Config:
     backtest_dir: Path
     records_dir_name: str
     plots_dir_name: str
-    backtest_dir_name: str  #Todo: add to docs
-    db_name: str
+    backtest_dir_name: str
+    db_dir_name: str  
+    db_name: str | Path
     task_queue: TaskQueue
     _backtest_engine: BackTestEngine
     bot: Bot
@@ -49,11 +137,13 @@ class Config:
     flush_state: bool
     stop_trading: bool
     lock: Lock
+    auto_commit_state: bool
     _defaults = {
         "timeout": 60000,
         "record_trades": True,
         "records_dir_name": "trade_records",
         "backtest_dir_name": "backtesting",
+        "db_dir_name": "db",
         "config_file": None,
         "trade_record_mode": "sql",
         "mode": "live",
@@ -71,7 +161,8 @@ class Config:
         "db_commit_interval": 30,
         "auto_commit": False,
         "flush_state": False,
-        "stop_trading": False
+        "stop_trading": False,
+        "auto_commit_state": True
     }
 
     def __new__(cls, *args, **kwargs):
@@ -87,7 +178,20 @@ class Config:
         return cls._instance
 
     def __init__(self, **kwargs):
-        """Initialize the Config object. The root directory can be set here or in the load_config method."""
+        """Initializes the Config object.
+
+        The root directory can be set here or in the load_config method.
+        If the config has already been initialized and no root or config_file
+        is provided, only the additional kwargs will be set as attributes.
+
+        Args:
+            **kwargs: Configuration attributes to set. Common options include:
+                - root (str | Path): The root directory of the project.
+                - config_file (str | Path): Path to the configuration file.
+                - login (int): MetaTrader account login number.
+                - password (str): MetaTrader account password.
+                - server (str): MetaTrader server name.
+        """
         root = kwargs.pop("root", None)
         config_file = kwargs.pop("config_file", None)
         if self.root is None or root is not None or config_file is not None:
@@ -125,6 +229,14 @@ class Config:
         [setattr(self, key, value) for key, value in kwargs.items()]
 
     def find_config_file(self):
+        """Searches for the configuration file in the project directory tree.
+
+        Starts from the current working directory and searches up through
+        parent directories until the root directory is reached.
+
+        Returns:
+            Path | None: The path to the config file if found, None otherwise.
+        """
         try:
             current = Path.cwd()
             current = os.path.commonpath([current, self.root])
@@ -146,6 +258,15 @@ class Config:
             return None
 
     def set_root(self, root: str | Path = None):
+        """Sets the root directory for the project.
+
+        If a root path is provided, it is resolved and created if it doesn't
+        exist. If no root is provided, the current working directory is used.
+
+        Args:
+            root: The path to set as the project root directory.
+                Defaults to None (uses current working directory).
+        """
         try:
             if root is not None:
                 root = Path(root).resolve()
@@ -162,13 +283,23 @@ class Config:
             self.root = Path.cwd()
 
     def load_config(self, *, config_file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Self:
-        """Load configuration settings from a file and reset the config object.
+        """Loads configuration settings from a file and initializes the config object.
+
+        This method sets up the project root, locates and loads the config file,
+        initializes the database connections, and sets all configuration attributes.
 
         Args:
-            config_file (str | Path): The absolute path to the config file.
-            filename (str): The name of the file to load if file path is not specified. If not provided aiomql.json is used
-            root (str): The root directory of the project.
-            **kwargs: Additional keyword arguments to be set on the config object.
+            config_file: The absolute path to the config file. If provided and
+                exists, this file is used directly.
+            filename: The name of the file to search for if config_file is not
+                specified or doesn't exist. Defaults to 'aiomql.json'.
+            root: The root directory of the project. All relative paths are
+                resolved from this directory.
+            **kwargs: Additional configuration attributes to set. These override
+                values loaded from the config file.
+
+        Returns:
+            Self: The Config instance for method chaining.
         """
         self.set_root(root=root)
 
@@ -188,14 +319,17 @@ class Config:
             logger.debug("No Config File Found")
             file_config = {}
         else:
-            fh = open(self.config_file, mode="r")
-            file_config = json.load(fh)
-            # print(file_config)
-            fh.close()
+            file_config = {}
+            with open(self.config_file, mode="r") as fh:
+                file_config = json.load(fh)
 
         data = file_config | kwargs
         self.set_attributes(**data)
-        self.db_name = self.db_name or (f"db_{self.login}.sqlite3" if self.login else "db.sqlite3")
+        db_name = self.db_name or (f"db_{self.login}.sqlite3" if self.login else "db.sqlite3") 
+        if not Path(db_name).exists():
+            db_name = self.root / self.db_dir_name / db_name
+            db_name.parent.mkdir(parents=True, exist_ok=True)
+            self.db_name = str(db_name)
         os.environ["DB_NAME"] = self.db_name
         self.init_state()
         self.init_store()
@@ -209,45 +343,92 @@ class Config:
 
     @property
     def state(self):
+        """Returns the State instance for persistent key-value storage.
+
+        Lazily initializes the state if it hasn't been created yet.
+
+        Returns:
+            State: The singleton State instance.
+        """
         if not hasattr(self, "_state"):
             self.init_state()
         return self._state
 
     @state.setter
     def state(self, value: State):
+        """Sets the State instance.
+
+        Args:
+            value: The State instance to set.
+        """
         self._state = value
 
     @property
     def store(self):
+        """Returns the Store instance for persistent key-value storage.
+
+        Lazily initializes the store if it hasn't been created yet.
+
+        Returns:
+            Store: The Store instance.
+        """
         if not hasattr(self, "_store"):
             self.init_store()
         return self._store
 
     @store.setter
     def store(self, value: Store):
+        """Sets the Store instance.
+
+        Args:
+            value: The Store instance to set.
+        """
         self._store = value
 
     def init_state(self):
-        self.state = State(db_name=self.root / self.db_name, flush=self.flush_state)
+        """Initializes the State instance with the configured database."""
+        self.state = State(db_name=self.db_name, flush=self.flush_state, autocommit=self.auto_commit_state)
 
     def init_store(self):
-        self.store = Store(db_name=self.root / self.db_name, flush=self.flush_state)
+        """Initializes the Store instance with the configured database."""
+        self.store = Store(db_name=self.db_name, flush=self.flush_state, autocommit=self.auto_commit_state)
 
-    @property
+    @cached_property
     def records_dir(self):
-        rec_dir = self.root / self.records_dir_name or 'trade_records'
+        """Returns the directory path for storing trade records.
+
+        Creates the directory if it doesn't exist.
+
+        Returns:
+            Path: The path to the trade records directory.
+        """
+        rec_dir = self.root / self.records_dir_name
         rec_dir.mkdir(parents=True, exist_ok=True) if rec_dir.exists() is False else ...
         return rec_dir
 
-    @property
+    @cached_property
     def backtest_dir(self) -> Path:
-        b_dir = self.root / self.backtest_dir_name or 'backtesting'
+        """Returns the directory path for storing backtest results.
+
+        Creates the directory if it doesn't exist.
+
+        Returns:
+            Path: The path to the backtest results directory.
+        """
+        b_dir = self.root / self.backtest_dir_name
         b_dir.mkdir(parents=True, exist_ok=True) if b_dir.exists() is False else ...
         return b_dir
 
-    @property
+    @cached_property
     def plots_dir(self):
-        p_dir = self.root / self.plots_dir_name or "plots"
+        """Returns the directory path for storing plot files.
+
+        Creates the directory if it doesn't exist.
+
+        Returns:
+            Path: The path to the plots directory.
+        """
+        p_dir = self.root / self.plots_dir_name
         p_dir.mkdir(parents=True, exist_ok=True) if p_dir.exists() is False else ...
         return p_dir
 
@@ -259,37 +440,3 @@ class Config:
             dict[str, int | str]: A dictionary of login details
         """
         return {"login": self.login, "password": self.password, "server": self.server}
-
-
-Config.__doc__ = """A class for handling configuration settings for the aiomql package.
-    Attributes:
-        login (int): The account login number
-        trade_record_mode (Literal["csv", "json"]): The mode for recording trades
-        password (str): The account password
-        server (str): The account server
-        path (str | Path): The path to the terminal
-        timeout (int): The timeout argument for the terminal
-        filename (str): The filename of the config file
-        config_file (Path): The config file path
-        state (State): A key-value database
-        root (Path): The root directory of the project
-        record_trades (bool): To record trades or not. Default is True
-        records_dir (Path): The directory to store trade records, relative to the root directory
-        backtest_dir (Path): The directory to store backtest results, relative to the root directory
-        task_queue (TaskQueue): The TaskQueue object for handling background tasks
-        _backtest_engine (BackTestEngine): The backtest engine object
-        bot (Bot): The bot object
-        _instance (Self): The instance of the Config class
-        mode (Literal["backtest", "live"]): The trading mode, either backtest or live, default is live
-        use_terminal_for_backtesting (bool): Use the terminal for backtesting, default is True
-        shutdown (bool): A signal to shut down the terminal, default is False
-        force_shutdown (bool): A signal to force shut down the terminal, default is False
-
-    Notes:
-        By default, the config class looks for a file named aiomql.json. This can be changed by setting the filename
-        attribute to the desired file name. The root directory of the project can be set by passing the root argument
-        to the load_config method or during object instantiation. If not provided it is assumed to be the current working
-        directory. All directories and files are assumed to be relative to the root directory except when an absolute path
-        is provided, this includes the config file, the records_dir and the backtest_dir attributes.
-        The root directory is used to locate the config file and to set the records_dir and backtest_dir attributes.
-    """

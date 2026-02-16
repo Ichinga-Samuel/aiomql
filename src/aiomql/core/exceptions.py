@@ -1,7 +1,6 @@
 """Exceptions for the aiomql package."""
 
-__all__ = ["LoginError", "VolumeError", "SymbolError", "OrderError"]
-
+__all__ = ["LoginError", "VolumeError", "SymbolError", "OrderError", "StopTrading", "InvalidRequest"]
 
 class LoginError(Exception):
     """Raised when an error occurs when logging in."""
@@ -30,4 +29,8 @@ class OrderError(Exception):
 class StopTrading(Exception):
     """Raised when the user wants to stop trading."""
 
+    ...
+
+class InvalidRequest(Exception):
+    """Raised when an error occurs when trying to query the market."""
     ...

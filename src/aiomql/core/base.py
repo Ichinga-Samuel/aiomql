@@ -1,37 +1,100 @@
-from functools import cache
+"""Base classes for data structure handling in the aiomql package.
+
+This module provides the foundational base classes that other data structure
+classes inherit from. These classes provide common functionality for attribute
+management, dictionary conversion, and integration with the MetaTrader terminal.
+
+Classes:
+    Base: A base class providing attribute handling and dictionary conversion.
+    _Base: Extended base class with MetaTrader and Config integration.
+
+Example:
+    Creating a custom data class::
+
+        from aiomql.core.base import Base
+
+        class MyData(Base):
+            name: str
+            value: float
+
+        data = MyData(name='example', value=42.0)
+        print(data.dict)  # {'name': 'example', 'value': 42.0}
+"""
+
 import enum
+from typing import Literal
 from logging import getLogger
+from functools import cache
 
 from .config import Config
 from .meta_trader import MetaTrader
+from .sync.meta_trader import MetaTrader as MetaTraderSync
 from .meta_backtester import MetaBackTester
 
 logger = getLogger(__name__)
 
+class BaseMeta(type):
+    def __getattr__(cls, item):
+        if item in ("config", "mt5"):
+            cls._setup()
+        return super().__getattribute__(item)
+
+    def __call__(cls, *args, **kwargs):
+        inst = super().__call__(*args, **kwargs)
+        inst.__class__._setup()
+        return inst
+
+    def _setup(cls):
+        if 'config' not in cls.__dict__:
+            cls.config = Config()
+        if 'mt5' not in cls.__dict__:
+            cls.mt5 = (MetaTrader() if cls.__dict__.get("mode", "") != "sync" else MetaTraderSync()) if cls.config.mode != "backtest" else MetaBackTester()
+
 
 class Base:
-    """A base class for all data structure classes in the aiomql package. This class provides a set of common methods
-    and attributes for handling data.
+    """A base class for all data structure classes in the aiomql package.
+
+    This class provides a set of common methods and attributes for handling
+    data, including automatic attribute setting, dictionary conversion, and
+    attribute filtering capabilities.
 
     Attributes:
-        exclude (set[str]): A set of attributes to be excluded when retrieving attributes
-         using the get_dict and dict method.
-        include (set [str]): A set of attributes to be included when retrieving attributes
-         using the get_dict and dict method.
+        exclude (set[str]): Attributes to exclude when converting to dict.
+            Defaults to internal attributes like 'mt5', 'config', etc.
+        include (set[str]): Attributes to always include when converting to dict.
+            Takes precedence over exclude.
+
+    Example:
+        >>> class MyClass(Base):
+        ...     name: str
+        ...     value: int
+        >>> obj = MyClass(name='test', value=100)
+        >>> obj.dict
+        {'name': 'test', 'value': 100}
     """
-    exclude: set[str] = {"mt5", "config", "exclude", "include", "annotations", "class_vars", "dict", "_instance"}
+    exclude: set[str] = {"mt5", "config", "exclude", "include", "annotations", "class_vars", "dict", "_instance", "mode"}
     include: set[str] = {}
 
     def __init__(self, **kwargs):
-        """
-        Initialize a new instance of the Base class
+        """Initializes a new instance of the Base class.
 
         Args:
-            **kwargs: Set instance attributes with keyword arguments. Only if they are annotated on the class body.
+            **kwargs: Keyword arguments to set as instance attributes.
+                Only attributes that are annotated on the class body
+                will be set.
         """
         self.set_attributes(**kwargs)
 
     def __repr__(self):
+        """Returns a string representation of the instance.
+
+        Shows up to 3 attributes at the start and 1 at the end if there
+        are more than 3 attributes. Only includes simple types (int, float,
+        str) and enums.
+
+        Returns:
+            str: A formatted string representation of the instance.
+        """
         kv = [
             (k, v)
             for k, v in self.__dict__.items()
@@ -127,25 +190,35 @@ class Base:
         }
 
 
+class _Base(Base, metaclass=BaseMeta):
+    """Extended base class with MetaTrader and Config integration.
 
-class _Base(Base):
-    """Base class that provides access to the MetaTrader and Config classes as well as the MetaBackTester class for
-    backtesting mode.
+    Provides automatic access to the MetaTrader terminal and configuration
+    settings. Automatically switches between MetaTrader and MetaBackTester
+    based on the configured mode.
+
+    Attributes:
+        mt5 (MetaTrader | MetaBackTester): The MetaTrader interface. Uses
+            MetaBackTester when in backtest mode.
+        config (Config): The global configuration instance.
+
+    Note:
+        The mt5 attribute is excluded from serialization via __getstate__
+        to prevent issues when pickling instances.
     """
-    mt5: MetaTrader | MetaBackTester
+    mt5: MetaTrader | MetaBackTester | MetaTraderSync
     config: Config
-
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, 'config'):
-            cls.config = Config()
-        if not hasattr(cls, 'mt5'):
-            cls.mt5 = MetaTrader() if cls.config.mode != "backtest" else MetaBackTester()
-        return super().__new__(cls)
+    mode: Literal["async", "sync"] = "async"
 
     def __getstate__(self):
+        """Prepares instance state for pickling.
+
+        Removes the mt5 attribute to avoid serialization issues with
+        the MetaTrader connection.
+
+        Returns:
+            dict: The instance state without the mt5 attribute.
+        """
         state = self.__dict__.copy()
         state.pop("mt5", None)
         return state
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)

@@ -1,23 +1,63 @@
+"""MetaTrader5 constants as Python IntEnum types.
+
+This module provides MetaTrader5 constants as IntEnum types with Pythonic
+class names and nice string representation. Each enum wraps the corresponding
+MT5 constants for type safety and better IDE support.
+
+Example:
+    Using order filling constants::
+
+        from aiomql import OrderFilling
+
+        fok = OrderFilling.FOK
+        print(fok)  # "ORDER_FILLING_FOK"
+
+        # Use in trade requests
+        request = {'type_filling': OrderFilling.FOK}
+
+Classes:
+    TradeAction: Trade request action types (DEAL, PENDING, SLTP, etc.)
+    OrderFilling: Order filling policies (FOK, IOC, RETURN)
+    OrderTime: Order time in force policies (GTC, DAY, SPECIFIED)
+    OrderType: Order types (BUY, SELL, LIMIT, STOP, etc.)
+    TimeFrame: Chart timeframes (M1 through MN1)
+    PositionType: Position direction (BUY, SELL)
+    DealType: Deal types (BUY, SELL, BALANCE, etc.)
+    TradeRetcode: Trade operation return codes
+"""
+
 from enum import IntEnum, IntFlag
 
 import MetaTrader5 as mt5
 
-"""
-MetaTrader5 constants as IntEnum types with Python style class names and nice string representation
-
-Examples:
-    >>> from aiomql import OrderFilling 
-    >>> fok = OrderFilling.FOK
-    >>> print(fok)
-    "ORDER_FILLING_FOK"
-"""
-
 
 class Repr:
+    """Mixin class for custom string representation of enum values.
+
+    Provides a __str__ method that formats enum values with their
+    class name prefix, matching MetaTrader5 constant naming convention.
+
+    Attributes:
+        __enum_name__ (str): The prefix to use in string representation.
+        name (str): The enum member name (provided by IntEnum).
+
+    Example:
+        >>> class MyEnum(Repr, IntEnum):
+        ...     __enum_name__ = "MY_ENUM"
+        ...     VALUE = 1
+        >>> print(MyEnum.VALUE)
+        MY_ENUM_VALUE
+    """
+
     __enum_name__ = ""
     name: str
 
     def __str__(self):
+        """Returns the full constant name with prefix.
+
+        Returns:
+            str: The formatted constant name (e.g., "ORDER_FILLING_FOK").
+        """
         return f"{self.__enum_name__}_{self.name}"
 
 
@@ -124,11 +164,11 @@ class OrderType(Repr, IntEnum):
         return OrderType(_type)
 
     @property
-    def long(self):
+    def is_long(self):
         return self in [0, 2, 4, 6]
 
     @property
-    def short(self):
+    def is_short(self):
         return self in [1, 3, 5, 7]
 
 class BookType(Repr, IntEnum):

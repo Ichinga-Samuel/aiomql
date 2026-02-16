@@ -1,4 +1,17 @@
-"""Symbol class for handling a financial instrument."""
+"""Symbol module for handling financial instruments.
+
+This module provides the Symbol class for interacting with trading
+instruments in MetaTrader 5. It includes methods for retrieving
+market data, ticks, rates, and symbol information.
+
+Example:
+    Working with a symbol::
+
+        symbol = Symbol(name='EURUSD')
+        await symbol.initialize()
+        tick = await symbol.info_tick()
+        candles = await symbol.copy_rates_from_pos(timeframe=TimeFrame.H1, count=100)
+"""
 
 from datetime import datetime
 from logging import getLogger
@@ -220,7 +233,7 @@ class Symbol(_Base, SymbolInfo):
             )
         return amount
 
-    async def compute_volume(self) -> float:
+    def compute_volume(self) -> float:
         """Computes the volume required for a trade usually based on the amount and any other keyword arguments.
         This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
         that implements the computation of volume.
@@ -373,3 +386,13 @@ class Symbol(_Base, SymbolInfo):
         if ticks is not None:
             return Ticks(data=ticks)
         raise ValueError(f"Could not get ticks for {self.name}.")
+
+    def compute_volume_sl(self, *, amount: float, price: float, sl: float, round_down: bool = False) -> float:
+        raise NotImplementedError
+
+    def compute_volume_points(self, *, amount: float, points: float, round_down: bool = False) -> float:
+        raise NotImplementedError
+
+    @property
+    def pip(self) -> float:
+        return self.point * 10

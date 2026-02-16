@@ -31,5 +31,8 @@ description = "Asynchronous MetaTrader5 library and Algorithmic Trading Framewor
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1",
+    "pandas-stubs>=3.0.0.260204",
     "pytest>=8.4.1",
+    "pytest-asyncio>=1.3.0",
+    "ta-lib>=0.6.8",
 ]

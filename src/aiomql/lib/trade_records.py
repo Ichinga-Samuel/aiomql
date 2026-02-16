@@ -1,5 +1,24 @@
-"""This module contains the Records class, which is used to read and update trade records from csv files."""
+"""Trade records module for managing trade result files.
 
+This module provides the TradeRecords class for reading, updating, and
+managing trade record files in CSV, JSON, and SQL formats. It updates trade
+records with actual profit/loss data from closed positions.
+
+Example:
+    Updating trade records asynchronously::
+
+        records = TradeRecords()
+        await records.update_csv_records()
+        await records.update_json_records()
+        await records.update_sql_records()
+
+    Updating trade records synchronously::
+
+        records = TradeRecords()
+        records.update_csv_records_sync()
+        records.update_json_records_sync()
+"""
+from datetime import datetime
 import asyncio
 import json
 from pathlib import Path
@@ -7,6 +26,7 @@ import csv
 import logging
 from typing import Iterable
 
+from .result_db import ResultDB
 from ..core.config import Config
 from ..core.meta_trader import MetaTrader
 from ..core.meta_backtester import MetaBackTester
@@ -16,16 +36,26 @@ logger = logging.getLogger(__name__)
 
 
 class TradeRecords:
-    """This utility class read trade records from the csv and json files, and update them based on their closing positions.
+    """Utility class for reading and updating trade records from various storage formats.
+
+    Reads trade records from CSV, JSON files, or SQL database and updates them
+    with actual profit/loss data from closed positions retrieved via MetaTrader 5.
 
     Attributes:
-        config: Config object
-        records_dir(Path): Absolute path to directory containing record of placed trades, If not given takes the default
-        from the config
-    """
+        config: Configuration object for accessing settings.
+        mt5: MetaTrader or MetaBackTester instance for retrieving trade data.
+        result_db: ResultDB class reference for SQL operations.
+        records_dir: Path to directory containing trade record files.
+        positions: Cached list of open positions, or None.
 
+    Example:
+        >>> records = TradeRecords(records_dir='/path/to/records')
+        >>> await records.update_csv_records()
+        >>> await records.update_sql_records()
+    """
     config: Config
     mt5: MetaTrader | MetaBackTester
+    result_db: type[ResultDB]
     positions: list[TradePosition] | None = None
 
     def __init__(self, *, records_dir: Path | str = ""):
@@ -38,6 +68,42 @@ class TradeRecords:
         self.config = Config()
         self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
         self.records_dir = records_dir or self.config.records_dir
+        self.result_db = ResultDB
+
+    def get_sql_records_unclosed(self):
+        """Retrieve all unclosed trade records from the SQL database.
+
+        Returns:
+            list[ResultDB]: List of ResultDB instances where closed=False.
+        """
+        rows = self.result_db.execute_raw("select * from result where closed = 0")
+        return rows
+
+    async def update_sql_records(self):
+        """Update SQL trade records with actual profit/loss from closed positions.
+
+        Fetches unclosed records from the database, retrieves closing deals
+        from MetaTrader history, and updates records with profit, win status,
+        closing time, and closing price.
+
+        Note:
+            Uses batch processing for efficiency - all updates are committed
+            together at the end.
+        """
+        conn = self.result_db.get_connection()
+        rows = self.get_sql_records_unclosed()
+        rows.sort(key=lambda r: r.time)
+        start = datetime.fromtimestamp(rows[0].time/1000).replace(hour=0, minute=0)
+        end = datetime.now().replace(hour=23, minute=59)
+        deals = await self.mt5.history_deals_get(date_from=start, date_to=end)
+        closing_deals = {deal.position_id: deal for deal in deals if deal.order != deal.position_id and deal.entry == self.mt5.DEAL_ENTRY_OUT}
+        for row in rows:
+            if row.order in closing_deals and not row.closed:
+                deal = closing_deals[row.order]
+                data = dict(profit=deal.profit, win=deal.profit > 0, closed=True, time_close=deal.time_msc, price_close=deal.price)
+                row.save(conn=conn, update=True, data=data, commit=False)
+        conn.commit()
+        conn.close()
 
     def get_csv_records(self):
         """Get trade records saved as csv from records_dir folder
@@ -94,60 +160,44 @@ class TradeRecords:
         except Exception as err:
             logger.error(f"Error: {err}. Unable to read and update json trade records")
 
-    async def update_row(self, *, row: dict) -> dict:
-        """Update a single row of entered trade in the csv or json file with the actual profit.
+    async def update_rows(self, rows: list[dict]) -> list[dict]:
+        """Update multiple trade rows with actual profit/loss from closed positions.
+
+        Retrieves historical deals from MetaTrader for the time range covered
+        by the rows and updates each unclosed row with closing information.
 
         Args:
-            row: A dictionary from the dictionary writer object of the csv file.
+            rows: List of trade record dictionaries to update. Each dict must
+                contain 'time' (in seconds) and 'order' keys.
 
         Returns:
-            dict: A dictionary with the actual profit and win status.
+            list[dict]: Updated list of trade records with profit, win status,
+                time_close, and price_close fields populated for closed trades.
+
+        Note:
+            Time values in rows should be in seconds. The method converts
+            them to milliseconds for the MetaTrader API.
         """
-        try:
-            order = int(row["order"])
-            positions = self.positions or await self.mt5.positions_get()
-            position_ids = [position.ticket for position in positions]
-            deals = await self.mt5.history_deals_get(position=order)
-            if not deals or len(deals) <= 1:
-                return row
-            deals = [
-                deal
-                for deal in deals
-                if (
-                    deal.order != deal.position_id
-                    and deal.position_id == order
-                    and deal.entry == 1
-                    and deal.position_id not in position_ids
-                )
-            ]
-            deals.sort(key=lambda deal: deal.time_msc)
-            deal = deals[-1]
-            row.update(actual_profit=deal.profit, win=deal.profit > 0, closed=True)
-            return row
-        except Exception as err:
-            logging.error(f"Error: {err}. Unable to update trade record")
-            return row
-
-    async def update_rows(self, *, rows: list[dict]) -> list[dict]:
-        """Update the rows of entered trades in the csv or json file with the actual profit.
-
-        Args:
-            rows: A list of dictionaries.
-
-        Returns:
-            list[dict]: A list of dictionaries with the actual profit and win status.
-        """
-        self.positions = await self.mt5.positions_get()
-        closed, unclosed = [], []
+        rows.sort(key=lambda _row: _row["time"])
+        start = datetime.fromtimestamp(float(rows[0]["time"]) / 1000).replace(hour=0, minute=0)
+        end = datetime.now().replace(hour=23, minute=59)
+        deals = await self.mt5.history_deals_get(date_from=start, date_to=end)
+        closing_deals = {deal.position_id: deal for deal in deals if deal.order != deal.position_id and deal.entry == self.mt5.DEAL_ENTRY_OUT}
         for row in rows:
-            closed_ = row.get("closed", False)
-            closed_ = closed_.title() == "True" if isinstance(closed_, str) else closed_
-            if closed_:
-                closed.append(row)
-            else:
-                unclosed.append(row)
-        unclosed = await asyncio.gather(*[self.update_row(row=row) for row in unclosed])
-        return closed + list(unclosed)
+            if (self.str_to_bool(row["closed"])) is False  and (deal := closing_deals.get(int(row["order"]), 0)) and deal.order != deal.position_id and deal.entry == self.mt5.DEAL_ENTRY_OUT:
+                row.update(profit=deal.profit, win=deal.profit > 0, closed=True, time_close=deal.time_msc/1000, price_close=deal.price)
+        return rows
+
+    @staticmethod
+    def str_to_bool(val: bool | str):
+        if isinstance(val, bool):
+            return val
+        elif val.lower() == "true":
+            return True
+        elif val.lower() == "false":
+            return False
+        else:
+            raise TypeError(f"{val} is not a valid boolean value")
 
     async def update_csv_records(self):
         """Update csv trade records in the records_dir folder."""
@@ -166,3 +216,79 @@ class TradeRecords:
     async def update_json_record(self, *, file: Path | str):
         """Update a single json trade record file"""
         await self.read_update_json(file=file)
+
+    def read_update_csv_sync(self, *, file: Path):
+        """Read and update csv trade records synchronously.
+
+        Args:
+            file: Trade record file in csv format
+        """
+        try:
+            with open(file, mode="r", newline="") as fr:
+                reader: Iterable[dict] | csv.DictReader = csv.DictReader(fr)
+                rows = [row for row in reader]
+                rows = self.update_rows_sync(rows=rows)
+
+            with open(file, mode="w", newline="") as fw:
+                writer = csv.DictWriter(fw, fieldnames=reader.fieldnames, extrasaction="ignore", restval=None)
+                writer.writeheader()
+                writer.writerows(rows)
+        except Exception as err:
+            logger.error(f"Error: {err}. Unable to read and update csv trade records")
+
+    def read_update_json_sync(self, *, file: Path):
+        """Read and update json trade records synchronously.
+
+        Args:
+            file: Trade record file in json format
+        """
+        try:
+            with open(file, mode="r") as fh:
+                data = json.load(fh)
+                rows = [row for row in data]
+                rows = self.update_rows_sync(rows=rows)
+
+            with open(file, mode="w") as fh:
+                json.dump(rows, fh, indent=2)
+        except Exception as err:
+            logger.error(f"Error: {err}. Unable to read and update json trade records")
+
+    def update_rows_sync(self, *, rows: list[dict]) -> list[dict]:
+        """Update the rows of entered trades in the csv or json file with the actual profit synchronously.
+
+        Args:
+            rows: A list of dictionaries.
+
+        Returns:
+            list[dict]: A list of dictionaries with the actual profit and win status.
+        """
+        rows.sort(key=lambda _row: _row["time"])
+        start = datetime.fromtimestamp(float(rows[0]["time"]) / 1000).replace(hour=0, minute=0)
+        end = datetime.now().replace(hour=23, minute=59)
+        deals = self.mt5._history_deals_get(date_from=start, date_to=end)
+        closing_deals = {deal.position_id: deal for deal in deals if
+                         deal.order != deal.position_id and deal.entry == self.mt5.DEAL_ENTRY_OUT}
+        for row in rows:
+            if (self.str_to_bool(row["closed"])) is False and (deal := closing_deals.get(int(row["order"]),
+                                                                                         0)) and deal.order != deal.position_id and deal.entry == self.mt5.DEAL_ENTRY_OUT:
+                row.update(profit=deal.profit, win=deal.profit > 0, closed=True, time_close=deal.time_msc / 1000,
+                           price_close=deal.price)
+        return rows
+
+    def update_csv_records_sync(self):
+        """Update csv trade records in the records_dir folder synchronously."""
+        for record in self.get_csv_records():
+            self.read_update_csv_sync(file=record)
+
+    def update_json_records_sync(self):
+        """Update json trade records in the records_dir folder synchronously."""
+        for record in self.get_json_records():
+            self.read_update_json_sync(file=record)
+
+    def update_csv_record_sync(self, *, file: Path | str):
+        """Update a single trade record csv file synchronously."""
+        self.read_update_csv_sync(file=file)
+
+    def update_json_record_sync(self, *, file: Path | str):
+        """Update a single json trade record file synchronously."""
+        self.read_update_json_sync(file=file)

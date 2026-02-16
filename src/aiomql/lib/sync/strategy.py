@@ -1,6 +1,21 @@
-"""The base class for creating strategies."""
+"""Synchronous Strategy module for creating trading strategies.
+
+This module provides the synchronous Strategy base class for implementing
+custom trading strategies without async/await. It handles session management,
+sleep functions, and the main trading loop.
+
+Example:
+    Creating a custom sync strategy::
+
+        class MyStrategy(Strategy):
+            def trade(self):
+                # Synchronous trading logic
+                candles = self.symbol.copy_rates_from_pos(timeframe=TimeFrame.H1, count=100)
+                # Analyze and trade
+                self.sleep(secs=3600)
+"""
+
 import time
-from abc import ABC
 from datetime import time as dtime
 from logging import getLogger
 
@@ -11,12 +26,13 @@ from ...core.backtesting.backtest_controller import BackTestController
 from ...core.exceptions import StopTrading
 from ...core.meta_backtester import MetaBackTester
 from ...core.meta_trader import MetaTrader
+from ..strategy import Strategy as BaseStrategy
 
 
 logger = getLogger(__name__)
 
 
-class Strategy(ABC):
+class Strategy(BaseStrategy):
     """The base class for creating strategies.
 
     Attributes:
@@ -157,7 +173,7 @@ class Strategy(ABC):
             self.backtest_strategy()
 
     def live_strategy(self):
-        """Run the strategy."""
+        """Run the strategy"""
         with self as _:
             logger.info("Running %s strategy on %s", self.name, self.symbol.name)
             while self.running:

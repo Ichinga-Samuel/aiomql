@@ -1,4 +1,16 @@
-"""Risk Assessment and Management"""
+"""Risk Assessment and Management (RAM) module.
+
+This module provides the RAM class for calculating position sizes,
+managing risk per trade, and enforcing trading limits based on
+account equity and open positions.
+
+Example:
+    Using RAM in a trader::
+
+        ram = RAM(risk=2, risk_to_reward=3)
+        amount_to_risk = await ram.get_amount()
+        can_trade = await ram.check_open_positions()
+"""
 
 from .account import Account
 from .positions import Positions
@@ -13,6 +25,7 @@ class RAM:
     max_amount: float
     loss_limit: int
     open_limit: int
+    positions: Positions
 
     def __init__(self, **kwargs):
         """Initialize Risk Assessment and Management with the provided keyword arguments.
@@ -25,6 +38,7 @@ class RAM:
             loss_limit (int): Maximum number of losing positions. Defaults to 1
             open_limit (int): Maximum number of open positions. Defaults to 1
             fixed_amount (float): Fixed amount to risk per trade. Defaults to None
+            positions (Positions): Positions object. 
         """
         self.account = Account()
         self.positions = Positions()

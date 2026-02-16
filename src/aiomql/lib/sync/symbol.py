@@ -1,8 +1,22 @@
-"""Symbol class for handling a financial instrument."""
+"""Synchronous Symbol module for handling financial instruments.
+
+This module provides the synchronous Symbol class for interacting with trading
+instruments in MetaTrader 5 without async/await. It includes methods for retrieving
+market data, ticks, rates, and symbol information.
+
+Example:
+    Working with a symbol synchronously::
+
+        symbol = Symbol(name='EURUSD')
+        symbol.initialize()
+        tick = symbol.info_tick()
+        candles = symbol.copy_rates_from_pos(timeframe=TimeFrame.H1, count=100)
+"""
 
 from datetime import datetime
 from logging import getLogger
 
+from ...core.meta_backtester import MetaBackTester
 from ...core.constants import TimeFrame, CopyTicks
 from ...core.base import _Base
 from ...core.config import Config
@@ -32,12 +46,7 @@ class Symbol(_Base, SymbolInfo):
     initialized: bool
     tick: Tick
     account: Account
-    
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        instance.__class__.config = Config()
-        instance.__class__.mt5 = MetaTrader()
-        return instance
+    mode: str = "sync"
 
     def __init__(self, **kwargs):
         """Initialize the Symbol object with the name of the financial instrument.

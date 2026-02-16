@@ -1,3 +1,19 @@
+"""BackTester module for strategy backtesting.
+
+This module provides the BackTester class for running trading strategies
+against historical data using the backtest engine. It coordinates
+strategy execution, account simulation, and result collection.
+
+Example:
+    Running a backtest::
+
+        from aiomql import BackTester, BackTestEngine
+        engine = BackTestEngine(...)
+        backtester = BackTester(backtest_engine=engine)
+        backtester.add_strategy(strategy=my_strategy)
+        backtester.execute()
+"""
+
 import asyncio
 import logging
 import time

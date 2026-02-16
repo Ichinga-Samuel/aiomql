@@ -1,4 +1,16 @@
-"""Terminal related functions and properties"""
+"""Terminal module for MetaTrader 5 terminal information.
+
+This module provides the Terminal class for retrieving information
+about the connected MetaTrader 5 terminal, including version,
+connection status, and available symbols.
+
+Example:
+    Getting terminal info::
+
+        terminal = Terminal()
+        await terminal.initialize()
+        print(f"Terminal version: {terminal.version}")
+"""
 
 from typing import NamedTuple
 from logging import getLogger
@@ -69,3 +81,49 @@ class Terminal(_Base, TerminalInfo):
             int: Total number of available symbols
         """
         return await self.mt5.symbols_total()
+
+    def initialize_sync(self) -> bool:
+        """Establish a connection with the MetaTrader 5 terminal synchronously.
+
+        Returns:
+            bool: True if successful else False
+        """
+        self.connected = self.mt5.initialize_sync()
+        if not self.connected:
+            err = self.mt5._last_error()
+            logger.warning(f"Failed to initialize Terminal. Error Code: {err}")
+        info = self.info_sync()
+        self.get_version_sync()
+        return bool(self.connected and info and self.version)
+
+    def get_version_sync(self) -> Version | None:
+        """Get the MetaTrader 5 terminal version synchronously.
+
+        Returns:
+            Version: version of tuple as Version object
+        """
+        res = self.mt5._version()
+        if res is None:
+            logger.error("Failed to get terminal version")
+            return None
+        self.version = Version(*res)
+        return self.version
+
+    def info_sync(self) -> TerminalInfo | None:
+        """Get the connected MetaTrader 5 client terminal status and settings synchronously.
+
+        Returns:
+             Terminal: Terminal status and settings as a terminal object.
+        """
+        info = self.mt5._terminal_info()
+        if info:
+            self.set_attributes(**info._asdict())
+        return info
+
+    def symbols_total_sync(self) -> int:
+        """Get the number of all financial instruments in the MetaTrader 5 terminal synchronously.
+
+        Returns:
+            int: Total number of available symbols
+        """
+        return self.mt5._symbols_total()

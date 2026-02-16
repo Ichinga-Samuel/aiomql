@@ -1,1 +1,1 @@
-from .meta_trader import MetaTrader
+from .meta_trader import MetaTrader as MetaTraderSync

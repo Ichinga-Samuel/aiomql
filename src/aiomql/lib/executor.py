@@ -1,4 +1,19 @@
+"""Executor module for concurrent strategy execution.
+
+This module provides the Executor class for running multiple trading
+strategies concurrently using a ThreadPoolExecutor. It handles
+strategy lifecycle, signal handling, and graceful shutdown.
+
+Example:
+    Running strategies::
+
+        executor = Executor()
+        executor.add_strategy(strategy=my_strategy)
+        executor.execute(workers=5)
+"""
+
 import asyncio
+import inspect
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -68,7 +83,10 @@ class Executor:
         Args:
             strategy (Strategy): A strategy object
         """
-        asyncio.run(strategy.run_strategy())
+        if inspect.iscoroutinefunction(strategy.run_strategy):
+            asyncio.run(strategy.run_strategy())
+        else:
+            strategy.run_strategy()
 
     async def run_coroutine_tasks(self):
         """Run all coroutines in the executor"""

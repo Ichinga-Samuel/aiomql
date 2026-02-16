@@ -1,6 +1,6 @@
 from .account import Account
 from .bot import Bot
-from .candle import Candle, Candles
+from .candle import Candle, Candles, CandleProtocol, CandleBase
 from .executor import Executor
 from .history import History
 from .order import Order

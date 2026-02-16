@@ -1,4 +1,22 @@
-"""The base class for creating strategies."""
+"""Strategy module for creating trading strategies.
+
+This module provides the Strategy base class for implementing trading
+strategies. It handles session management, sleep functions for both live
+and backtest modes, and the main trading loop.
+
+Example:
+    Creating a custom strategy::
+
+        from aiomql import Strategy, Symbol, TimeFrame
+
+        class MyStrategy(Strategy):
+            async def trade(self):
+                # Your trading logic here
+                candles = await self.symbol.copy_rates_from_pos(
+                    timeframe=TimeFrame.H1, count=100
+                )
+                # Analyze and trade
+"""
 
 import asyncio
 import time

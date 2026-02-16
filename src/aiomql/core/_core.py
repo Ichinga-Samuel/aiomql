@@ -291,7 +291,7 @@ types = (
 )
 
 
-class BaseMeta(type):
+class MetaBase(type):
     def __new__(mcs, cls_name, bases, cls_dict):
         defaults: dict = getattr(MetaTrader5, "__dict__", {})
         callables = {f"_{key}": value for key in core_mt5_functions if (value := defaults.get(key, None)) is not None}
@@ -303,7 +303,7 @@ class BaseMeta(type):
         return super().__new__(mcs, cls_name, bases, cls_dict)
 
 
-class MetaCore(metaclass=BaseMeta):
+class MetaCore(metaclass=MetaBase):
     TIMEFRAME_M1: int
     TIMEFRAME_M2: int
     TIMEFRAME_M3: int

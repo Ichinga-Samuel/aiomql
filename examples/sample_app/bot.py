@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def x_bot():
-    syms = ["LTCUSD", "ETHUSD", "SOLUSD", "BTCUSD"]
+    syms = ["LTCUSD", "ETHUSD", "SOLUSD", "BTCUSD", "ADAUSD"]
     symbols = [ForexSymbol(name=sym) for sym in syms]
     strategies = [EMAXOver(symbol=symbol) for symbol in symbols]
     bot = Bot()
@@ -18,4 +18,5 @@ def x_bot():
     bot.execute()
 
 
-x_bot()
+if __name__ == '__main__':
+    x_bot()

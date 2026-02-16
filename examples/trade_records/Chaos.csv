@@ -1,4 +1,0 @@
-slow_ema,fast_ema,order,htf,actual_profit,symbol,date,closed,name,price,deal,ltf,bid,win,ask,lcc,volume,expected_profit,hcc
-20,8,8218315320,TIMEFRAME_M2,0,Volatility 75 Index,2025-01-16 11:49:50.421946,False,Chaos,96536.19,8126025355,TIMEFRAME_M1,96536.19,False,96562.33,100,0.001,0,100
-20,8,8218315356,TIMEFRAME_M2,0,Volatility 50 Index,2025-01-16 11:49:54.394496,False,Chaos,272.9174,8126025389,TIMEFRAME_M1,272.9174,False,272.9584,100,4.0,0,100
-20,8,8218315338,TIMEFRAME_M2,0,Volatility 100 Index,2025-01-16 11:49:54.395497,False,Chaos,1939.81,8126025382,TIMEFRAME_M1,1939.27,False,1939.81,100,0.5,0,100

@@ -94,7 +94,7 @@ def error_handler_sync(func=None, *, msg="", exe=Exception, response=None, log_e
         log_error_msg (bool, optional): If True, log the error message. Defaults to True.
     """
     if func is None:
-        return partial(error_handler, msg=msg, exe=exe, response=response, log_error_msg=log_error_msg)
+        return partial(error_handler_sync, msg=msg, exe=exe, response=response, log_error_msg=log_error_msg)
 
     @wraps(func)
     def wrapper(*args, **kwargs):

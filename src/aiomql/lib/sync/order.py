@@ -1,20 +1,34 @@
+"""Synchronous Order module for trade order operations.
+
+This module provides the synchronous Order class for creating,
+checking, and sending trade orders to the MetaTrader 5 terminal
+without async/await.
+
+Example:
+    Sending an order synchronously::
+
+        order = Order(symbol='EURUSD', type=OrderType.BUY, volume=0.1, price=1.1000)
+        result = order.send()
+        if result.retcode == 10009:
+            print("Order placed successfully")
+"""
+
+import time
 from logging import getLogger
 
 from ...core.models import TradeRequest, TradeOrder, OrderCheckResult, OrderSendResult
 from ...core.constants import TradeAction, OrderTime, OrderFilling, OrderType
 from ...core.exceptions import OrderError
 from ...core.base import _Base
-from ...core.sync.meta_trader import MetaTrader
-from ...utils import error_handler_sync
-from ...utils.change import percentage_decrease, percentage_increase
+from ...utils import error_handler_sync, decrease_value_by_pct, increase_value_by_pct
 
 logger = getLogger(__name__)
 
 
+
 class Order(_Base, TradeRequest):
+    mode: str = "sync"
     """Trade order related functions and properties. Subclass of TradeRequest."""
-    mt5: MetaTrader
-        
     def __init__(self, **kwargs):
         """Initialize the order object with keyword arguments, symbol must be provided.
         Provide default values for action, type_time and type_filling if not provided.
@@ -50,12 +64,6 @@ class Order(_Base, TradeRequest):
         return cls.mt5.orders_total()
 
     @classmethod
-    def cancel_order(cls, *, order: int, symbol: str) -> OrderSendResult:
-        """Cancel an active pending order by ticket number."""
-        res = cls.mt5.order_send({"symbol": symbol, "order": order, "action": TradeAction.REMOVE})
-        return res
-
-    @classmethod
     def get_pending_order(cls, *, ticket: int) -> TradeOrder | None:
         """
         Get a pending order by ticket number.
@@ -66,11 +74,10 @@ class Order(_Base, TradeRequest):
         Returns:
         """
         orders = cls.mt5.orders_get(ticket=ticket)
-        order = None
         for order_ in orders:
             if order_.ticket == ticket:
                 return TradeOrder(**order_._asdict())
-        return order
+        return None
 
     @classmethod
     def get_pending_orders(cls, *, ticket: int = 0, symbol: str = "", group: str = "") -> tuple[TradeOrder, ...]:
@@ -89,6 +96,14 @@ class Order(_Base, TradeRequest):
             return tuple(TradeOrder(**order._asdict()) for order in orders)
         return tuple()
 
+    @classmethod
+    def cancel_order(cls, *, order: int, symbol: str = "") -> OrderSendResult:
+        """Cancel an active pending order by ticket number."""
+        res = cls.send_order(request={"order": order, "action": TradeAction.REMOVE, "symbol": symbol})
+        if res is None:
+            raise OrderError("Unable to cancel order %d:%s" % (order, symbol))
+        return res
+
     def check(self, **kwargs) -> OrderCheckResult:
         """Check funds sufficiency for performing a required trading operation and the possibility of executing it.
 
@@ -105,6 +120,10 @@ class Order(_Base, TradeRequest):
         return OrderCheckResult(**res._asdict())
 
     def send(self) -> OrderSendResult:
+        return self.send_order(request=self.request)
+
+    @classmethod
+    def send_order(cls, *, request: dict, connection_retries=0) -> OrderSendResult:
         """Send a request to perform a trading operation from the terminal to the trade server.
 
         Returns:
@@ -113,9 +132,12 @@ class Order(_Base, TradeRequest):
         Raises:
             OrderError: If not successful
         """
-        res = self.mt5.order_send(self.request)
+        res = cls.mt5.order_send(request)
         if res is None:
-            raise OrderError(f"Failed to send order {self.symbol}")
+            raise OrderError("Failed to send order %s" % request.get("symbol", ""))
+        if res.retcode == 10031 and connection_retries < 3:
+            time.sleep(3**connection_retries)
+            return cls.send_order(request=request, connection_retries=connection_retries + 1)
         return OrderSendResult(**res._asdict())
 
     @error_handler_sync(log_error_msg=False)
@@ -158,11 +180,17 @@ class Order(_Base, TradeRequest):
         return {key: value for key, value in self.dict.items() if key in self.mt5.TradeRequest.__match_args__}
 
     @classmethod
-    def profit_to_price(cls, *, profit: float, order_type: OrderType, volume: float, symbol: str,
-                              price_open: float):
-        price_close = percentage_increase(price_open, 50) if order_type == 0 else percentage_decrease(price_open, 50)
+    def profit_to_price(cls, *, profit: float, order_type: OrderType, volume: float, symbol: str, price_open: float):
+        price_close = increase_value_by_pct(price_open, 50) if order_type == 0 else decrease_value_by_pct(price_open, 50)
         half_profit = cls.mt5.order_calc_profit(symbol=symbol, action=order_type, volume=volume,
-                                                      price_open=price_open, price_close=price_close)
+                                             price_open=price_open, price_close=price_close)
         rate = profit / half_profit * 50
-        rate = percentage_increase(price_open, rate) if order_type == 0 else percentage_decrease(price_open, rate)
+        rate = increase_value_by_pct(price_open, rate) if order_type == 0 else decrease_value_by_pct(price_open, rate)
         return rate
+
+    @classmethod
+    def get_history_order_by_ticket(cls, *, ticket: int) -> TradeOrder | None:
+        res = cls.mt5.history_orders_get(ticket=ticket)
+        if res is not None and len(res) > 0 and res[0].ticket == ticket:
+            return TradeOrder(**res[0]._asdict())
+        return None

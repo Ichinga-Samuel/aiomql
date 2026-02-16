@@ -507,7 +507,29 @@ class OrderCheckResult(Base):
     margin_free: float
     margin_level: float
     comment: str
-    request: mt5.TradeRequest
+    request: TradeRequest
+
+    def __init__(self, **kwargs):
+        """Initializes a new instance of the OrderCheckResult class.
+
+        Args:
+            **kwargs: Keyword arguments to set as instance attributes.
+                Only attributes that are annotated on the class body
+                will be set.
+        """
+        req = kwargs.pop("request", {})
+        req = req._asdict() if isinstance(req, mt5.TradeRequest) else req
+        super().__init__(**kwargs)
+        self.request = TradeRequest(**req)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["request"] = state.pop('request').dict
+        return state
+
+    def __setstate__(self, state):
+        state['request'] = TradeRequest(**state['request'])
+        self.__dict__.update(state)
 
 
 class OrderSendResult(Base):
@@ -536,19 +558,32 @@ class OrderSendResult(Base):
     bid: float
     ask: float
     comment: str
-    request: mt5.TradeRequest
+    request: TradeRequest
     request_id: int
     retcode_external: int
     profit: float = None
     loss: float = None
 
+    def __init__(self, **kwargs):
+        """Initializes a new instance of the OrderSendResult class.
+
+        Args:
+            **kwargs: Keyword arguments to set as instance attributes.
+                Only attributes that are annotated on the class body
+                will be set.
+        """
+        req = kwargs.pop("request", {})
+        req = req._asdict() if isinstance(req, mt5.TradeRequest) else req
+        super().__init__(**kwargs)
+        self.request = TradeRequest(**req)
+
     def __getstate__(self):
         state = self.__dict__.copy()
-        state["request"] = state.pop('request')._asdict()
+        state["request"] = state.pop('request').dict
         return state
 
     def __setstate__(self, state):
-        state['request'] = mt5.TradeRequest(state['request'])
+        state['request'] = TradeRequest(**state['request'])
         self.__dict__.update(state)
 
 
