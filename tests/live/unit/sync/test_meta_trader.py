@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
-import pytz
 import MetaTrader5
 
 from aiomql.core.sync.meta_trader import MetaTrader
@@ -12,7 +11,7 @@ class TestMetaTraderSync:
         cls.mt = MetaTrader()
         cls.mt5 = MetaTrader5
         cls.symbol = "BTCUSD"
-        now = datetime.now(tz=pytz.UTC)
+        now = datetime.now(tz=UTC)
         cls.start = now - timedelta(hours=10)
         cls.end = now + timedelta(hours=1)
         cls.tf = cls.mt.TIMEFRAME_H1

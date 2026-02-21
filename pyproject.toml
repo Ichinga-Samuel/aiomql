@@ -13,9 +13,9 @@ keywords = ["MetaTrader5", "Asynchronous", "Algorithmic Trading", "Trading Bot",
             "Technical Analysis", "Forex", "Stocks", "Cryptocurrency", "Futures", "Options", "Crypto", "Algo Trading"]
 
 dependencies = [
-    "MetaTrader5>=5.0.5200",
-    "pandas>=2.0.0",
+    "metatrader5>=5.0.5640",
     "mplfinance>=0.12.10b0",
+    "pandas>=3.0.1",
 ]
 
 authors = [{name = "Ichinga Samuel", email = "ichingasamuel@gmail.com"}]
@@ -28,12 +28,17 @@ description = "Asynchronous MetaTrader5 library and Algorithmic Trading Framewor
 
 [project.optional-dependencies]
 
-all = [
+optional = [
     "cython>=3.2.4",
     "numba>=0.64.0",
-    "ta-lib>=0.6.8",
     "tqdm>=4.67.3",
 ]
+
+talib = [
+    "ta-lib>=0.6.8",
+]
+
+all = ["aiomql[talib, optional]"]
 
 [dependency-groups]
 dev = [
