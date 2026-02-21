@@ -55,11 +55,11 @@ pip install aiomql
 # TA-Lib technical indicators
 pip install aiomql[talib]
 
-# Performance (Cython, Numba, tqdm)
-pip install aiomql[performance]
+# Optional (Cython, Numba, tqdm)
+pip install aiomql[optional]
 
 # Both
-pip install aiomql[talib,performance]
+pip install aiomql[all]
 ```
 
 ---
