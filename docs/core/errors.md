@@ -1,34 +1,34 @@
-# Errors
+# errors
 
-## Tabel of contents
-- [Error](#errors.error)
-- [is_connection_error](#errors.is_connection_error)
+`aiomql.core.errors` — MetaTrader 5 error wrapper.
 
+## Overview
 
-<a id="errors.error"></a>
-## Error
-```python
-class Error
-```
-Error class for handling errors.
+Provides the `Error` class for representing and inspecting errors returned by the MetaTrader 5
+terminal. Wraps numeric error codes with human-readable descriptions.
 
-#### Attributes:
-| Name           | Type         | Description                                  |
-|----------------|--------------|----------------------------------------------|
-| `code`         | `int`        | Error code                                   |
-| `description`  | `str`        | Error description                            |
-| `descriptions` | `dict`       | A dictionary of error codes and descriptions |
-| `conn_errors`  | `tuple[int]` | A tuple of connection errors                 |
+## Classes
 
+### `Error`
 
-<a id="errors.is_connection_error"></a>
-## is_connection_error
-```python
-def is_connection_error(self) -> bool
-```
-Check if an error is a connection error.
+> Wraps an MT5 error code with a description and category helpers.
 
-#### Returns:
-| Type   | Description                                          |
-|--------|------------------------------------------------------|
-| `bool` | True if error is a connection error, False otherwise |
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `code` | `int` | Numeric error code |
+| `description` | `str` | Human-readable description |
+| `descriptions` | `dict[int, str]` | Class-level mapping of known error codes → descriptions |
+| `conn_errors` | `tuple[int, ...]` | Codes that indicate connection-level failures |
+
+#### `__init__(code=1, description="")`
+
+Creates an `Error`. If `description` is empty, the description is looked up from
+`descriptions`. Defaults to `"unknown error"` for unrecognised codes.
+
+#### `is_connection_error()`
+
+Returns `True` if `code` is in `conn_errors`.
+
+#### `__repr__()`
+
+Returns `"code: description"`.

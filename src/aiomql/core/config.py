@@ -26,7 +26,6 @@ Example:
         print(config.login)
         print(config.server)
 """
-
 import os
 import json
 from pathlib import Path
@@ -41,9 +40,6 @@ from .store import Store
 
 logger = getLogger(__name__)
 Bot = TypeVar("Bot")
-BackTestEngine = TypeVar("BackTestEngine")
-BackTestController = TypeVar("BackTestController")
-
 
 class Config:
     """A singleton class for handling configuration settings for the aiomql package.
@@ -71,9 +67,6 @@ class Config:
         records_dir (Path): The directory to store trade records.
         records_dir_name (str): The name of the trade records directory.
             Defaults to 'trade_records'.
-        backtest_dir (Path): The directory to store backtest results.
-        backtest_dir_name (str): The name of the backtest directory.
-            Defaults to 'backtesting'.
         plots_dir (Path): The directory to store plot files.
         plots_dir_name (str): The name of the plots directory.
             Defaults to 'plots'.
@@ -84,10 +77,6 @@ class Config:
         store (Store): A key-value database store for general data persistence.
         task_queue (TaskQueue): The TaskQueue object for handling background tasks.
         bot (Bot): The bot instance associated with this configuration.
-        backtest_controller (BackTestController): The backtest controller instance.
-        mode (Literal["backtest", "live"]): The trading mode. Defaults to 'live'.
-        use_terminal_for_backtesting (bool): Whether to use the terminal for
-            backtesting. Defaults to True.
         shutdown (bool): A signal to gracefully shut down the bot.
             Defaults to False.
         force_shutdown (bool): A signal to forcefully shut down the bot.
@@ -102,7 +91,6 @@ class Config:
             Defaults to False.
         lock (Lock): A threading lock for thread-safe operations.
     """
-
     login: int
     trade_record_mode: Literal["csv", "json", "sql"]
     password: str
@@ -117,19 +105,14 @@ class Config:
     record_trades: bool
     records_dir: Path
     plots_dir: Path
-    backtest_dir: Path
     records_dir_name: str
     plots_dir_name: str
-    backtest_dir_name: str
     db_dir_name: str  
     db_name: str | Path
     task_queue: TaskQueue
-    _backtest_engine: BackTestEngine
     bot: Bot
-    backtest_controller: BackTestController
     _instance: Self
-    mode: Literal["backtest", "live"]
-    use_terminal_for_backtesting: bool
+    mode: Literal["live"]
     shutdown: bool
     force_shutdown: bool
     db_commit_interval: float
@@ -142,13 +125,11 @@ class Config:
         "timeout": 60000,
         "record_trades": True,
         "records_dir_name": "trade_records",
-        "backtest_dir_name": "backtesting",
         "db_dir_name": "db",
         "config_file": None,
         "trade_record_mode": "sql",
         "mode": "live",
         "filename": "aiomql.json",
-        "use_terminal_for_backtesting": True,
         "db_name": "",
         "path": "",
         "login": None,
@@ -172,9 +153,7 @@ class Config:
                 cls._instance = super().__new__(cls)
                 cls._instance.task_queue = TaskQueue(mode='infinite')
                 cls._instance.set_attributes(**cls._defaults)
-                cls._instance._backtest_engine = None
                 cls._instance.bot = None
-                cls._instance.backtest_controller = None
         return cls._instance
 
     def __init__(self, **kwargs):
@@ -203,16 +182,6 @@ class Config:
         """Set all instance attributes class as class attributes."""
         super().__setattr__(name, value)
         setattr(self.__class__, name, value)
-
-    @property
-    def backtest_engine(self):
-        """Returns the backtest engine object"""
-        return self._backtest_engine
-
-    @backtest_engine.setter
-    def backtest_engine(self, value: BackTestEngine):
-        """Set the backtest engine object"""
-        self._backtest_engine = value
 
     def set_attributes(self, **kwargs):
         """Set keyword arguments as object attributes. The root folder attribute can't be set here.
@@ -405,19 +374,6 @@ class Config:
         rec_dir = self.root / self.records_dir_name
         rec_dir.mkdir(parents=True, exist_ok=True) if rec_dir.exists() is False else ...
         return rec_dir
-
-    @cached_property
-    def backtest_dir(self) -> Path:
-        """Returns the directory path for storing backtest results.
-
-        Creates the directory if it doesn't exist.
-
-        Returns:
-            Path: The path to the backtest results directory.
-        """
-        b_dir = self.root / self.backtest_dir_name
-        b_dir.mkdir(parents=True, exist_ok=True) if b_dir.exists() is False else ...
-        return b_dir
 
     @cached_property
     def plots_dir(self):

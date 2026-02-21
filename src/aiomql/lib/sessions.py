@@ -36,7 +36,6 @@ import asyncio
 from datetime import time, timedelta, datetime, UTC
 from typing import Literal, Callable, Iterable, NamedTuple
 from logging import getLogger
-from time import sleep
 
 from ..core.models import OrderSendResult, TradePosition
 from ..core.config import Config
@@ -68,22 +67,6 @@ def delta(obj: time) -> timedelta:
         timedelta: The time represented as a timedelta from midnight.
     """
     return timedelta(hours=obj.hour, minutes=obj.minute, seconds=obj.second, microseconds=obj.microsecond)
-
-
-async def backtest_sleep(secs):
-    """An async sleep function for use during backtesting.
-
-    Waits for the backtest engine cursor to advance by the specified
-    number of seconds.
-
-    Args:
-        secs: Number of seconds to sleep in backtest time.
-    """
-    config = Config()
-    btc = config.backtest_controller
-    sleep_secs = config.backtest_engine.cursor.time + secs
-    while sleep_secs > config.backtest_engine.cursor.time:
-        btc.wait()
 
 
 class Session:
@@ -189,11 +172,7 @@ class Session:
         Returns:
             bool: True if current time is within session bounds.
         """
-        now = (
-            datetime.now(tz=UTC).time()
-            if self.config.mode == "live"
-            else datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
-        )
+        now = datetime.now(tz=UTC).time()
         return now in self
 
     async def begin(self):
@@ -287,13 +266,8 @@ class Session:
         Returns:
             int: Number of seconds until session start time.
         """
-        if self.config.mode == "backtest":
-            now = datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
-            secs = (delta(self.start) - delta(now)).seconds
-        else:
-            secs = (delta(self.start) - delta(datetime.now(tz=UTC).time())).seconds
+        secs = (delta(self.start) - delta(datetime.now(tz=UTC).time())).seconds
         return secs
-
 
 class Sessions:
     """A collection of Session objects with automatic session management.
@@ -345,11 +319,7 @@ class Sessions:
         Returns:
             Session | None: The matching session, or None if not found.
         """
-        moment = (
-            moment or datetime.now(tz=UTC).time()
-            if self.config.mode == "live"
-            else (datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time())
-        )
+        moment = moment or datetime.now(tz=UTC).time()
         for session in self.sessions:
             if moment in session:
                 return session
@@ -364,11 +334,7 @@ class Sessions:
         Returns:
             Session: The next session. Wraps to first session if at end of day.
         """
-        moment = (
-            moment or datetime.now(tz=UTC).time()
-            if self.config.mode != "backtest"
-            else (datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time())
-        )
+        moment = moment or datetime.now(tz=UTC).time()
         for session in self.sessions:
             if delta(moment) < delta(session.start):
                 return session
@@ -409,14 +375,8 @@ class Sessions:
         """
         if self.current_session is not None and self.current_session.in_session():
             return
-
-        if self.config.mode == "backtest":
-            now = datetime.fromtimestamp(self.config.backtest_engine.cursor.time, tz=UTC).time()
-        else:
-            now = datetime.now(tz=UTC).time()
-
+        now = datetime.now(tz=UTC).time()
         next_session = self.find(moment=now)
-
         if next_session and self.current_session is None:
             self.current_session = next_session
             await self.current_session.begin()
@@ -434,7 +394,6 @@ class Sessions:
         next_session = self.find_next(moment=now)
         secs = next_session.until() + 10
         logger.info(f"sleeping for {secs} seconds until next {next_session} session")
-        sleep_func = asyncio.sleep if self.config.mode == "live" else backtest_sleep
-        await sleep_func(secs)
+        await asyncio.sleep(secs)
         self.current_session = next_session
         await self.current_session.begin()

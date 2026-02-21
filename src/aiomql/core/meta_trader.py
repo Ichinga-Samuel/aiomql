@@ -1,3 +1,14 @@
+"""Asynchronous MetaTrader5 interface for the aiomql package.
+
+This module provides the ``MetaTrader`` class, which wraps every
+MetaTrader5 API call in an async-friendly interface using
+``asyncio.to_thread``.  It adds automatic retry logic for connection
+errors and integrates with the global ``Config`` singleton.
+
+Classes:
+    MetaTrader: Async wrapper around the MetaTrader5 terminal API.
+"""
+
 import asyncio
 from datetime import datetime
 from logging import getLogger
@@ -27,14 +38,28 @@ from .config import Config
 logger = getLogger()
 
 class MetaTrader(MetaCore):
+    """Asynchronous interface to the MetaTrader5 terminal.
+
+    Wraps every MetaTrader5 API function with async execution via
+    ``asyncio.to_thread`` and provides automatic reconnection on
+    transient connection errors.
+
+    Attributes:
+        error (Error): The most recent error from an API call.
+        config (Config): The global configuration singleton.
+    """
+
     def __new__(cls, *args, **kwargs):
+        """Creates a new MetaTrader instance, initializing Config if needed."""
         if not hasattr(cls, "config"):
             cls.config = Config()
         return super().__new__(cls)
 
     def __init__(self):
+        """Initializes the MetaTrader instance with a default success error and an async lock."""
         self.error: Error = Error(code=1)
         self._lock = asyncio.Lock()
+
 
     async def __aenter__(self) -> Self:
         """

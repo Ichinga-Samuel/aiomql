@@ -1,8 +1,7 @@
 """Strategy module for creating trading strategies.
 
 This module provides the Strategy base class for implementing trading
-strategies. It handles session management, sleep functions for both live
-and backtest modes, and the main trading loop.
+strategies.
 
 Example:
     Creating a custom strategy::
@@ -27,9 +26,7 @@ from logging import getLogger
 from .sessions import Sessions, Session
 from .symbol import Symbol
 from ..core import Config
-from ..core.backtesting.backtest_controller import BackTestController
 from ..core.exceptions import StopTrading
-from ..core.meta_backtester import MetaBackTester
 from ..core.meta_trader import MetaTrader
 
 logger = getLogger(__name__)
@@ -44,9 +41,8 @@ class Strategy(ABC):
         parameters (Dict): A dictionary of parameters for the strategy.
         sessions (Sessions): The sessions to use for the strategy.
         running (bool): A flag to indicate if the strategy is running.
-        backtest_controller (BackTestController): A controller for running the backtester.
         current_session (Session): The current session.
-        mt5 (MetaTrader|MetaBackTester): The MetaTrader object.
+        mt5 (MetaTrader): The MetaTrader object.
         config (Config): The config object.
 
     Notes:
@@ -56,11 +52,10 @@ class Strategy(ABC):
     name: str
     symbol: Symbol
     sessions: Sessions
-    mt5: MetaTrader | MetaBackTester
+    mt5: MetaTrader
     config: Config
     running: bool
     parameters = {}
-    backtest_controller: BackTestController
     current_session = Session
 
     def __init__(self, *, symbol: Symbol, params: dict = None, sessions: Sessions = None, name=""):
@@ -79,9 +74,7 @@ class Strategy(ABC):
         self.running = True
         self.sessions = sessions or Sessions(sessions=[Session(start=0, end=dtime(hour=23, minute=59, second=59))])
         self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
-        if self.config.mode == "backtest":
-            self.backtest_controller = BackTestController()
+        self.mt5 = MetaTrader()
 
     def __repr__(self):
         return f"{self.name}({self.symbol!r})"
@@ -136,50 +129,15 @@ class Strategy(ABC):
         Args:
             secs (float): The time in seconds. Usually the timeframe you are trading on.
         """
-        if self.config.mode == "backtest":
-            self.backtest_sleep(secs=secs)
-        else:
-            await self.live_sleep(secs=secs)
+        await self.live_sleep(secs=secs)
 
     async def delay(self, *, secs: float):
         """Sleep for the input amount of seconds"""
-        if self.config.mode == "backtest":
-            self._backtest_sleep(secs=secs)
-        else:
-            await asyncio.sleep(secs)
-
-    def _backtest_sleep(self, *, secs: float):
-        try:
-            if self.backtest_controller.parties >= 2:
-                _time = self.config.backtest_engine.cursor.time + secs
-                while _time > self.config.backtest_engine.cursor.time:
-                    self.backtest_controller.wait()
-            else:
-                self.backtest_controller.wait()
-        except Exception as err:
-            self.backtest_controller.wait()
-            logger.error("Error: %s in backtest_sleep", err)
-
-    def backtest_sleep(self, *, secs: float):
-        """Sleep for the needed amount of seconds in between requests to the terminal.
-
-        Args:
-            secs (float): The time in seconds. Usually the timeframe you are trading on.
-        """
-        try:
-            _time = self.config.backtest_engine.cursor.time
-            mod = _time % secs
-            secs = secs - mod if mod != 0 else mod
-            self._backtest_sleep(secs=secs)
-        except Exception as err:
-            logger.error("Error: %s in backtest_sleep", err)
+        await asyncio.sleep(secs)
 
     async def run_strategy(self):
         """Run the strategy."""
-        if self.config.mode == "live":
-            await self.live_strategy()
-        elif self.config.mode == "backtest":
-            await self.backtest_strategy()
+        await self.live_strategy()
 
     async def live_strategy(self):
         """Run the strategy."""
@@ -202,23 +160,6 @@ class Strategy(ABC):
                     logger.error("Error: %s in live_strategy", err)
                     self.running = False
                     break
-
-    async def backtest_strategy(self):
-        """Backtest the strategy."""
-        async with self as _:
-            logger.info("Testing %s strategy on %s with Backtester", self.name, self.symbol.name)
-            await self.initialize()
-            while self.running:
-                try:
-                    await self.sessions.check()
-                    self.backtest_controller.wait()
-                    await self.test()
-                except StopTrading:
-                    self.running = False
-                    break
-                except Exception as err:
-                    logger.error(f"Error: {err} in backtest_strategy")
-                    return
 
     async def trade(self):
         """Place trades using this method. This is the main method of the strategy.

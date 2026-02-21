@@ -41,6 +41,20 @@ class Executor:
     config: Config
 
     def __init__(self):
+        """Initializes the Executor with empty task collections.
+
+        Sets up empty lists and dictionaries for strategies, coroutines,
+        and functions. Registers a SIGINT handler for graceful shutdown.
+
+        Attributes:
+            strategy_runners (list[Strategy]): Strategies to execute.
+            coroutines (dict): Coroutines to run on the shared event loop.
+            coroutine_threads (dict): Coroutines to run on separate threads.
+            functions (dict): Synchronous functions to run as tasks.
+            config (Config): The global configuration singleton.
+            timeout (float | None): Executor timeout in seconds. For
+                testing purposes only.
+        """
         self.strategy_runners: list[Strategy] = []
         self.coroutines: dict[Coroutine: dict] = {}
         self.coroutine_threads: dict[Coroutine: dict] = {}
@@ -50,10 +64,25 @@ class Executor:
         signal(SIGINT, self.sigint_handle)
 
     def add_function(self, *, function: Callable, kwargs: dict = None):
+        """Registers a synchronous function to run in the executor.
+
+        Args:
+            function: The callable to execute.
+            kwargs: Optional keyword arguments for the function.
+        """
         kwargs = kwargs or {}
         self.functions[function] = kwargs
 
     def add_coroutine(self, *, coroutine: Callable | Coroutine, kwargs: dict = None, on_separate_thread=False):
+        """Registers a coroutine to run in the executor.
+
+        Args:
+            coroutine: The async callable or coroutine to execute.
+            kwargs: Optional keyword arguments for the coroutine.
+            on_separate_thread: If True, the coroutine runs on its own
+                thread with a dedicated event loop. If False, it runs on
+                the shared event loop. Defaults to False.
+        """
         kwargs = kwargs or {}
         if on_separate_thread:
             self.coroutine_threads[coroutine] = kwargs
@@ -98,6 +127,12 @@ class Executor:
 
     @staticmethod
     def run_coroutine_task(coroutine, kwargs):
+        """Runs a single coroutine on a new event loop in a separate thread.
+
+        Args:
+            coroutine: The async callable to execute.
+            kwargs: Keyword arguments for the coroutine.
+        """
         asyncio.run(coroutine(**kwargs))
 
     @staticmethod
@@ -110,10 +145,21 @@ class Executor:
         function(**kwargs)
 
     def sigint_handle(self, signum, frame):
+        """Handles SIGINT (Ctrl+C) by signaling a shutdown.
+
+        Args:
+            signum: The signal number received.
+            frame: The current stack frame.
+        """
         self.config.shutdown = True
 
     def exit(self):
-        """Shutdown the executor"""
+        """Monitors for shutdown signals and gracefully shuts down the executor.
+
+        Runs in a loop checking for shutdown or timeout conditions.
+        When triggered, stops all strategies, cancels the task queue,
+        and shuts down the thread pool executor.
+        """
         start = time.time()
         try:
             while self.config.shutdown is False and self.config.force_shutdown is False:
@@ -125,9 +171,6 @@ class Executor:
             for strategy in self.strategy_runners:
                 strategy.running = False
             self.config.task_queue.cancel()
-
-            if self.config.backtest_engine is not None:
-                self.config.backtest_engine.stop_testing = True
             self.executor.shutdown(wait=False, cancel_futures=False)
 
             if self.config.force_shutdown:

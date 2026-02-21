@@ -20,7 +20,6 @@ from logging import getLogger
 from ...core.config import Config
 from ...core.sync.meta_trader import MetaTrader
 from ...core.models import TradeDeal, TradeOrder
-from ...core.meta_backtester import MetaBackTester
 from ...core.exceptions import InvalidRequest
 from ...core.base import BaseMeta
 
@@ -45,7 +44,7 @@ class History(metaclass=BaseMeta):
         group: Symbol filter pattern for selecting history.
         date_from: Start date for history query.
         date_to: End date for history query.
-        mt5: MetaTrader or MetaBackTester instance (class variable).
+        mt5: MetaTrader (class variable).
         config: Config instance (class variable).
 
     Example:
@@ -67,7 +66,7 @@ class History(metaclass=BaseMeta):
             # Filter by position
             position_deals = history.get_deals_by_position(position=12345)
     """
-    mt5: ClassVar[MetaTrader | MetaBackTester]
+    mt5: ClassVar[MetaTrader]
     config: ClassVar[Config]
     deals: tuple[TradeDeal, ...]
     orders: tuple[TradeOrder, ...]
@@ -155,13 +154,40 @@ class History(metaclass=BaseMeta):
         return tuple(TradeDeal(**deal._asdict()) for deal in deals)
 
     def filter_deals_by_ticket(self, *, ticket: int) -> tuple[TradeDeal, ...]:
+        """Filters cached deals by ticket number.
+
+        Args:
+            ticket: The deal ticket number to filter by.
+
+        Returns:
+            tuple[TradeDeal, ...]: Deals matching the specified ticket.
+        """
         return tuple(deal for deal in self.deals if deal.ticket == ticket)
 
     def filter_deals_by_position(self, *, position: int) -> tuple[TradeDeal, ...]:
+        """Filters cached deals by position identifier.
+
+        Args:
+            position: The position ID to filter by.
+
+        Returns:
+            tuple[TradeDeal, ...]: Deals matching the specified position.
+        """
         return tuple(deal for deal in self.deals if deal.position_id == position)
 
     @classmethod
     def get_deal_by_ticket(cls, *, ticket: int) -> TradeDeal:
+        """Fetches a single deal from history by its ticket number.
+
+        Args:
+            ticket: The deal ticket number.
+
+        Returns:
+            TradeDeal: The matching deal.
+
+        Raises:
+            InvalidRequest: If no deal matches the given ticket.
+        """
         deals = cls.mt5.history_deals_get(ticket=ticket)
         if (deal := deals[0]).ticket == ticket:
             return TradeDeal(**deal._asdict())
@@ -169,6 +195,14 @@ class History(metaclass=BaseMeta):
 
     @classmethod
     def get_deals_by_position(cls, *, position: int = None) -> tuple[TradeDeal, ...]:
+        """Fetches deals from history by position identifier.
+
+        Args:
+            position: The position ID to filter by.
+
+        Returns:
+            tuple[TradeDeal, ...]: Deals associated with the position.
+        """
         deals = cls.mt5.history_deals_get(position=position)
         return tuple(TradeDeal(**deal._asdict()) for deal in deals if deal.position_id == position)
 
@@ -189,13 +223,40 @@ class History(metaclass=BaseMeta):
         return tuple(TradeOrder(**order._asdict()) for order in orders)
 
     def filter_orders_by_ticket(self, *, ticket: int) -> tuple[TradeOrder, ...]:
+        """Filters cached orders by ticket number.
+
+        Args:
+            ticket: The order ticket number to filter by.
+
+        Returns:
+            tuple[TradeOrder, ...]: Orders matching the specified ticket.
+        """
         return tuple(order for order in self.orders if order.ticket == ticket)
 
     def filter_orders_by_position(self, *, position: int) -> tuple[TradeOrder, ...]:
+        """Filters cached orders by position identifier.
+
+        Args:
+            position: The position ID to filter by.
+
+        Returns:
+            tuple[TradeOrder, ...]: Orders matching the specified position.
+        """
         return tuple(order for order in self.orders if order.position_id == position)
 
     @classmethod
     def get_order_by_ticket(cls, *, ticket: int) -> TradeOrder:
+        """Fetches a single order from history by its ticket number.
+
+        Args:
+            ticket: The order ticket number.
+
+        Returns:
+            TradeOrder: The matching order.
+
+        Raises:
+            InvalidRequest: If no order matches the given ticket.
+        """
         orders = cls.mt5.history_orders_get(ticket=ticket)
         if (order := orders[0]).ticket == ticket:
             return TradeOrder(**order._asdict())
@@ -203,5 +264,13 @@ class History(metaclass=BaseMeta):
 
     @classmethod
     def get_orders_by_position(cls, *, position: int) -> tuple[TradeOrder, ...]:
+        """Fetches orders from history by position identifier.
+
+        Args:
+            position: The position ID to filter by.
+
+        Returns:
+            tuple[TradeOrder, ...]: Orders associated with the position.
+        """
         orders = cls.mt5.history_orders_get(position=position)
         return tuple(TradeOrder(**order._asdict()) for order in orders)

@@ -53,7 +53,6 @@ import logging
 from .executor import Executor
 from ..core.config import Config
 from ..core.meta_trader import MetaTrader
-from ..core.meta_backtester import MetaBackTester
 from .symbol import Symbol as Symbol
 from .strategy import Strategy as Strategy
 
@@ -65,17 +64,15 @@ class Bot:
 
     Creates a bot instance that manages the connection to MetaTrader 5,
     initializes strategies, and coordinates their execution through the
-    Executor. Supports both synchronous and asynchronous operation modes,
-    as well as live trading and backtesting.
+    Executor. Supports both synchronous and asynchronous operation modes.
 
     Attributes:
         config (Config): Configuration instance that holds bot settings and
             references to shared resources like the task queue.
         executor (Executor): Thread pool executor that manages the concurrent
             execution of strategies, coroutines, and functions.
-        mt5 (MetaTrader | MetaBackTester): MetaTrader 5 interface instance.
-            Uses MetaTrader for live/demo trading or MetaBackTester for
-            backtesting based on the config mode.
+        mt5 (MetaTrader): MetaTrader 5 interface instance.
+            Uses MetaTrader for live/demo trading
         strategies (list[Strategy]): List of strategy instances to be
             initialized and run by the bot.
         initialized (bool): Flag indicating whether the terminal has been
@@ -115,12 +112,11 @@ class Bot:
         mode. Initializes all tracking flags and the empty strategies list.
 
         Note:
-            The bot automatically selects MetaTrader for live/demo trading
-            or MetaBackTester when config.mode is set to "backtest".
+            The bot automatically selects MetaTrader for live/demo trading.
         """
         self.config = Config(bot=self)
         self.executor = Executor()
-        self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
+        self.mt5 = MetaTrader()
         self.strategies = []
         self.initialized = False
         self.login = False

@@ -1,12 +1,24 @@
-"""Utility functions for aiomql."""
+"""General-purpose utility functions for the aiomql package.
+
+Provides decorators for error handling and retries, rounding helpers
+for volume/price calculations, and an async-aware cache decorator.
+
+Functions:
+    dict_to_string: Convert a dict to a printable string.
+    backoff_decorator: Retry an async function with back-off.
+    error_handler: Catch and log errors in async functions.
+    error_handler_sync: Catch and log errors in sync functions.
+    round_down: Round a number down to the nearest base.
+    round_up: Round a number up to the nearest base.
+    round_off: Round to the nearest step using ``decimal``.
+    async_cache: Thread-safe cache for async function results.
+"""
 
 import decimal
-import random
+from typing import Callable
 from functools import wraps, partial
-import asyncio
 from threading import RLock
 from logging import getLogger
-from ..core.config import Config
 
 logger = getLogger(__name__)
 
@@ -25,7 +37,7 @@ def dict_to_string(data: dict, multi=False) -> str:
     return f"{sep}".join(f"{key}: {value}" for key, value in data.items())
 
 
-def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0) -> callable:
+def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0) -> Callable:
     """A decorator to retry a function a number of times before giving up.
     Args:
         func (callable, optional): The function to decorate. Defaults to None.
@@ -48,11 +60,6 @@ def backoff_decorator(func=None, *, max_retries: int = 3, retries: int = 0) -> c
                 logger.error("An Error %s: occurred in %s", err, func.__name__)
                 raise err
             retries += 1
-            if Config().mode != "backtest":
-                delay = 2 ** retries + random.uniform(0, 1)
-                logger.warning("An Error %s: occurred in %s, trying again in %f seconds",
-                               err, func.__name__, delay)
-                await asyncio.sleep(delay)
             return await wrapper(*args, **kwargs)
     return wrapper
 
@@ -122,6 +129,15 @@ def round_down(value: int | float, base: int) -> int | float:
 
 
 def round_up(value: int | float, base: int) -> int:
+    """Round up a number to the nearest base.
+
+    Args:
+        value: The number to round up.
+        base: The base to round up to.
+
+    Returns:
+        int: The rounded-up number.
+    """
     return int(value) if value % base == 0 else int(value + base - (value % base))
 
 
@@ -143,7 +159,17 @@ def round_off(value: float, step: float, round_down: bool = False) -> float:
 
 
 def async_cache(fun):
-    """A decorator to cache the result of an async function."""
+    """Thread-safe cache decorator for async functions.
+
+    Caches results keyed by ``(args, frozenset(kwargs))``.
+    Uses an ``RLock`` to ensure thread safety.
+
+    Args:
+        fun: The async function to cache.
+
+    Returns:
+        Callable: Wrapped function with ``.cache`` dict and ``.lock``.
+    """
     @wraps(fun)
     async def wrapper(*args, **kwargs):
         key = (args, frozenset(kwargs.items()))

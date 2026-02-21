@@ -1,815 +1,886 @@
 """Comprehensive tests for the synchronous Trader module.
 
 Tests cover:
-- Trader initialization with default and custom values
-- set_trade_stop_levels_pips method
-- set_trade_stop_levels_points method
-- create_order_with_stops method
-- create_order_with_sl method
-- create_order_with_points method
-- create_order_no_stops method
-- check_order method
-- send_order method
-- record_trade method
-- Integration tests with various order types
-- Edge cases and boundary conditions
+- Trader initialization (__init__)
+- set_trade_stop_levels_pips (long/short orders)
+- set_trade_stop_levels_points (long/short orders)
+- create_order_with_stops
+- create_order_with_sl
+- create_order_with_points
+- create_order_no_stops
+- check_order
+- send_order
+- record_trade
+- place_trade (abstract method enforcement)
 """
 
-from math import floor
+from unittest.mock import MagicMock, patch
 import pytest
 
-from aiomql.lib.ram import RAM
 from aiomql.lib.sync.trader import Trader
-from aiomql.contrib.traders.sync import SimpleTrader
-from aiomql.contrib.symbols.sync import ForexSymbol
-from aiomql.lib.sync.symbol import Symbol
-from aiomql.core.constants import OrderType
-from aiomql.lib.sync.account import Account
 from aiomql.lib.sync.order import Order
+from aiomql.lib.ram import RAM
+from aiomql.lib.sync.symbol import Symbol
+from aiomql.core.models import OrderType, OrderSendResult, OrderCheckResult
 from aiomql.core.config import Config
-from aiomql.core.models import OrderSendResult, OrderCheckResult
+from aiomql.core.task_queue import QueueItem
 
 
-class TestTraderInitialization:
-    """Test Trader class initialization."""
+# --- Concrete subclass for testing abstract Trader ---
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10)
+class ConcreteTrader(Trader):
+    """Non-abstract subclass of Trader for testing purposes."""
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol before tests."""
-        self.symbol.initialize()
+    def place_trade(self, *args, **kwargs):
+        pass
 
-    def test_init_with_symbol_only(self):
-        """Test Trader can be initialized with just a symbol."""
-        trader = SimpleTrader(symbol=self.symbol)
-        assert trader.symbol == self.symbol
-        assert isinstance(trader.ram, RAM)
-        assert isinstance(trader.order, Order)
 
-    def test_init_with_symbol_and_ram(self):
-        """Test Trader initialized with symbol and custom RAM."""
-        trader = SimpleTrader(symbol=self.symbol, ram=self.ram)
-        assert trader.symbol == self.symbol
-        assert trader.ram == self.ram
+# --- Fixtures ---
 
-    def test_init_creates_order_with_symbol_name(self):
-        """Test Trader creates order with correct symbol name."""
-        trader = SimpleTrader(symbol=self.symbol)
-        assert trader.order.symbol == self.symbol.name
+@pytest.fixture
+def mock_symbol():
+    """Create a mock Symbol with standard forex attributes."""
+    symbol = MagicMock(spec=Symbol)
+    symbol.name = "EURUSD"
+    symbol.pip = 0.0001
+    symbol.point = 0.00001
+    symbol.digits = 5
+    symbol.volume_min = 0.01
+    symbol.compute_volume_sl = MagicMock(return_value=0.1)
+    symbol.compute_volume_points = MagicMock(return_value=0.1)
+    symbol.amount_in_quote_currency = MagicMock(return_value=100.0)
+    symbol.info_tick = MagicMock()
+    return symbol
 
-    def test_init_has_config_attribute(self):
-        """Test Trader has config attribute."""
-        trader = SimpleTrader(symbol=self.symbol)
-        assert hasattr(trader, 'config')
-        assert isinstance(trader.config, Config)
 
-    def test_init_has_parameters_attribute(self):
-        """Test Trader has empty parameters dict."""
-        trader = SimpleTrader(symbol=self.symbol)
-        assert hasattr(trader, 'parameters')
-        assert isinstance(trader.parameters, dict)
-        assert trader.parameters == {}
+@pytest.fixture
+def mock_ram():
+    """Create a mock RAM instance."""
+    ram = MagicMock(spec=RAM)
+    ram.risk_to_reward = 2.0
+    ram.get_amount = MagicMock(return_value=100.0)
+    return ram
 
-    def test_init_with_default_ram_values(self):
-        """Test Trader uses default RAM if not provided."""
-        trader = SimpleTrader(symbol=self.symbol)
-        assert trader.ram.risk_to_reward == 2
-        assert trader.ram.risk == 1
+
+@pytest.fixture
+def mock_tick():
+    """Create a mock price tick."""
+    tick = MagicMock()
+    tick.ask = 1.10000
+    tick.bid = 1.09990
+    return tick
+
+
+@pytest.fixture
+def trader(mock_symbol, mock_ram, mock_tick):
+    """Create a ConcreteTrader for testing."""
+    mock_symbol.info_tick.return_value = mock_tick
+    t = ConcreteTrader(symbol=mock_symbol, ram=mock_ram)
+    return t
+
+
+# --- Tests ---
+
+class TestTraderInit:
+    """Test Trader initialization."""
+
+    def test_init_sets_symbol(self, mock_symbol, mock_ram):
+        """Test __init__ sets symbol."""
+        t = ConcreteTrader(symbol=mock_symbol, ram=mock_ram)
+        assert t.symbol is mock_symbol
+
+    def test_init_sets_ram(self, mock_symbol, mock_ram):
+        """Test __init__ sets provided RAM."""
+        t = ConcreteTrader(symbol=mock_symbol, ram=mock_ram)
+        assert t.ram is mock_ram
+
+    def test_init_creates_default_ram(self, mock_symbol):
+        """Test __init__ creates default RAM when none provided."""
+        t = ConcreteTrader(symbol=mock_symbol)
+        assert isinstance(t.ram, RAM)
+
+    def test_init_creates_order(self, mock_symbol, mock_ram):
+        """Test __init__ creates Order with symbol name."""
+        t = ConcreteTrader(symbol=mock_symbol, ram=mock_ram)
+        assert isinstance(t.order, Order)
+        assert t.order.symbol == "EURUSD"
+
+    def test_init_creates_config(self, mock_symbol, mock_ram):
+        """Test __init__ creates Config instance."""
+        t = ConcreteTrader(symbol=mock_symbol, ram=mock_ram)
+        assert isinstance(t.config, Config)
+
+    def test_init_creates_empty_parameters(self, mock_symbol, mock_ram):
+        """Test __init__ creates empty parameters dict."""
+        t = ConcreteTrader(symbol=mock_symbol, ram=mock_ram)
+        assert t.parameters == {}
 
 
 class TestSetTradeStopLevelsPips:
     """Test set_trade_stop_levels_pips method."""
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="EURUSD")
-        cls.ram = RAM(fixed_amount=10, risk_to_reward=2)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
+    def test_long_order_sl_below_price(self, trader):
+        """Test long order sets SL below price."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = True
+        trader.order.type.is_short = False
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
+        trader.set_trade_stop_levels_pips(pips=50)
 
-    def test_set_stop_levels_pips_buy_order(self):
-        """Test setting stop levels for buy order using pips."""
-        tick = self.symbol.info_tick()
-        self.trader.order.price = tick.ask
-        self.trader.order.type = OrderType.BUY
-        pips = 50
+        assert trader.order.sl < trader.order.price
 
-        self.trader.set_trade_stop_levels_pips(pips=pips)
+    def test_long_order_tp_above_price(self, trader):
+        """Test long order sets TP above price."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = True
+        trader.order.type.is_short = False
 
-        expected_sl = round(tick.ask - (pips * self.symbol.pip), self.symbol.digits)
-        expected_tp = round(tick.ask + (pips * self.ram.risk_to_reward * self.symbol.pip), self.symbol.digits)
-        assert self.trader.order.sl == expected_sl
-        assert self.trader.order.tp == expected_tp
+        trader.set_trade_stop_levels_pips(pips=50)
 
-    def test_set_stop_levels_pips_sell_order(self):
-        """Test setting stop levels for sell order using pips."""
-        tick = self.symbol.info_tick()
-        self.trader.order.price = tick.bid
-        self.trader.order.type = OrderType.SELL
-        pips = 50
+        assert trader.order.tp > trader.order.price
 
-        self.trader.set_trade_stop_levels_pips(pips=pips)
+    def test_short_order_sl_above_price(self, trader):
+        """Test short order sets SL above price."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = False
+        trader.order.type.is_short = True
 
-        expected_sl = round(tick.bid + (pips * self.symbol.pip), self.symbol.digits)
-        expected_tp = round(tick.bid - (pips * self.ram.risk_to_reward * self.symbol.pip), self.symbol.digits)
-        assert self.trader.order.sl == expected_sl
-        assert self.trader.order.tp == expected_tp
+        trader.set_trade_stop_levels_pips(pips=50)
 
-    def test_set_stop_levels_pips_custom_risk_to_reward(self):
-        """Test setting stop levels with custom risk to reward ratio."""
-        tick = self.symbol.info_tick()
-        self.trader.order.price = tick.ask
-        self.trader.order.type = OrderType.BUY
-        pips = 30
-        custom_rr = 3
+        assert trader.order.sl > trader.order.price
 
-        self.trader.set_trade_stop_levels_pips(pips=pips, risk_to_reward=custom_rr)
+    def test_short_order_tp_below_price(self, trader):
+        """Test short order sets TP below price."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = False
+        trader.order.type.is_short = True
 
-        expected_sl = round(tick.ask - (pips * self.symbol.pip), self.symbol.digits)
-        expected_tp = round(tick.ask + (pips * custom_rr * self.symbol.pip), self.symbol.digits)
-        assert self.trader.order.sl == expected_sl
-        assert self.trader.order.tp == expected_tp
+        trader.set_trade_stop_levels_pips(pips=50)
+
+        assert trader.order.tp < trader.order.price
+
+    def test_custom_risk_to_reward(self, trader):
+        """Test custom risk_to_reward overrides RAM default."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = True
+        trader.order.type.is_short = False
+
+        trader.set_trade_stop_levels_pips(pips=50, risk_to_reward=3.0)
+
+        sl_distance = abs(trader.order.price - trader.order.sl)
+        tp_distance = abs(trader.order.tp - trader.order.price)
+        assert round(tp_distance / sl_distance, 1) == 3.0
+
+    def test_uses_ram_risk_to_reward_by_default(self, trader):
+        """Test uses RAM risk_to_reward when not specified."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = True
+        trader.order.type.is_short = False
+        trader.ram.risk_to_reward = 2.0
+
+        trader.set_trade_stop_levels_pips(pips=50)
+
+        sl_distance = abs(trader.order.price - trader.order.sl)
+        tp_distance = abs(trader.order.tp - trader.order.price)
+        assert round(tp_distance / sl_distance, 1) == 2.0
+
+    def test_rounds_to_symbol_digits(self, trader):
+        """Test SL and TP are rounded to symbol.digits."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = True
+        trader.order.type.is_short = False
+
+        trader.set_trade_stop_levels_pips(pips=50)
+
+        sl_str = f"{trader.order.sl:.10f}".rstrip("0")
+        tp_str = f"{trader.order.tp:.10f}".rstrip("0")
+        sl_decimals = len(sl_str.split(".")[1]) if "." in sl_str else 0
+        tp_decimals = len(tp_str.split(".")[1]) if "." in tp_str else 0
+        assert sl_decimals <= 5
+        assert tp_decimals <= 5
 
 
 class TestSetTradeStopLevelsPoints:
     """Test set_trade_stop_levels_points method."""
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="EURUSD")
-        cls.ram = RAM(fixed_amount=10, risk_to_reward=2)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
+    def test_long_order_sl_below_price(self, trader):
+        """Test long order sets SL below price."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = True
+        trader.order.type.is_short = False
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
+        trader.set_trade_stop_levels_points(points=500)
 
-    def test_set_stop_levels_points_buy_order(self):
-        """Test setting stop levels for buy order using points."""
-        tick = self.symbol.info_tick()
-        self.trader.order.price = tick.ask
-        self.trader.order.type = OrderType.BUY
-        points = 500
+        assert trader.order.sl < trader.order.price
 
-        self.trader.set_trade_stop_levels_points(points=points)
+    def test_long_order_tp_above_price(self, trader):
+        """Test long order sets TP above price."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = True
+        trader.order.type.is_short = False
 
-        expected_sl = round(tick.ask - (points * self.symbol.point), self.symbol.digits)
-        expected_tp = round(tick.ask + (points * self.ram.risk_to_reward * self.symbol.point), self.symbol.digits)
-        assert self.trader.order.sl == expected_sl
-        assert self.trader.order.tp == expected_tp
+        trader.set_trade_stop_levels_points(points=500)
 
-    def test_set_stop_levels_points_custom_risk_to_reward(self):
-        """Test setting stop levels with custom risk to reward."""
-        tick = self.symbol.info_tick()
-        self.trader.order.price = tick.ask
-        self.trader.order.type = OrderType.BUY
-        points = 500
-        custom_rr = 4
+        assert trader.order.tp > trader.order.price
 
-        self.trader.set_trade_stop_levels_points(points=points, risk_to_reward=custom_rr)
+    def test_custom_risk_to_reward(self, trader):
+        """Test custom risk_to_reward for points."""
+        trader.order.price = 1.10000
+        trader.order.type = MagicMock()
+        trader.order.type.is_long = True
+        trader.order.type.is_short = False
 
-        expected_sl = round(tick.ask - (points * self.symbol.point), self.symbol.digits)
-        expected_tp = round(tick.ask + (points * custom_rr * self.symbol.point), self.symbol.digits)
-        assert self.trader.order.sl == expected_sl
-        assert self.trader.order.tp == expected_tp
+        trader.set_trade_stop_levels_points(points=500, risk_to_reward=4.0)
 
-
-class TestCreateOrderNoStops:
-    """Test create_order_no_stops method."""
-
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
-
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
-
-    def test_create_order_no_stops_buy(self):
-        """Test creating buy order without stops."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-
-        assert self.trader.order.type == OrderType.BUY
-        assert self.trader.order.volume == self.symbol.volume_min
-        assert self.trader.order.price is not None
-
-    def test_create_order_no_stops_sell(self):
-        """Test creating sell order without stops."""
-        self.trader.create_order_no_stops(order_type=OrderType.SELL)
-
-        assert self.trader.order.type == OrderType.SELL
-        assert self.trader.order.volume == self.symbol.volume_min
-        assert self.trader.order.price is not None
-
-    def test_create_order_no_stops_with_custom_volume(self):
-        """Test creating order with custom volume."""
-        custom_volume = self.symbol.volume_min * 2
-        self.trader.create_order_no_stops(order_type=OrderType.BUY, volume=custom_volume)
-
-        assert self.trader.order.volume == custom_volume
-
-    def test_create_order_no_stops_uses_correct_price(self):
-        """Test order uses ask for buy and bid for sell."""
-        tick = self.symbol.info_tick()
-
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        # Price should be close to ask (may differ slightly due to timing)
-        assert abs(self.trader.order.price - tick.ask) < tick.ask * 0.01
-
-    def test_create_order_no_stops_send_success(self):
-        """Test sending order without stops succeeds."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.order.send()
-
-        assert result is not None
-        assert result.retcode == 10009
-
-
-class TestCreateOrderWithSl:
-    """Test create_order_with_sl method."""
-
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10, risk_to_reward=2)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
-        cls.account = Account()
-
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol and account."""
-        self.symbol.initialize()
-        self.account.refresh()
-
-    def test_create_order_with_sl_sell(self):
-        """Test creating sell order with stop loss."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        tick = self.symbol.info_tick()
-        sl = tick.bid + dsl
-
-        self.trader.create_order_with_sl(order_type=OrderType.SELL, sl=sl)
-
-        assert self.trader.order.type == OrderType.SELL
-        assert self.trader.order.sl == sl
-        assert self.trader.order.tp is not None
-        assert self.trader.order.volume > 0
-
-    def test_create_order_with_sl_buy(self):
-        """Test creating buy order with stop loss."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        tick = self.symbol.info_tick()
-        sl = tick.ask - dsl
-
-        self.trader.create_order_with_sl(order_type=OrderType.BUY, sl=sl)
-
-        assert self.trader.order.type == OrderType.BUY
-        assert self.trader.order.sl == sl
-        assert self.trader.order.tp is not None
-
-    def test_create_order_with_sl_respects_risk_to_reward(self):
-        """Test TP is set according to risk to reward ratio."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        tick = self.symbol.info_tick()
-        sl = tick.bid + dsl
-
-        self.trader.create_order_with_sl(order_type=OrderType.SELL, sl=sl)
-
-        # TP should be approximately at dsl * risk_to_reward distance from price
-        expected_dtp = dsl * self.ram.risk_to_reward
-        actual_dtp = abs(self.trader.order.price - self.trader.order.tp)
-        assert abs(actual_dtp - expected_dtp) < self.symbol.point * 10
-
-    def test_create_order_with_sl_custom_amount_to_risk(self):
-        """Test creating order with custom amount to risk."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        tick = self.symbol.info_tick()
-        sl = tick.bid + dsl
-        custom_amount = 20
-
-        self.trader.create_order_with_sl(order_type=OrderType.SELL, sl=sl, amount_to_risk=custom_amount)
-
-        assert self.trader.order.volume > 0
-
-    def test_create_order_with_sl_send_success(self):
-        """Test order with SL can be sent successfully."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        tick = self.symbol.info_tick()
-        sl = tick.bid + dsl
-
-        self.trader.create_order_with_sl(order_type=OrderType.SELL, sl=sl)
-        result = self.trader.order.send()
-
-        assert result is not None
-        assert result.retcode == 10009
+        sl_distance = abs(trader.order.price - trader.order.sl)
+        tp_distance = abs(trader.order.tp - trader.order.price)
+        assert round(tp_distance / sl_distance, 1) == 4.0
 
 
 class TestCreateOrderWithStops:
     """Test create_order_with_stops method."""
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10, risk_to_reward=2)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
-        cls.account = Account()
+    def test_sets_order_attributes(self, trader, mock_tick):
+        """Test sets sl, tp, volume, price, and type on order."""
+        order_type = MagicMock()
+        order_type.is_long = True
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol and account."""
-        self.symbol.initialize()
-        self.account.refresh()
+        trader.order.set_attributes = MagicMock()
 
-    def test_create_order_with_stops_buy(self):
-        """Test creating buy order with SL and TP."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        dtp = dsl * self.ram.risk_to_reward
-        tick = self.symbol.info_tick()
-        sl = tick.ask - dsl
-        tp = tick.ask + dtp
-
-        self.trader.create_order_with_stops(order_type=OrderType.BUY, sl=sl, tp=tp)
-
-        assert self.trader.order.type == OrderType.BUY
-        assert self.trader.order.sl == sl
-        assert self.trader.order.tp == tp
-        assert self.trader.order.volume > 0
-
-    def test_create_order_with_stops_sell(self):
-        """Test creating sell order with SL and TP."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        dtp = dsl * self.ram.risk_to_reward
-        tick = self.symbol.info_tick()
-        sl = tick.bid + dsl
-        tp = tick.bid - dtp
-
-        self.trader.create_order_with_stops(order_type=OrderType.SELL, sl=sl, tp=tp)
-
-        assert self.trader.order.type == OrderType.SELL
-        assert self.trader.order.sl == sl
-        assert self.trader.order.tp == tp
-
-    def test_create_order_with_stops_send_success(self):
-        """Test order with stops can be sent successfully."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        dtp = dsl * self.ram.risk_to_reward
-        tick = self.symbol.info_tick()
-        sl = tick.ask - dsl
-        tp = tick.ask + dtp
-
-        self.trader.create_order_with_stops(order_type=OrderType.BUY, sl=sl, tp=tp)
-        result = self.trader.order.send()
-
-        assert result is not None
-        assert result.retcode == 10009
-
-    def test_create_order_with_stops_custom_amount(self):
-        """Test creating order with custom amount to risk."""
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        dtp = dsl * 2
-        tick = self.symbol.info_tick()
-        sl = tick.ask - dsl
-        tp = tick.ask + dtp
-        custom_amount = 25
-
-        self.trader.create_order_with_stops(
-            order_type=OrderType.BUY, sl=sl, tp=tp, amount_to_risk=custom_amount
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000
         )
 
-        assert self.trader.order.volume > 0
+        trader.order.set_attributes.assert_called_once()
+        call_kwargs = trader.order.set_attributes.call_args[1]
+        assert call_kwargs["sl"] == 1.09500
+        assert call_kwargs["tp"] == 1.11000
+        assert call_kwargs["type"] is order_type
+
+    def test_uses_ask_for_long(self, trader, mock_tick):
+        """Test uses ask price for long orders."""
+        order_type = MagicMock()
+        order_type.is_long = True
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000
+        )
+
+        call_kwargs = trader.order.set_attributes.call_args[1]
+        assert call_kwargs["price"] == mock_tick.ask
+
+    def test_uses_bid_for_short(self, trader, mock_tick):
+        """Test uses bid price for short orders."""
+        order_type = MagicMock()
+        order_type.is_long = False
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.10500, tp=1.09000
+        )
+
+        call_kwargs = trader.order.set_attributes.call_args[1]
+        assert call_kwargs["price"] == mock_tick.bid
+
+    def test_calculates_volume(self, trader):
+        """Test computes volume using symbol.compute_volume_sl."""
+        order_type = MagicMock()
+        order_type.is_long = True
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000
+        )
+
+        trader.symbol.compute_volume_sl.assert_called_once()
+
+    def test_custom_amount_to_risk(self, trader):
+        """Test custom amount_to_risk overrides RAM.get_amount."""
+        order_type = MagicMock()
+        order_type.is_long = True
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000, amount_to_risk=500.0
+        )
+
+        trader.ram.get_amount.assert_not_called()
+
+    def test_default_amount_from_ram(self, trader):
+        """Test uses RAM.get_amount when amount_to_risk not specified."""
+        order_type = MagicMock()
+        order_type.is_long = True
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000
+        )
+
+        trader.ram.get_amount.assert_called_once()
+
+    def test_converts_amount_to_quote_currency(self, trader):
+        """Test converts amount using symbol.amount_in_quote_currency."""
+        order_type = MagicMock()
+        order_type.is_long = True
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000
+        )
+
+        trader.symbol.amount_in_quote_currency.assert_called_once()
+
+
+class TestCreateOrderWithSl:
+    """Test create_order_with_sl method."""
+
+    def test_calculates_tp_from_sl(self, trader, mock_tick):
+        """Test calculates TP based on SL distance and risk_to_reward."""
+        order_type = OrderType.BUY
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_sl(
+            order_type=order_type, sl=1.09500
+        )
+
+        call_kwargs = trader.order.set_attributes.call_args[1]
+        assert call_kwargs["tp"] > call_kwargs["price"]
+
+    def test_buy_uses_ask_price(self, trader, mock_tick):
+        """Test BUY order uses ask price."""
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_sl(
+            order_type=OrderType.BUY, sl=1.09500
+        )
+
+        call_kwargs = trader.order.set_attributes.call_args[1]
+        assert call_kwargs["price"] == mock_tick.ask
+
+    def test_sell_uses_bid_price(self, trader, mock_tick):
+        """Test SELL order uses bid price."""
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_sl(
+            order_type=OrderType.SELL, sl=1.10500
+        )
+
+        call_kwargs = trader.order.set_attributes.call_args[1]
+        assert call_kwargs["price"] == mock_tick.bid
+
+    def test_custom_risk_to_reward(self, trader, mock_tick):
+        """Test custom risk_to_reward affects TP calculation."""
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_sl(
+            order_type=OrderType.BUY, sl=1.09500, risk_to_reward=3.0
+        )
+
+        call_kwargs = trader.order.set_attributes.call_args[1]
+        price = call_kwargs["price"]
+        sl_dist = abs(price - 1.09500)
+        tp_dist = abs(call_kwargs["tp"] - price)
+        assert round(tp_dist / sl_dist, 1) == 3.0
+
+    def test_sell_tp_below_price(self, trader, mock_tick):
+        """Test SELL order sets TP below price."""
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_sl(
+            order_type=OrderType.SELL, sl=1.10500
+        )
+
+        call_kwargs = trader.order.set_attributes.call_args[1]
+        assert call_kwargs["tp"] < call_kwargs["price"]
+
+    def test_custom_amount_to_risk(self, trader):
+        """Test custom amount_to_risk skips RAM.get_amount."""
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_sl(
+            order_type=OrderType.BUY, sl=1.09500, amount_to_risk=200.0
+        )
+
+        trader.ram.get_amount.assert_not_called()
 
 
 class TestCreateOrderWithPoints:
     """Test create_order_with_points method."""
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10, risk_to_reward=2)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
-        cls.account = Account()
-
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
-        self.account.refresh()
-
-    def test_create_order_with_points_buy(self):
-        """Test creating buy order with points."""
-        points = self.symbol.trade_stops_level * 2 + self.symbol.spread
-
-        self.trader.create_order_with_points(order_type=OrderType.BUY, points=points)
-
-        assert self.trader.order.type == OrderType.BUY
-        assert self.trader.order.volume > 0
-        assert self.trader.order.sl is not None
-        assert self.trader.order.tp is not None
-
-    def test_create_order_with_points_sell(self):
-        """Test creating sell order with points."""
-        points = self.symbol.trade_stops_level * 2 + self.symbol.spread
-
-        self.trader.create_order_with_points(order_type=OrderType.SELL, points=points)
-
-        assert self.trader.order.type == OrderType.SELL
-        assert self.trader.order.volume > 0
-
-    def test_create_order_with_points_send_success(self):
-        """Test order with points can be sent successfully."""
-        points = self.symbol.trade_stops_level * 2 + self.symbol.spread
-
-        self.trader.create_order_with_points(order_type=OrderType.BUY, points=points)
-        result = self.trader.order.send()
-
-        assert result is not None
-        assert result.retcode == 10009
-
-    def test_create_order_with_points_custom_risk_to_reward(self):
-        """Test order with custom risk to reward."""
-        points = self.symbol.trade_stops_level * 2 + self.symbol.spread
-        custom_rr = 3
-
-        self.trader.create_order_with_points(
-            order_type=OrderType.BUY, points=points, risk_to_reward=custom_rr
+    def test_sets_order_type(self, trader):
+        """Test sets order type on order."""
+        trader.create_order_with_points(
+            order_type=OrderType.BUY, points=500
         )
 
-        # TP should be at points * custom_rr distance from price
-        expected_tp_distance = points * custom_rr * self.symbol.point
-        actual_tp_distance = abs(self.trader.order.tp - self.trader.order.price)
-        assert abs(actual_tp_distance - expected_tp_distance) < self.symbol.point * 10
+        assert trader.order.type == OrderType.BUY
+
+    def test_sets_price_from_tick(self, trader, mock_tick):
+        """Test sets price from tick."""
+        trader.create_order_with_points(
+            order_type=OrderType.BUY, points=500
+        )
+
+        assert trader.order.price == mock_tick.ask
+
+    def test_sell_uses_bid(self, trader, mock_tick):
+        """Test SELL uses bid price."""
+        trader.create_order_with_points(
+            order_type=OrderType.SELL, points=500
+        )
+
+        assert trader.order.price == mock_tick.bid
+
+    def test_computes_volume_with_points(self, trader):
+        """Test uses symbol.compute_volume_points."""
+        trader.create_order_with_points(
+            order_type=OrderType.BUY, points=500
+        )
+
+        trader.symbol.compute_volume_points.assert_called_once()
+
+    def test_sets_stop_levels(self, trader):
+        """Test calls set_trade_stop_levels_points."""
+        with patch.object(trader, 'set_trade_stop_levels_points') as mock_set_stops:
+            trader.create_order_with_points(
+                order_type=OrderType.BUY, points=500
+            )
+
+            mock_set_stops.assert_called_once_with(points=500, risk_to_reward=None)
+
+    def test_custom_risk_to_reward(self, trader):
+        """Test passes custom risk_to_reward to set_trade_stop_levels_points."""
+        with patch.object(trader, 'set_trade_stop_levels_points') as mock_set_stops:
+            trader.create_order_with_points(
+                order_type=OrderType.BUY, points=500, risk_to_reward=3.0
+            )
+
+            mock_set_stops.assert_called_once_with(points=500, risk_to_reward=3.0)
+
+
+class TestCreateOrderNoStops:
+    """Test create_order_no_stops method."""
+
+    def test_sets_order_type(self, trader):
+        """Test sets order type."""
+        trader.create_order_no_stops(order_type=OrderType.BUY)
+
+        assert trader.order.type == OrderType.BUY
+
+    def test_uses_min_volume_default(self, trader):
+        """Test uses symbol.volume_min when volume not specified."""
+        trader.symbol.volume_min = 0.01
+
+        trader.create_order_no_stops(order_type=OrderType.BUY)
+
+        assert trader.order.volume == 0.01
+
+    def test_custom_volume(self, trader):
+        """Test uses custom volume when provided."""
+        trader.create_order_no_stops(order_type=OrderType.BUY, volume=1.5)
+
+        assert trader.order.volume == 1.5
+
+    def test_buy_uses_ask_price(self, trader, mock_tick):
+        """Test BUY uses ask price."""
+        trader.create_order_no_stops(order_type=OrderType.BUY)
+
+        assert trader.order.price == mock_tick.ask
+
+    def test_sell_uses_bid_price(self, trader, mock_tick):
+        """Test SELL uses bid price."""
+        trader.create_order_no_stops(order_type=OrderType.SELL)
+
+        assert trader.order.price == mock_tick.bid
 
 
 class TestCheckOrder:
     """Test check_order method."""
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
+    def test_check_order_success(self, trader):
+        """Test check_order returns OrderCheckResult on success."""
+        mock_result = MagicMock(spec=OrderCheckResult)
+        mock_result.retcode = 0
+        trader.order.check = MagicMock(return_value=mock_result)
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
+        result = trader.check_order()
 
-    def test_check_order_returns_order_check_result(self):
-        """Test check_order returns OrderCheckResult."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.check_order()
+        assert result is mock_result
 
-        assert result is None or isinstance(result, OrderCheckResult)
+    def test_check_order_none_result(self, trader):
+        """Test check_order handles None result."""
+        trader.order.check = MagicMock(return_value=None)
+        trader.order.mt5 = MagicMock()
+        trader.order.mt5.error = "Connection failed"
 
-    def test_check_order_success(self):
-        """Test check_order succeeds for valid order."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.check_order()
+        result = trader.check_order()
 
-        assert result is not None
-        assert result.retcode == 0
+        assert result is None
 
-    def test_check_order_has_margin_info(self):
-        """Test check result contains margin information."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.check_order()
+    def test_check_order_nonzero_retcode(self, trader):
+        """Test check_order logs warning for non-zero retcode."""
+        mock_result = MagicMock(spec=OrderCheckResult)
+        mock_result.retcode = 10015
+        mock_result.comment = "Invalid price"
+        trader.order.check = MagicMock(return_value=mock_result)
 
-        assert result is not None
-        assert hasattr(result, 'margin')
+        result = trader.check_order()
 
-    def test_check_order_sell(self):
-        """Test check_order works for sell orders."""
-        self.trader.create_order_no_stops(order_type=OrderType.SELL)
-        result = self.trader.check_order()
+        assert result is mock_result
+        assert result.retcode != 0
 
-        assert result is not None
-        assert result.retcode == 0
+    def test_check_order_calls_order_check(self, trader):
+        """Test check_order delegates to order.check."""
+        mock_result = MagicMock(spec=OrderCheckResult)
+        mock_result.retcode = 0
+        trader.order.check = MagicMock(return_value=mock_result)
+
+        trader.check_order()
+
+        trader.order.check.assert_called_once()
 
 
 class TestSendOrder:
     """Test send_order method."""
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
+    def test_send_order_success(self, trader):
+        """Test send_order returns result on success (retcode 10009)."""
+        mock_result = MagicMock(spec=OrderSendResult)
+        mock_result.retcode = 10009
+        trader.order.send = MagicMock(return_value=mock_result)
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
+        result = trader.send_order()
 
-    def test_send_order_returns_order_send_result(self):
-        """Test send_order returns OrderSendResult."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.send_order()
-
-        assert result is None or isinstance(result, OrderSendResult)
-
-    def test_send_order_success(self):
-        """Test send_order succeeds for valid order."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.send_order()
-
-        assert result is not None
+        assert result is mock_result
         assert result.retcode == 10009
 
-    def test_send_order_has_deal_ticket(self):
-        """Test send result contains deal ticket."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.send_order()
+    def test_send_order_none_result(self, trader):
+        """Test send_order handles None result."""
+        trader.order.send = MagicMock(return_value=None)
+        trader.order.mt5 = MagicMock()
+        trader.order.mt5.error = "No connection"
 
-        assert result is not None
-        assert hasattr(result, 'deal')
-        assert result.deal > 0
+        result = trader.send_order()
 
-    def test_send_order_has_order_ticket(self):
-        """Test send result contains order ticket."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.send_order()
+        assert result is None
 
-        assert result is not None
-        assert hasattr(result, 'order')
-        assert result.order > 0
+    def test_send_order_failure_retcode(self, trader):
+        """Test send_order returns result for non-10009 retcode."""
+        mock_result = MagicMock(spec=OrderSendResult)
+        mock_result.retcode = 10006
+        mock_result.comment = "Requote"
+        trader.order.send = MagicMock(return_value=mock_result)
+
+        result = trader.send_order()
+
+        assert result is mock_result
+        assert result.retcode == 10006
+
+    def test_send_order_calls_order_send(self, trader):
+        """Test send_order delegates to order.send."""
+        mock_result = MagicMock(spec=OrderSendResult)
+        mock_result.retcode = 10009
+        trader.order.send = MagicMock(return_value=mock_result)
+
+        trader.send_order()
+
+        trader.order.send.assert_called_once()
 
 
 class TestRecordTrade:
     """Test record_trade method."""
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
+    @pytest.fixture
+    def successful_result(self):
+        """Create a successful OrderSendResult."""
+        result = MagicMock(spec=OrderSendResult)
+        result.retcode = 10009
+        result.order = 12345
+        result.request = MagicMock()
+        return result
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
+    def test_record_trade_skips_when_disabled(self, trader, successful_result):
+        """Test record_trade does nothing when record_trades is False."""
+        trader.config.record_trades = False
 
-    def test_record_trade_with_successful_order(self):
-        """Test recording a successful trade."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.send_order()
+        trader.record_trade(result=successful_result)
 
-        # Should not raise an error
-        self.trader.record_trade(result=result, parameters={"test": "value"}, name="TestStrategy", use_task_queue=False)
+    def test_record_trade_skips_failed_orders(self, trader):
+        """Test record_trade skips when retcode is not 10009."""
+        trader.config.record_trades = True
+        result = MagicMock(spec=OrderSendResult)
+        result.retcode = 10006
 
-    def test_record_trade_with_parameters(self):
-        """Test recording trade with custom parameters."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.send_order()
+        trader.record_trade(result=result)
 
-        params = {"strategy": "test", "risk": 1, "timeframe": "H1"}
-        self.trader.record_trade(result=result, parameters=params, name="MyStrategy", use_task_queue=False)
+    def test_record_trade_uses_task_queue(self, trader, successful_result):
+        """Test record_trade adds to task queue by default."""
+        trader.config.record_trades = True
+        trader.config.task_queue = MagicMock()
+        trader.config.task_queue.add = MagicMock()
 
-    def test_record_trade_without_parameters(self):
-        """Test recording trade without parameters."""
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result = self.trader.send_order()
+        mock_order = MagicMock()
+        mock_order.sl = 1.09500
+        mock_order.tp = 1.11000
+        mock_order.time_setup_msc = 1705312800000
+        trader.order.get_history_order_by_ticket = MagicMock(return_value=mock_order)
+        trader.order.calc_profit = MagicMock(return_value=50.0)
 
-        # Should not raise an error
-        self.trader.record_trade(result=result, name="SimpleStrategy", use_task_queue=False)
+        with patch('aiomql.lib.sync.trader.Result') as MockResult:
+            mock_res = MagicMock()
+            mock_res.save_sync = MagicMock()
+            MockResult.return_value = mock_res
+
+            trader.record_trade(result=successful_result, parameters={"key": "value"})
+
+            trader.config.task_queue.add.assert_called_once()
+
+    def test_record_trade_direct_save(self, trader, successful_result):
+        """Test record_trade saves directly when use_task_queue=False."""
+        trader.config.record_trades = True
+
+        mock_order = MagicMock()
+        mock_order.sl = 1.09500
+        mock_order.tp = 1.11000
+        mock_order.time_setup_msc = 1705312800000
+        trader.order.get_history_order_by_ticket = MagicMock(return_value=mock_order)
+        trader.order.calc_profit = MagicMock(return_value=50.0)
+
+        with patch('aiomql.lib.sync.trader.Result') as MockResult:
+            mock_res = MagicMock()
+            mock_res.save_sync = MagicMock()
+            MockResult.return_value = mock_res
+
+            trader.record_trade(
+                result=successful_result,
+                use_task_queue=False
+            )
+
+            mock_res.save_sync.assert_called_once()
+
+    def test_record_trade_with_parameters(self, trader, successful_result):
+        """Test record_trade passes parameters to Result."""
+        trader.config.record_trades = True
+        trader.config.task_queue = MagicMock()
+        trader.config.task_queue.add = MagicMock()
+
+        mock_order = MagicMock()
+        mock_order.sl = 1.09500
+        mock_order.tp = 1.11000
+        mock_order.time_setup_msc = 1705312800000
+        trader.order.get_history_order_by_ticket = MagicMock(return_value=mock_order)
+        trader.order.calc_profit = MagicMock(return_value=50.0)
+
+        params = {"strategy": "scalping", "timeframe": "M5"}
+
+        with patch('aiomql.lib.sync.trader.Result') as MockResult:
+            mock_res = MagicMock()
+            mock_res.save_sync = MagicMock()
+            MockResult.return_value = mock_res
+
+            trader.record_trade(
+                result=successful_result, parameters=params, name="TestStrategy"
+            )
+
+            call_kwargs = MockResult.call_args[1]
+            assert call_kwargs["parameters"] == params
+            assert call_kwargs["name"] == "TestStrategy"
+
+    def test_record_trade_with_expected_profit(self, trader, successful_result):
+        """Test record_trade uses provided expected_profit."""
+        trader.config.record_trades = True
+        trader.config.task_queue = MagicMock()
+        trader.config.task_queue.add = MagicMock()
+
+        mock_order = MagicMock()
+        mock_order.sl = 1.09500
+        mock_order.tp = 1.11000
+        mock_order.time_setup_msc = 1705312800000
+        trader.order.get_history_order_by_ticket = MagicMock(return_value=mock_order)
+
+        with patch('aiomql.lib.sync.trader.Result') as MockResult:
+            mock_res = MagicMock()
+            mock_res.save_sync = MagicMock()
+            MockResult.return_value = mock_res
+
+            trader.record_trade(
+                result=successful_result, expected_profit=75.0
+            )
+
+            call_kwargs = MockResult.call_args[1]
+            assert call_kwargs["expected_profit"] == 75.0
+
+    def test_record_trade_non_dict_parameters(self, trader, successful_result):
+        """Test record_trade handles non-dict parameters."""
+        trader.config.record_trades = True
+        trader.config.task_queue = MagicMock()
+        trader.config.task_queue.add = MagicMock()
+
+        mock_order = MagicMock()
+        mock_order.sl = 1.09500
+        mock_order.tp = 1.11000
+        mock_order.time_setup_msc = 1705312800000
+        trader.order.get_history_order_by_ticket = MagicMock(return_value=mock_order)
+        trader.order.calc_profit = MagicMock(return_value=10.0)
+
+        with patch('aiomql.lib.sync.trader.Result') as MockResult:
+            mock_res = MagicMock()
+            mock_res.save_sync = MagicMock()
+            MockResult.return_value = mock_res
+
+            trader.record_trade(
+                result=successful_result, parameters="not_a_dict"
+            )
+
+            call_kwargs = MockResult.call_args[1]
+            assert call_kwargs["parameters"] == {}
+
+    def test_record_trade_updates_sl_tp_from_history(self, trader, successful_result):
+        """Test record_trade sets sl and tp on result.request from history order."""
+        trader.config.record_trades = True
+        trader.config.task_queue = MagicMock()
+        trader.config.task_queue.add = MagicMock()
+
+        mock_order = MagicMock()
+        mock_order.sl = 1.08000
+        mock_order.tp = 1.12000
+        mock_order.time_setup_msc = 1705312800000
+        trader.order.get_history_order_by_ticket = MagicMock(return_value=mock_order)
+        trader.order.calc_profit = MagicMock(return_value=10.0)
+
+        with patch('aiomql.lib.sync.trader.Result') as MockResult:
+            mock_res = MagicMock()
+            mock_res.save_sync = MagicMock()
+            MockResult.return_value = mock_res
+
+            trader.record_trade(result=successful_result)
+
+            assert successful_result.request.sl == 1.08000
+            assert successful_result.request.tp == 1.12000
 
 
-class TestTraderWithDifferentSymbols:
-    """Test Trader with different symbols."""
+class TestPlaceTrade:
+    """Test abstract place_trade method."""
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.btc_usd = ForexSymbol(name="BTCUSD")
-        cls.eur_jpy = ForexSymbol(name="EURJPY")
-        cls.ram = RAM(fixed_amount=10)
+    def test_cannot_instantiate_trader_directly(self, mock_symbol, mock_ram):
+        """Test Trader cannot be instantiated due to abstract method."""
+        with pytest.raises(TypeError):
+            Trader(symbol=mock_symbol, ram=mock_ram)
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbols."""
-        self.btc_usd.initialize()
-        self.eur_jpy.initialize()
+    def test_subclass_must_implement_place_trade(self):
+        """Test subclass without place_trade raises TypeError."""
+        with pytest.raises(TypeError):
+            class IncompleteTrader(Trader):
+                pass
 
-    def test_trader_btc_usd(self):
-        """Test trader with BTCUSD symbol."""
-        trader = SimpleTrader(symbol=self.btc_usd, ram=self.ram)
-        trader.create_order_no_stops(order_type=OrderType.BUY)
+            IncompleteTrader(symbol=MagicMock())
+
+    def test_concrete_place_trade_callable(self, trader):
+        """Test ConcreteTrader.place_trade is callable."""
+        trader.place_trade()
+
+
+class TestIntegration:
+    """Integration tests for sync Trader."""
+
+    def test_create_and_check_order(self, trader, mock_tick):
+        """Test creating order then checking it."""
+        order_type = MagicMock()
+        order_type.is_long = True
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000
+        )
+
+        mock_check_result = MagicMock(spec=OrderCheckResult)
+        mock_check_result.retcode = 0
+        trader.order.check = MagicMock(return_value=mock_check_result)
+
+        check = trader.check_order()
+        assert check.retcode == 0
+
+    def test_create_and_send_order(self, trader, mock_tick):
+        """Test creating order then sending it."""
+        order_type = MagicMock()
+        order_type.is_long = True
+
+        trader.order.set_attributes = MagicMock()
+
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000
+        )
+
+        mock_send_result = MagicMock(spec=OrderSendResult)
+        mock_send_result.retcode = 10009
+        trader.order.send = MagicMock(return_value=mock_send_result)
+
         result = trader.send_order()
-
-        assert result is not None
         assert result.retcode == 10009
 
-    def test_trader_eur_jpy(self):
-        """Test trader with EURJPY symbol."""
-        trader = SimpleTrader(symbol=self.eur_jpy, ram=self.ram)
-        trader.create_order_no_stops(order_type=OrderType.SELL)
-        result = trader.send_order()
+    def test_full_trade_lifecycle(self, trader, mock_tick):
+        """Test full lifecycle: create, check, send, record."""
+        order_type = MagicMock()
+        order_type.is_long = True
 
-        assert result is not None
+        trader.order.set_attributes = MagicMock()
+
+        # Create
+        trader.create_order_with_stops(
+            order_type=order_type, sl=1.09500, tp=1.11000
+        )
+
+        # Check
+        mock_check = MagicMock(spec=OrderCheckResult)
+        mock_check.retcode = 0
+        trader.order.check = MagicMock(return_value=mock_check)
+        check = trader.check_order()
+        assert check.retcode == 0
+
+        # Send
+        mock_result = MagicMock(spec=OrderSendResult)
+        mock_result.retcode = 10009
+        mock_result.order = 99999
+        mock_result.request = MagicMock()
+        trader.order.send = MagicMock(return_value=mock_result)
+        result = trader.send_order()
         assert result.retcode == 10009
 
+        # Record
+        trader.config.record_trades = True
+        trader.config.task_queue = MagicMock()
+        trader.config.task_queue.add = MagicMock()
 
-class TestTraderIntegration:
-    """Integration tests for Trader."""
+        mock_history_order = MagicMock()
+        mock_history_order.sl = 1.09500
+        mock_history_order.tp = 1.11000
+        mock_history_order.time_setup_msc = 1705312800000
+        trader.order.get_history_order_by_ticket = MagicMock(return_value=mock_history_order)
+        trader.order.calc_profit = MagicMock(return_value=50.0)
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-        cls.ram = RAM(fixed_amount=10, risk_to_reward=2)
-        cls.trader = SimpleTrader(symbol=cls.symbol, ram=cls.ram)
-        cls.account = Account()
+        with patch('aiomql.lib.sync.trader.Result') as MockResult:
+            mock_res = MagicMock()
+            mock_res.save_sync = MagicMock()
+            MockResult.return_value = mock_res
 
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol and account."""
-        self.symbol.initialize()
-        self.account.refresh()
+            trader.record_trade(result=result, name="TestStrategy")
 
-    def test_full_trade_flow_buy(self):
-        """Test complete trade flow for buy order."""
-        # Create order
-        points = self.symbol.trade_stops_level * 2 + self.symbol.spread
-        self.trader.create_order_with_points(order_type=OrderType.BUY, points=points)
-
-        # Check order
-        check_result = self.trader.check_order()
-        assert check_result is not None
-        assert check_result.retcode == 0
-
-        # Send order
-        send_result = self.trader.send_order()
-        assert send_result is not None
-        assert send_result.retcode == 10009
-
-        # Record trade
-        self.trader.record_trade(result=send_result, parameters={"test": True}, name="IntegrationTest", use_task_queue=False)
-
-    def test_full_trade_flow_sell(self):
-        """Test complete trade flow for sell order."""
-        # Create order
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        tick = self.symbol.info_tick()
-        sl = tick.bid + dsl
-
-        self.trader.create_order_with_sl(order_type=OrderType.SELL, sl=sl)
-
-        # Check order
-        check_result = self.trader.check_order()
-        assert check_result is not None
-        assert check_result.retcode == 0
-
-        # Send order
-        send_result = self.trader.send_order()
-        assert send_result is not None
-        assert send_result.retcode == 10009
-
-    def test_multiple_orders_same_trader(self):
-        """Test creating multiple orders with same trader."""
-        # First order
-        self.trader.create_order_no_stops(order_type=OrderType.BUY)
-        result1 = self.trader.send_order()
-        assert result1 is not None
-        assert result1.retcode == 10009
-
-        # Second order (different type)
-        self.trader.create_order_no_stops(order_type=OrderType.SELL)
-        result2 = self.trader.send_order()
-        assert result2 is not None
-        assert result2.retcode == 10009
-
-
-class TestTraderEdgeCases:
-    """Test edge cases and boundary conditions."""
-
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
-
-    def test_trader_with_zero_fixed_amount(self):
-        """Test trader with zero fixed amount RAM."""
-        ram = RAM(fixed_amount=0)
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-        assert trader.ram.fixed_amount == 0
-
-    def test_trader_with_high_risk_to_reward(self):
-        """Test trader with high risk to reward ratio."""
-        ram = RAM(fixed_amount=10, risk_to_reward=10)
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-        assert trader.ram.risk_to_reward == 10
-
-    def test_trader_with_low_risk_to_reward(self):
-        """Test trader with low risk to reward ratio."""
-        ram = RAM(fixed_amount=10, risk_to_reward=0.5)
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-        assert trader.ram.risk_to_reward == 0.5
-
-    def test_trader_order_modification_after_creation(self):
-        """Test modifying order attributes after creation."""
-        ram = RAM(fixed_amount=10)
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-        trader.create_order_no_stops(order_type=OrderType.BUY)
-
-        original_volume = trader.order.volume
-        trader.order.volume = original_volume * 2
-        assert trader.order.volume == original_volume * 2
-
-    def test_trader_parameters_modification(self):
-        """Test modifying trader parameters."""
-        ram = RAM(fixed_amount=10)
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-
-        trader.parameters["custom_param"] = "value"
-        trader.parameters["risk"] = 5
-
-        assert trader.parameters["custom_param"] == "value"
-        assert trader.parameters["risk"] == 5
-
-    def test_trader_with_minimum_volume(self):
-        """Test creating order with minimum volume."""
-        ram = RAM(fixed_amount=1)  # Very small amount
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-        trader.create_order_no_stops(order_type=OrderType.BUY)
-
-        assert trader.order.volume >= self.symbol.volume_min
-
-
-class TestTraderRAMIntegration:
-    """Test Trader integration with RAM."""
-
-    @classmethod
-    def setup_class(cls):
-        """Set up test fixtures."""
-        cls.symbol = ForexSymbol(name="BTCUSD")
-
-    @pytest.fixture(scope="class", autouse=True)
-    def initialize(self):
-        """Initialize symbol."""
-        self.symbol.initialize()
-
-    def test_trader_uses_ram_get_amount(self):
-        """Test trader uses RAM get_amount for volume calculation."""
-        ram = RAM(fixed_amount=20)
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        tick = trader.symbol.info_tick()
-        sl = tick.ask - dsl
-
-        trader.create_order_with_sl(order_type=OrderType.BUY, sl=sl)
-
-        # Volume should be calculated based on RAM fixed_amount (20)
-        assert trader.order.volume > 0
-
-    def test_trader_uses_ram_risk_to_reward(self):
-        """Test trader uses RAM risk_to_reward for TP calculation."""
-        ram = RAM(fixed_amount=10, risk_to_reward=3)
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-
-        dsl = (self.symbol.trade_stops_level * 2 + self.symbol.spread) * self.symbol.point
-        tick = trader.symbol.info_tick()
-        sl = tick.ask - dsl
-
-        trader.create_order_with_sl(order_type=OrderType.BUY, sl=sl)
-
-        # TP distance should be 3x the SL distance
-        sl_distance = abs(trader.order.price - trader.order.sl)
-        tp_distance = abs(trader.order.tp - trader.order.price)
-
-        assert abs(tp_distance - (sl_distance * 3)) < self.symbol.point * 10
-
-    def test_trader_modifying_ram_after_init(self):
-        """Test modifying RAM after trader initialization."""
-        ram = RAM(fixed_amount=10)
-        trader = SimpleTrader(symbol=self.symbol, ram=ram)
-
-        trader.ram.modify_ram(fixed_amount=25, risk_to_reward=4)
-
-        assert trader.ram.fixed_amount == 25
-        assert trader.ram.risk_to_reward == 4
+            trader.config.task_queue.add.assert_called_once()

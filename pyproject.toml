@@ -1,6 +1,6 @@
 [project]
 name = "aiomql"
-version = "4.0.16"
+version = "4.0.17"
 readme = "README.md"
 requires-python = ">=3.13"
 classifiers = [
@@ -16,8 +16,6 @@ dependencies = [
     "MetaTrader5>=5.0.5200",
     "pandas>=2.0.0",
     "mplfinance>=0.12.10b0",
-    "numba>=0.61.2",
-    "tqdm>=4.67.1",
 ]
 
 authors = [{name = "Ichinga Samuel", email = "ichingasamuel@gmail.com"}]
@@ -28,11 +26,19 @@ description = "Asynchronous MetaTrader5 library and Algorithmic Trading Framewor
 "Homepage" = "https://github.com/Ichinga-Samuel/aiomql"
 "Bug Tracker" = "https://github.com/Ichinga-Samuel/aiomql/issues"
 
+[project.optional-dependencies]
+
+all = [
+    "cython>=3.2.4",
+    "numba>=0.64.0",
+    "ta-lib>=0.6.8",
+    "tqdm>=4.67.3",
+]
+
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1",
     "pandas-stubs>=3.0.0.260204",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.3.0",
-    "ta-lib>=0.6.8",
 ]

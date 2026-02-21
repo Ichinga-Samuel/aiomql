@@ -1,4 +1,4 @@
-from aiomql import Strategy, ForexSymbol, TimeFrame, Tracker, OrderType, Sessions, Trader, ScalpTrader
+from aiomql import Strategy, ForexSymbol, TimeFrame, Tracker, OrderType, Sessions, Trader
 
 from .traders import TestTrader
 

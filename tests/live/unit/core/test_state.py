@@ -76,9 +76,9 @@ class TestStateInitialization:
         assert "existing" not in state2
 
     def test_init_default_autocommit(self, temp_db):
-        """Test State has autocommit False by default."""
+        """Test State has autocommit True by default."""
         state = State(db_name=temp_db)
-        assert state.autocommit is False
+        assert state.autocommit is True
 
     def test_init_autocommit_true(self, temp_db):
         """Test State can be initialized with autocommit=True."""

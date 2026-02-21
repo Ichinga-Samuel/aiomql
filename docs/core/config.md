@@ -1,110 +1,87 @@
-# Config
+# config
 
-## Table of Contents
-- [Config](#config.config)
-- [account_info](#config.account_info)
-- [backtest_engine](#config.backtest_engine)
-- [set_attributes](#config.set_attributes)
-- [load_config](#config.load_config)
- 
+`aiomql.core.config` — Singleton configuration manager for the aiomql package.
 
-<a id="config.config"></a>
-```python
-class Config
-```
-The global config object. It is a singleton class for handling configuration settings for the aiomql package.
-A single instance of this class is created and used per bot instance.
+## Overview
 
-#### Attributes:
-| Name                           | Type                          | Description                                                             |
-|--------------------------------|-------------------------------|-------------------------------------------------------------------------|
-| `login`                        | `int`                         | The account login number                                                |
-| `trade_record_mode`            | `Literal["csv", "json"]`      | The mode for recording trades                                           |
-| `password`                     | `str`                         | The account password                                                    |
-| `server`                       | `str`                         | The account server                                                      |
-| `path`                         | `str \| Path`                 | The path to the terminal                                                |
-| `timeout`                      | `int`                         | The timeout argument for the terminal                                   |
-| `filename`                     | `str`                         | The filename of the config file                                         |
-| `state`                        | `dict`                        | The state of the configuration                                          |
-| `root`                         | `Path`                        | The root directory of the project                                       |
-| `record_trades`                | `bool`                        | To record trades or not. Default is True                                |
-| `records_dir`                  | `Path`                        | The directory to store trade records, relative to the root directory    |
-| `plots_dir`                    | `Path`                        | Save chart plots as images                                              |
-| `backtest_dir`                 | `Path`                        | The directory to store backtest results, relative to the root directory |
-| `task_queue`                   | `TaskQueue`                   | The TaskQueue object for handling background tasks                      |
-| `_backtest_engine`             | `BackTestEngine`              | The backtest engine object                                              |
-| `bot`                          | `Bot`                         | The bot object                                                          |
-| `_instance`                    | `Self`                        | The instance of the Config class                                        |
-| `mode`                         | `Literal["backtest", "live"]` | The trading mode, either backtest or live, default is live              |
-| `use_terminal_for_backtesting` | `bool`                        | Use the terminal for backtesting, default is True                       |
-| `shutdown`                     | `bool`                        | A signal to shut down the terminal, default is False                    |
-| `force_shutdown`               | `bool`                        | A signal to force shut down the terminal, default is False              |
+The `Config` class manages all runtime settings — login credentials, paths, database names,
+trade-recording preferences, and shutdown signals. It implements the singleton pattern and can
+load values from a JSON file (default `aiomql.json`) or be configured programmatically.
 
-#### Notes:
-By default, the config class looks for a file named aiomql.json. This can be changed by setting the filename
-attribute to the desired file name. The root directory of the project can be set by passing the root argument
-to the load_config method or during object instantiation. If not provided it is assumed to be the current working
-directory. All directories and files are assumed to be relative to the root directory except when an absolute path
-is provided, this includes the config file, the records_dir and the backtest_dir attributes.
-The root directory is used to locate the config file and to set the records_dir and backtest_dir attributes.
+## Classes
 
+### `Config`
 
-<a id="config.account_info"></a>
-### account_info
-```python
-def account_info() -> dict['login', 'password', 'server']
-```
-Returns Account login details as found in the config object if available
+> Singleton configuration class.
 
-#### Returns:
-| Type                                  | Description                                           |
-|---------------------------------------|-------------------------------------------------------|
-| `dict['login', 'password', 'server']` | A dictionary with login, password, and server details |
+#### Key Attributes
 
-<a id="config.backtest_engine"></a>
-### backtest_engine
-```python
-@property
-def backtest_engine(self)
-```
-Returns the backtest engine object.
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `login` | `int` | `None` | MetaTrader account number |
+| `password` | `str` | `""` | Account password |
+| `server` | `str` | `""` | Account server name |
+| `path` | `str \| Path` | `""` | Path to the MT5 terminal executable |
+| `timeout` | `int` | `60000` | Connection timeout (ms) |
+| `filename` | `str` | `"aiomql.json"` | Config file name to search for |
+| `root` | `Path` | CWD | Project root directory |
+| `trade_record_mode` | `Literal["csv","json","sql"]` | `"sql"` | Trade recording format |
+| `record_trades` | `bool` | `True` | Enable/disable trade recording |
+| `records_dir_name` | `str` | `"trade_records"` | Trade records directory name |
+| `db_dir_name` | `str` | `"db"` | Database directory name |
+| `db_name` | `str \| Path` | `""` | SQLite database file name |
+| `shutdown` | `bool` | `False` | Graceful shutdown signal |
+| `force_shutdown` | `bool` | `False` | Forced shutdown signal |
+| `stop_trading` | `bool` | `False` | Stop opening new trades |
+| `db_commit_interval` | `float` | `30` | Database commit interval (seconds) |
+| `auto_commit` | `bool` | `False` | Auto-commit database changes |
+| `flush_state` | `bool` | `False` | Flush state on init |
+| `state` | `State` | — | Persistent key-value store |
+| `store` | `Store` | — | Key-value database store |
+| `task_queue` | `TaskQueue` | — | Background task queue |
+| `bot` | `Bot` | `None` | Associated bot instance |
 
-#### Returns:
-| Type             | Description                |
-|------------------|----------------------------|
-| `BackTestEngine` | The backtest engine object |
+#### `__init__(**kwargs)`
 
+Loads the config file and sets attributes. If already initialised and no `root` or
+`config_file` is provided, only the extra `kwargs` are applied.
 
-<a id="config.backtest_engine.setter"></a>
-```python
-@backtest_engine.setter
-def backtest_engine(self, value: BackTestEngine)
-```
-Sets the backtest engine object.
+#### `load_config(*, config_file=None, filename=None, root=None, **kwargs)`
 
-#### Parameters:
-| Name    | Type             | Description                |
-|---------|------------------|----------------------------|
-| `value` | `BackTestEngine` | The backtest engine object |
+Sets the project root, locates/loads the JSON config file, initialises the database,
+and applies all settings. Returns `self` for chaining.
 
-<a id="config.set_attributes"></a>
-### set_attributes
-```python
-def set_attributes(self, **kwargs)
-```
-Set attributes on the config object. The root folder attribute can't be set here.
+#### `set_root(root=None)`
 
-<a id="config.load_config"></a>
-### load_config
-```python
-def load_config(*, config_file: str | Path = None, filename: str = None, root: str | Path = None, **kwargs) -> Config
-```
-Load configuration settings from a file and reset the config object.
+Resolves and creates the project root directory. Falls back to CWD.
 
-#### Parameters:
-| Name          | Type          | Description                                                                                        |
-|---------------|---------------|----------------------------------------------------------------------------------------------------|
-| `config_file` | `str \| Path` | The absolute path to the config file.                                                              |
-| `filename`    | `str`         | The name of the file to load if file path is not specified. If not provided `aiomql.json` is used. |
-| `root`        | `str`         | The root directory of the project.                                                                 |
-| `**kwargs`    | `dict`        | Additional keyword arguments to be set on the config object.                                       |
+#### `find_config_file()`
+
+Searches up from CWD through parent directories for the config filename.
+
+**Returns:** `Path | None`
+
+#### `set_attributes(**kwargs)`
+
+Sets attributes, but prevents `root` and `config_file` from being changed here
+(use `load_config` instead).
+
+#### `state` *(property)*
+
+Lazily initialised `State` instance.
+
+#### `store` *(property)*
+
+Lazily initialised `Store` instance.
+
+#### `records_dir` *(cached property)*
+
+Path to the trade records directory. Created on first access.
+
+#### `plots_dir` *(cached property)*
+
+Path to the plots directory. Created on first access.
+
+#### `account_info` *(property)*
+
+Returns `{"login": …, "password": …, "server": …}`.

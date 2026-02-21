@@ -1,161 +1,49 @@
-# Bot
+# bot
 
-## Table of Contents
-- [Bot](#bot.bot)
-- [\_\_init\_\_](#bot.init)
-- [initialize](#bot.initialize)
-- [execute](#bot.execute)
-- [start](#bot.start)
-- [add_coroutine](#bot.add_coroutine)
-- [add_function](#bot.add_function)
-- [add_strategy](#bot.add_strategy)
-- [add_strategies](#bot.add_strategies)
-- [add_strategy_all](#bot.add_strategy_all)
-- [process_pool](#bot.run_bots)
+`aiomql.lib.bot` — Bot orchestrator for running trading strategies.
 
-<a id='bot.bot'></a>
-### Bot
-```python
-class Bot
-```
-"""The bot class. Create a bot instance to run strategies.
+## Overview
 
-#### Attributes:
-| Name         | Type               | Description                                | Default      |
-|--------------|--------------------|--------------------------------------------|--------------|
-| `account`    | `Account`          | Account Object.                            | None         |
-| `executor`   | `Executor`         | The executor.                              | None         |
-| `strategies` | `List[Strategies]` | A list of strategies to initialize and run | list()       |
-| `mt5`        | `MetaTrader`       | `A MetaTrader Instance`                    | MetaTrader() |
-| `config`     | `Config`           | A Config instance                          | Config()     |
+The `Bot` class is the main entry point for running one or more trading strategies against
+the MetaTrader 5 terminal. It manages the account connection lifecycle, strategy
+initialisation, task queuing, and graceful shutdown via signal handlers.
 
-<a id='bot.init'></a>
-### \__init\__
-```python
-def __init__()
-```
-Initializes the Bot class.
+Inherits from [`_Base`](../core/base.md).
 
+## Classes
 
-<a id='bot.initialize'></a>
-### initialize
-```python
-async def initialize(self)
-```
-Prepares the bot by signing in to the trading account and initializing the symbols for each strategy.
-Only strategies with successfully initialized symbols will be added to the executor. Starts the global task queue.
+### `Bot`
 
-Note: *initialize_sync* is a synchronous version of this method.
+> Orchestrates strategy execution and terminal connection.
 
-#### Raises:
-| Exception    | Description                   |
-|--------------|-------------------------------|
-| `SystemExit` | If sign in was not successful |
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `account` | `Account` | The trading account instance |
+| `executor` | `Executor` | Strategy and task executor |
+| `mt5` | `MetaTrader` | MetaTrader terminal interface |
 
+#### Lifecycle
 
-<a id='bot.execute'></a>
-### execute
-```python
-def execute()
-```
-Executes the bot. Use this method to run the bot in a synchronous manner.
-This method is blocking and will not return until the bot is done running.
+| Method | Description |
+|--------|-------------|
+| `initialize()` | Connects to MT5 and logs in, sets up the executor |
+| `start()` | Starts the bot: initialises, adds strategies, and runs the executor |
+| `stop()` | Gracefully stops the bot and shuts down the terminal |
+| `execute()` | Main execution loop |
 
+#### Strategy Management
 
-<a id='bot.start'></a>
-### start
-```python
-async def start()
-```
-Initialize the bot and execute it. Similar to calling **execute** method but is asynchronous.
+| Method | Description |
+|--------|-------------|
+| `add_strategy(strategy)` | Registers a `Strategy` subclass for execution |
+| `add_strategies(*strategies)` | Registers multiple strategies at once |
 
+#### Signal Handling
 
-<a id='bot.add_coroutine'></a>
-### add_coroutine
-```python
-def add_coroutine(self, coroutine: Coroutine, on_separate_thread=False, **kwargs)
-```
-Add a coroutine to the executor. By default, all coroutines added to the executor run on this same thread,
-using `asyncio.gather`, but if `on_separate_thread` is true then the coroutine is given it's own thread.
+| Method | Description |
+|--------|-------------|
+| `sigint_handler(sig, frame)` | Handles SIGINT for graceful shutdown |
 
-#### Parameters:
-| Name                 | Type        | Description                                        |
-|----------------------|-------------|----------------------------------------------------|
-| `coroutine`          | `Coroutine` | A coroutine to run in the executor                 |
-| `on_separate_thread` | `bool`      | Run coroutine on a separate thread in the executor |
-| `kwargs`             | `Any`       | Keyword arguments to pass to the coroutine         |
+## Synchronous API
 
-
-<a id='bot.add_function'></a>
-### add_function
-```python
-def add_function(self, function: Callable, **kwargs)
-```
-Add a function to the executor.
-#### Parameters:
-| Name       | Type       | Description                               |
-|------------|------------|-------------------------------------------|
-| `function` | `Callable` | A function to run in the executor         |
-| `kwargs`   | `Any`      | Keyword arguments to pass to the function |
-
-
-<a id='bot.add_strategy'></a>
-### add_strategy
-```python
-def add_strategy(self, strategy: Strategy)
-```
-Add a strategy to the list of strategies.
-
-#### Parameters:
-| Name       | Type       | Description                       |
-|------------|------------|-----------------------------------|
-| `strategy` | `Strategy` | A Strategy instance to run on bot |
-
-
-<a id='bot.add_strategies'></a>
-### add_strategies
-```python
-def add_strategies(strategies: Iterable[Strategy])
-```
-Add multiple strategies at the same time
-
-#### Parameters:
-| Name         | Type                 | Description                       |
-|--------------|----------------------|-----------------------------------|
-| `strategies` | `Iterable[Strategy]` | An iterable of Strategy instances |
-
-
-<a id='bot.add_strategy_all'></a>
-### add_strategy_all
-```python
-def add_strategy_all(*, strategy: Type[Strategy], params: dict | None = None, symbols: list[Symbol] = None, **kwargs)
-```
-Use this to run a single strategy on multiple symbols with the same parameters and keyword arguments.
-
-#### Parameters:
-| Name       | Type             | Description                                 |
-|------------|------------------|---------------------------------------------|
-| `strategy` | `Type[Strategy]` | A Strategy class                            |
-| `params`   | `dict` or `None` | A dictionary of parameters for the strategy |
-| `symbols`  | `list[Symbol]`   | A list of symbols to run the strategy on    |
-| `**kwargs` | `Any`            | Keyword arguments                           |
-
-
-<a id='bot.process_pool'></a>
-```python
-@classmethod
-def process_pool(cls, processes: dict[Callable: dict] = None, num_workers: int = None):
-```
-Run multiple processes (scripts, bots) at the same time in parallel with different accounts. 
-Running multiple functions is useful when you want to run different strategies on different accounts.
-The callable can for example be a bot instance that defines its own Config instance within the function scope.
-The dictionary should contain the callable as the key and the dictionary of keyword arguments to pass to the callable as
-the value. Use the path attribute of the config instance to specify the terminal path of each account.
-The num_workers parameter specifies the number of workers to use. If not specified, the number of workers will be the
-number of bots.
-
-#### Parameters
-| Name          | Type                   | Description                                                                     |
-|---------------|------------------------|---------------------------------------------------------------------------------|
-| `processes`   | `dict[Callable: dict]` | A dictionary of callables and their keyword arguments to run as processes       |
-| `num_workers` | `int`                  | The number of workers to use. If not specified, the number of bots will be used |
+A synchronous variant is available in `aiomql.lib.sync.bot`.

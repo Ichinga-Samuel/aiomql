@@ -16,7 +16,6 @@ from ...core.models import TradePosition, OrderSendResult
 from ...core.constants import OrderType, TradeAction
 from ...core.config import Config
 from ...core.sync.meta_trader import MetaTrader
-from ...core.meta_backtester import MetaBackTester
 from ...core.base import BaseMeta
 from ...core.exceptions import InvalidRequest
 from .order import Order
@@ -31,7 +30,7 @@ class Positions(metaclass=BaseMeta):
     Attributes:
         mt5 (MetaTrader): MetaTrader instance.
     """
-    mt5: MetaTrader | MetaBackTester
+    mt5: MetaTrader
     config: Config
     mode: str = "sync"
 

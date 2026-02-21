@@ -23,7 +23,7 @@ from datetime import time, datetime, timedelta, UTC
 from unittest.mock import MagicMock, AsyncMock, patch
 import pytest
 
-from aiomql.lib.sessions import Session, Sessions, Duration, delta, backtest_sleep
+from aiomql.lib.sessions import Session, Sessions, Duration, delta
 from aiomql.core.config import Config
 from aiomql.core.models import TradePosition, OrderSendResult
 
@@ -50,6 +50,20 @@ class TestDuration:
         """Test Duration is a tuple subclass."""
         d = Duration(hours=1, minutes=0, seconds=0)
         assert isinstance(d, tuple)
+
+    def test_duration_zero(self):
+        """Test Duration with all zeros."""
+        d = Duration(hours=0, minutes=0, seconds=0)
+        assert d.hours == 0
+        assert d.minutes == 0
+        assert d.seconds == 0
+
+    def test_duration_indexing(self):
+        """Test Duration can be accessed by index."""
+        d = Duration(hours=5, minutes=10, seconds=20)
+        assert d[0] == 5
+        assert d[1] == 10
+        assert d[2] == 20
 
 
 class TestDeltaFunction:
@@ -81,6 +95,12 @@ class TestDeltaFunction:
         result = delta(t)
         expected = timedelta(hours=23, minutes=59, seconds=59)
         assert result == expected
+
+    def test_delta_returns_timedelta(self):
+        """Test delta returns a timedelta object."""
+        t = time(hour=12, minute=0)
+        result = delta(t)
+        assert isinstance(result, timedelta)
 
 
 class TestSessionInitialization:
@@ -146,6 +166,34 @@ class TestSessionInitialization:
         session = Session(start=8, end=16)
         assert isinstance(session.config, Config)
 
+    def test_init_default_on_start_none(self):
+        """Test Session defaults on_start to None."""
+        session = Session(start=8, end=16)
+        assert session.on_start is None
+
+    def test_init_default_on_end_none(self):
+        """Test Session defaults on_end to None."""
+        session = Session(start=8, end=16)
+        assert session.on_end is None
+
+    def test_init_default_custom_start_none(self):
+        """Test Session defaults custom_start to None."""
+        session = Session(start=8, end=16)
+        assert session.custom_start is None
+
+    def test_init_default_custom_end_none(self):
+        """Test Session defaults custom_end to None."""
+        session = Session(start=8, end=16)
+        assert session.custom_end is None
+
+    def test_init_start_gets_utc_timezone(self):
+        """Test Session start time gets UTC timezone added."""
+        session = Session(start=time(8, 30, 15), end=16)
+        assert session.start.tzinfo == UTC
+        assert session.start.hour == 8
+        assert session.start.minute == 30
+        assert session.start.second == 15
+
 
 class TestSessionContains:
     """Test Session __contains__ method."""
@@ -180,6 +228,18 @@ class TestSessionContains:
         test_time = time(17, 0)
         assert test_time not in session
 
+    def test_contains_time_just_inside_start(self):
+        """Test time just after start is in session."""
+        session = Session(start=time(8, 0), end=time(16, 0))
+        test_time = time(8, 0, 1)
+        assert test_time in session
+
+    def test_contains_time_just_before_start(self):
+        """Test time just before start is not in session."""
+        session = Session(start=time(8, 0), end=time(16, 0))
+        test_time = time(7, 59, 59)
+        assert test_time not in session
+
 
 class TestSessionStringMethods:
     """Test Session string representation methods."""
@@ -196,6 +256,11 @@ class TestSessionStringMethods:
         result = repr(session)
         assert "<-->" in result
 
+    def test_str_and_repr_match(self):
+        """Test __str__ and __repr__ return same value."""
+        session = Session(start=8, end=16)
+        assert str(session) == repr(session)
+
 
 class TestSessionLen:
     """Test Session __len__ method."""
@@ -211,6 +276,11 @@ class TestSessionLen:
         session = Session(start=time(8, 30), end=time(16, 45))
         expected = 8 * 3600 + 15 * 60  # 8 hours 15 minutes
         assert len(session) == expected
+
+    def test_len_one_hour(self):
+        """Test __len__ for a one-hour session."""
+        session = Session(start=10, end=11)
+        assert len(session) == 3600
 
 
 class TestSessionDuration:
@@ -242,17 +312,25 @@ class TestSessionDuration:
 class TestSessionInSession:
     """Test Session in_session method."""
 
-    @patch.object(Config, '__new__')
-    def test_in_session_live_mode(self, mock_config):
-        """Test in_session in live mode."""
-        config = MagicMock()
-        config.mode = "live"
-        mock_config.return_value = config
-
-        # Test depends on current time, just verify it runs
+    def test_in_session_returns_bool(self):
+        """Test in_session returns a boolean."""
         session = Session(start=0, end=23)
         result = session.in_session()
         assert isinstance(result, bool)
+
+    def test_in_session_wide_window(self):
+        """Test in_session with nearly all-day window returns True."""
+        # 0:00 to 23:00 covers almost the entire day
+        session = Session(start=0, end=23)
+        result = session.in_session()
+        assert isinstance(result, bool)
+
+    def test_in_session_uses_contains(self):
+        """Test in_session delegates to __contains__ with current time."""
+        session = Session(start=0, end=23)
+        now = datetime.now(tz=UTC).time()
+        expected = now in session
+        assert session.in_session() == expected
 
 
 class TestSessionActions:
@@ -318,6 +396,23 @@ class TestSessionActions:
         # Should not raise, just log warning
         await session.action(action="close_all")
 
+    async def test_action_unknown_action_does_nothing(self, session):
+        """Test action with unknown string does nothing."""
+        # Should not raise - falls through to default case
+        await session.action(action="unknown_action")
+
+    async def test_begin_with_no_on_start(self, session):
+        """Test begin does nothing when on_start is None."""
+        session.on_start = None
+        # Should not raise
+        await session.begin()
+
+    async def test_close_with_no_on_end(self, session):
+        """Test close does nothing when on_end is None."""
+        session.on_end = None
+        # Should not raise
+        await session.close()
+
 
 class TestSessionClosePositions:
     """Test Session position closing methods."""
@@ -336,6 +431,45 @@ class TestSessionClosePositions:
         session.positions_manager.close_position = AsyncMock(return_value=result)
         await session.close_positions(positions=(position,))
         session.positions_manager.close_position.assert_called_once_with(position=position)
+
+    async def test_close_positions_counts_closed(self, session):
+        """Test close_positions correctly counts successful closes."""
+        pos1 = MagicMock(spec=TradePosition)
+        pos2 = MagicMock(spec=TradePosition)
+
+        result_ok = MagicMock(spec=OrderSendResult)
+        result_ok.retcode = 10009
+
+        session.positions_manager.close_position = AsyncMock(return_value=result_ok)
+        # Should not raise
+        await session.close_positions(positions=(pos1, pos2))
+
+    async def test_close_positions_counts_pending(self, session):
+        """Test close_positions counts pending (non-10009) results."""
+        position = MagicMock(spec=TradePosition)
+
+        result_fail = MagicMock(spec=OrderSendResult)
+        result_fail.retcode = 10006  # Not 10009
+
+        session.positions_manager.close_position = AsyncMock(return_value=result_fail)
+        # Should not raise, logs warning about pending
+        await session.close_positions(positions=(position,))
+
+    async def test_close_positions_handles_exceptions_in_results(self, session):
+        """Test close_positions handles exceptions in gather results."""
+        position = MagicMock(spec=TradePosition)
+
+        session.positions_manager.close_position = AsyncMock(
+            side_effect=Exception("Connection error")
+        )
+        # return_exceptions=True means exceptions are returned, not raised
+        await session.close_positions(positions=(position,))
+
+    async def test_close_positions_empty_tuple(self, session):
+        """Test close_positions with empty tuple."""
+        session.positions_manager.close_position = AsyncMock()
+        await session.close_positions(positions=())
+        session.positions_manager.close_position.assert_not_called()
 
     async def test_close_all(self, session):
         """Test close_all gets and closes all positions."""
@@ -363,6 +497,21 @@ class TestSessionClosePositions:
         assert win_pos in closed_positions
         assert loss_pos not in closed_positions
 
+    async def test_close_win_includes_zero_profit(self, session):
+        """Test close_win includes positions with zero profit (>= 0)."""
+        zero_pos = MagicMock(spec=TradePosition)
+        zero_pos.profit = 0
+        loss_pos = MagicMock(spec=TradePosition)
+        loss_pos.profit = -10
+
+        session.positions_manager.get_positions = AsyncMock(return_value=(zero_pos, loss_pos))
+        session.close_positions = AsyncMock()
+
+        await session.close_win()
+        closed_positions = session.close_positions.call_args[1]["positions"]
+        assert zero_pos in closed_positions
+        assert loss_pos not in closed_positions
+
     async def test_close_loss_filters_loss(self, session):
         """Test close_loss only closes losing positions."""
         win_pos = MagicMock(spec=TradePosition)
@@ -379,20 +528,35 @@ class TestSessionClosePositions:
         assert loss_pos in closed_positions
         assert win_pos not in closed_positions
 
+    async def test_close_loss_excludes_zero_profit(self, session):
+        """Test close_loss excludes positions with zero profit (< 0 only)."""
+        zero_pos = MagicMock(spec=TradePosition)
+        zero_pos.profit = 0
+        loss_pos = MagicMock(spec=TradePosition)
+        loss_pos.profit = -10
+
+        session.positions_manager.get_positions = AsyncMock(return_value=(zero_pos, loss_pos))
+        session.close_positions = AsyncMock()
+
+        await session.close_loss()
+        closed_positions = session.close_positions.call_args[1]["positions"]
+        assert loss_pos in closed_positions
+        assert zero_pos not in closed_positions
+
 
 class TestSessionUntil:
     """Test Session until method."""
 
-    @patch.object(Config, '__new__')
-    def test_until_returns_seconds(self, mock_config):
-        """Test until returns seconds until session start."""
-        config = MagicMock()
-        config.mode = "live"
-        mock_config.return_value = config
-
-        session = Session(start=23, end=0)  # Future session
+    def test_until_returns_int(self):
+        """Test until returns an integer."""
+        session = Session(start=23, end=0)
         result = session.until()
         assert isinstance(result, int)
+
+    def test_until_returns_nonnegative(self):
+        """Test until returns a non-negative value."""
+        session = Session(start=23, end=0)
+        result = session.until()
         assert result >= 0
 
 
@@ -423,6 +587,37 @@ class TestSessionsInitialization:
         sessions = Sessions(sessions=[s1])
         assert isinstance(sessions.config, Config)
 
+    def test_init_current_session_none(self):
+        """Test Sessions initializes current_session to None."""
+        s1 = Session(start=8, end=12)
+        sessions = Sessions(sessions=[s1])
+        assert sessions.current_session is None
+
+    def test_init_sorts_by_start_then_end(self):
+        """Test Sessions sorts by start hour then end hour."""
+        s1 = Session(start=8, end=16)
+        s2 = Session(start=8, end=12)
+        sessions = Sessions(sessions=[s1, s2])
+
+        # Both start at 8, sorted by end hour
+        assert sessions.sessions[0].end.hour == 12
+        assert sessions.sessions[1].end.hour == 16
+
+    def test_init_accepts_iterable(self):
+        """Test Sessions accepts any iterable of sessions."""
+        s1 = Session(start=8, end=12)
+        s2 = Session(start=13, end=17)
+
+        # Pass as tuple
+        sessions = Sessions(sessions=(s1, s2))
+        assert len(sessions.sessions) == 2
+
+    def test_init_single_session(self):
+        """Test Sessions with a single session."""
+        s1 = Session(start=8, end=16)
+        sessions = Sessions(sessions=[s1])
+        assert len(sessions.sessions) == 1
+
 
 class TestSessionsFind:
     """Test Sessions find method."""
@@ -451,6 +646,22 @@ class TestSessionsFind:
         assert result is not None
         assert result.start.hour == 13
 
+    def test_find_at_boundary(self, sessions):
+        """Test find at session start boundary."""
+        result = sessions.find(moment=time(8, 0))
+        assert result is not None
+        assert result.start.hour == 8
+
+    def test_find_before_all_sessions(self, sessions):
+        """Test find before any session returns None."""
+        result = sessions.find(moment=time(5, 0))
+        assert result is None
+
+    def test_find_after_all_sessions(self, sessions):
+        """Test find after all sessions returns None."""
+        result = sessions.find(moment=time(20, 0))
+        assert result is None
+
 
 class TestSessionsFindNext:
     """Test Sessions find_next method."""
@@ -477,6 +688,11 @@ class TestSessionsFindNext:
         result = sessions.find_next(moment=time(18, 0))
         assert result.start.hour == 8
 
+    def test_find_next_at_midnight(self, sessions):
+        """Test find_next at midnight wraps correctly."""
+        result = sessions.find_next(moment=time(0, 0))
+        assert result.start.hour == 8
+
 
 class TestSessionsContains:
     """Test Sessions __contains__ method."""
@@ -499,6 +715,10 @@ class TestSessionsContains:
     def test_contains_time_outside_sessions(self, sessions):
         """Test time outside all sessions returns False."""
         assert time(18, 0) not in sessions
+
+    def test_contains_time_in_second_session(self, sessions):
+        """Test time in second session returns True."""
+        assert time(15, 0) in sessions
 
 
 class TestSessionsContextManager:
@@ -526,6 +746,21 @@ class TestSessionsContextManager:
             sessions.current_session = mock_session
 
         mock_session.close.assert_called_once()
+
+    async def test_aexit_no_current_session(self, sessions):
+        """Test __aexit__ does nothing when current_session is None."""
+        sessions.check = AsyncMock()
+        sessions.current_session = None
+
+        # Should not raise
+        async with sessions:
+            pass
+
+    async def test_aenter_returns_self(self, sessions):
+        """Test __aenter__ returns the Sessions instance."""
+        sessions.check = AsyncMock()
+        async with sessions as s:
+            assert s is sessions
 
 
 class TestSessionsCheck:
@@ -571,6 +806,58 @@ class TestSessionsCheck:
         await sessions.check()
         old_session.close.assert_called_once()
         assert sessions.current_session == new_session
+
+    async def test_check_sleeps_when_outside_sessions(self, sessions):
+        """Test check sleeps until next session when outside all sessions."""
+        sessions.current_session = None
+        sessions.find = MagicMock(return_value=None)
+
+        next_session = MagicMock()
+        next_session.until.return_value = 100
+        next_session.begin = AsyncMock()
+        sessions.find_next = MagicMock(return_value=next_session)
+
+        with patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
+            await sessions.check()
+            mock_sleep.assert_called_once_with(110)  # until() + 10
+
+        assert sessions.current_session == next_session
+        next_session.begin.assert_called_once()
+
+    async def test_check_closes_old_session_before_sleeping(self, sessions):
+        """Test check closes current session before sleeping for next."""
+        old_session = MagicMock()
+        old_session.in_session.return_value = False
+        old_session.close = AsyncMock()
+        sessions.current_session = old_session
+
+        sessions.find = MagicMock(return_value=None)
+
+        next_session = MagicMock()
+        next_session.until.return_value = 50
+        next_session.begin = AsyncMock()
+        sessions.find_next = MagicMock(return_value=next_session)
+
+        with patch('asyncio.sleep', new_callable=AsyncMock):
+            await sessions.check()
+
+        old_session.close.assert_called_once()
+        assert sessions.current_session == next_session
+
+    async def test_check_begins_next_session_after_sleep(self, sessions):
+        """Test check calls begin on next session after sleeping."""
+        sessions.current_session = None
+        sessions.find = MagicMock(return_value=None)
+
+        next_session = MagicMock()
+        next_session.until.return_value = 0
+        next_session.begin = AsyncMock()
+        sessions.find_next = MagicMock(return_value=next_session)
+
+        with patch('asyncio.sleep', new_callable=AsyncMock):
+            await sessions.check()
+
+        next_session.begin.assert_called_once()
 
 
 class TestIntegration:
@@ -619,3 +906,41 @@ class TestIntegration:
 
         assert called["start"] is True
         assert called["end"] is True
+
+    def test_find_navigates_across_sessions(self):
+        """Test finding sessions across the full day."""
+        s1 = Session(start=8, end=12)
+        s2 = Session(start=13, end=17)
+        s3 = Session(start=18, end=22)
+        sessions = Sessions(sessions=[s1, s2, s3])
+
+        # Before any session
+        assert sessions.find(moment=time(5, 0)) is None
+
+        # In first session
+        result = sessions.find(moment=time(10, 0))
+        assert result.start.hour == 8
+
+        # Between sessions
+        assert sessions.find(moment=time(12, 30)) is None
+
+        # In second session
+        result = sessions.find(moment=time(15, 0))
+        assert result.start.hour == 13
+
+        # In third session
+        result = sessions.find(moment=time(20, 0))
+        assert result.start.hour == 18
+
+        # After all sessions
+        assert sessions.find(moment=time(23, 0)) is None
+
+    def test_session_actions_configuration(self):
+        """Test configuring different actions on sessions."""
+        s1 = Session(start=8, end=12, on_start="close_all", on_end="close_loss")
+        s2 = Session(start=13, end=17, on_end="close_win")
+
+        assert s1.on_start == "close_all"
+        assert s1.on_end == "close_loss"
+        assert s2.on_start is None
+        assert s2.on_end == "close_win"

@@ -1,90 +1,29 @@
-# ForexSymbol
+# forex_symbol
 
-## Table of Contents
-- [ForexSymbol](#forex_symbol.forex_symbol)
-- [pip](#forex_symbol.pip)
-- [compute_points](#forex_symbol.compute_points)
-- [compute_volume_points](#forex_symbol.compute_volume_points)
-- [compute_volume_sl](#forex_symbol.compute_volume_sl)
+`aiomql.contrib.symbols.forex_symbol` — Forex-specific symbol with pip calculations.
 
+## Overview
 
-<a id="forex_symbol.forex_symbol"></a>
-### ForexSymbol
-```python
-class ForexSymbol(Symbol)
-```
-Subclass of Symbol for Forex Symbols. Handles the computation of stop loss, take profit and volume.
+Extends [`Symbol`](../../lib/symbol.md) with forex-specific logic for pip size,
+pip value, and volume calculations based on currency pairs.
 
-<a id="forex_symbol.pip"></a>
-### pip
-```python
-@property
-def pip()
-```
-Returns the pip value of the symbol. This is ten times the point value for forex symbols.
+## Classes
 
-#### Returns:
-|Type|Description|
-|----|-----------|
-|float|The pip value of the symbol.|
+### `ForexSymbol`
 
-<a id="forex_symbol.compute_points"></a>
-### compute_points
-```python
-def compute_points(*, amount: float, volume: float) -> float
-```
-Compute the number of points required for a trade. Given the amount and the volume of the trade.
+> Symbol subclass tailored for forex instruments.
 
-#### Parameters:
-|Name|Type|Description|
-|----|----|-----------|
-|amount|float|Amount to trade|
-|volume|float|Volume to trade|
+Inherits from [`Symbol`](../../lib/symbol.md).
 
-#### Returns:
-|Type|Description|
-|----|-----------|
-|float|The number of points required for the trade.|
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `pip` | `float` | Pip size for the pair |
 
-<a id="forex_symbol.compute_volume_points"></a>
-### compute_volume_points
-```python
-async def compute_volume_points(*,
-                                amount: float,
-                                points: float,
-                                round_down: bool = False) -> float
-```
-Compute the volume required for a trade. Given the amount and the number of points.
+#### Methods
 
-#### Parameters:
-|Name|Type|Description|
-|----|----|-----------|
-|amount|float|Amount to trade|
-|points|float|Number of points|
-|round_down|bool|round down the computed volume to the nearest step default True|
-
-#### Returns:
-|Type|Description|
-|----|-----------|
-|float|The volume required for the trade.
-
-
-<a id="forex_symbol.compute_volume_sl"></a>
-### compute_volume_sl
-```python
-async def compute_volume_sl(*, amount: float, price: float, sl: float, round_down: bool = False) -> float
-```
-Compute the volume required for a trade. Given the amount, the price and the stop loss.
-
-#### Parameters:
-|Name|Type|Description|
-|----|----|-----------|
-|amount|float|Amount to trade|
-|price|float|Price of the trade|
-|sl|float|Stop loss|
-|round_down|bool|round down the computed volume to the nearest step default True|
-
-#### Returns:
-|Type|Description|
-|----|-----------|
-|float|The volume required for the trade.
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `pip_value(volume)` | `float` | Value of one pip for a given lot size |
+| `pips_to_price(pips)` | `float` | Converts a pip count to a price delta |
+| `price_to_pips(price_delta)` | `float` | Converts a price delta to pips |
+| `calc_volume(amount, pips)` | `float` | Calculates lot size from risk amount and pip distance |

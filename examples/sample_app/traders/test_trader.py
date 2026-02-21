@@ -40,13 +40,6 @@ class TestTrader(Trader):
                     PositionTracker(open_position, track_hedges)
                     PositionTracker(open_position, close_after, function_params=kwargs)
                     PositionTracker(open_position, exit_at_profit, function_params={"tp": 10, "sl": -12})
-                    price_to_hedge = await open_position.profit_to_price(profit=-10)
-                    price_to_stack = await open_position.profit_to_price(profit=5)
-                    price_to_stack = round_off(price_to_stack, self.symbol.digits)
-                    price_to_hedge = round_off(price_to_hedge, self.symbol.digits)
-                    # await open_position.stack_order(price=price_to_stack, open_pos_params={"close_stacks_on_close": True})
-                    # await open_position.hedge_order(price=price_to_hedge,
-                    #                                 open_pos_params={"close_hedges_on_close": True})
                     price_to_hedge2 = await open_position.profit_to_price(profit=-8)
                     price_to_hedge2 = round_off(price_to_hedge2, self.symbol.digits)
                     price_to_stack2 = await open_position.profit_to_price(profit=7)

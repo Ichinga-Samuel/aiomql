@@ -1,3 +1,24 @@
+"""Core MetaTrader5 interface module for the aiomql package.
+
+This module provides the low-level interface to the MetaTrader5 Python package
+by dynamically binding MT5 constants, functions, and types onto the MetaCore
+class using the MetaBase metaclass.
+
+Classes:
+    MetaBase: Metaclass that dynamically binds MetaTrader5 attributes.
+    MetaCore: Base class exposing all MT5 constants, functions, and types.
+
+Note:
+    This module is not intended for direct use. Use the higher-level
+    ``MetaTrader`` class from ``aiomql.core.meta_trader`` instead.
+
+Module-Level Attributes:
+    constants (tuple[str, ...]): Names of MT5 integer constants to bind.
+    core_mt5_functions (tuple[str, ...]): Names of MT5 API functions to bind
+        (prefixed with ``_`` on MetaCore).
+    types (tuple[str, ...]): Names of MT5 named-tuple types to bind.
+"""
+
 from typing import Callable
 
 import MetaTrader5
@@ -292,6 +313,14 @@ types = (
 
 
 class MetaBase(type):
+    """Metaclass that dynamically binds MetaTrader5 attributes to classes.
+
+    On class creation, this metaclass introspects the ``MetaTrader5`` module
+    and copies constants, API functions, and named-tuple types into the
+    new class's namespace. API functions are prefixed with ``_`` to
+    distinguish them from the higher-level wrappers.
+    """
+
     def __new__(mcs, cls_name, bases, cls_dict):
         defaults: dict = getattr(MetaTrader5, "__dict__", {})
         callables = {f"_{key}": value for key in core_mt5_functions if (value := defaults.get(key, None)) is not None}
@@ -304,6 +333,35 @@ class MetaBase(type):
 
 
 class MetaCore(metaclass=MetaBase):
+    """Base class exposing all MetaTrader5 constants, functions, and types.
+
+    Created by ``MetaBase``, this class holds every MT5 constant (e.g.
+    ``TIMEFRAME_M1``), every API function (e.g. ``_initialize``), and every
+    named-tuple type (e.g. ``TradePosition``) as class attributes.
+
+    Attributes:
+        TIMEFRAME_* (int): Timeframe constants.
+        COPY_TICKS_* (int): Tick copy-mode constants.
+        TICK_FLAG_* (int): Tick flag constants.
+        POSITION_TYPE_* (int): Position type constants.
+        ORDER_TYPE_* (int): Order type constants.
+        ORDER_STATE_* (int): Order state constants.
+        ORDER_FILLING_* (int): Order filling mode constants.
+        ORDER_TIME_* (int): Order time-in-force constants.
+        DEAL_TYPE_* (int): Deal type constants.
+        DEAL_ENTRY_* (int): Deal entry constants.
+        TRADE_ACTION_* (int): Trade action constants.
+        SYMBOL_* (int): Symbol property constants.
+        ACCOUNT_* (int): Account property constants.
+        BOOK_TYPE_* (int): Book type constants.
+        TRADE_RETCODE_* (int): Trade return code constants.
+        RES_* (int): Result code constants.
+        _initialize (Callable): Bound ``MetaTrader5.initialize``.
+        _shutdown (Callable): Bound ``MetaTrader5.shutdown``.
+        _login (Callable): Bound ``MetaTrader5.login``.
+        config (Config): The global configuration instance.
+    """
+
     TIMEFRAME_M1: int
     TIMEFRAME_M2: int
     TIMEFRAME_M3: int

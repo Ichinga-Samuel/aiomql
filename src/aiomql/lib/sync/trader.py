@@ -17,7 +17,6 @@ Example:
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime, UTC
 from typing import TypeVar
 from logging import getLogger
 

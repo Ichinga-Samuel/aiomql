@@ -1,3 +1,22 @@
+"""Data models for MetaTrader5 objects used throughout the aiomql library.
+
+This module defines data-model classes that mirror the structures returned
+by the MetaTrader5 terminal.  They serve as base classes for higher-level
+wrappers that add trading logic.
+
+Classes:
+    AccountInfo: Trading account details.
+    TerminalInfo: Terminal configuration and state.
+    SymbolInfo: Financial instrument properties.
+    BookInfo: Market-depth entry.
+    TradeOrder: Active pending order.
+    TradeRequest: Parameters for a trade operation.
+    OrderCheckResult: Result of an order validation check.
+    OrderSendResult: Result of a sent trade request.
+    TradePosition: Open position details.
+    TradeDeal: Historical deal record.
+"""
+
 import MetaTrader5 as mt5
 
 from .constants import (
@@ -26,11 +45,6 @@ from .constants import (
 )
 
 from .base import Base
-
-"""
-This module contains data models used in this library.
-They are used as base classes to other classes having the same properties but with more methods.
-"""
 
 
 class AccountInfo(Base):
@@ -354,17 +368,39 @@ class SymbolInfo(Base):
     name: str = ""
 
     def __repr__(self):
+        """Returns a concise string representation showing the symbol name.
+
+        Returns:
+            str: Formatted as ``"SymbolInfo(name=<name>)"``.
+        """
         return "%(class)s(name=%(name)s)" % {"class": self.__class__.__name__, "name": self.name}
 
     def __str__(self):
+        """Returns the symbol name as a string.
+
+        Returns:
+            str: The symbol name.
+        """
         return self.name
 
     def __eq__(self, other: "SymbolInfo"):
+        """Checks equality based on symbol name.
+
+        Args:
+            other: Another SymbolInfo instance to compare against.
+
+        Returns:
+            bool: True if both symbols have the same name.
+        """
         return self.name == other.name
 
     def __hash__(self):
+        """Returns a hash based on the symbol name.
+
+        Returns:
+            int: Hash of the symbol name string.
+        """
         return hash(self.name)
-        # return hash(id(self))
 
 
 class BookInfo(Base):
@@ -523,11 +559,27 @@ class OrderCheckResult(Base):
         self.request = TradeRequest(**req)
 
     def __getstate__(self):
+        """Prepares instance state for pickling.
+
+        Converts the ``request`` attribute from a TradeRequest object
+        to a plain dictionary so it can be serialized.
+
+        Returns:
+            dict: The instance state with ``request`` as a dict.
+        """
         state = self.__dict__.copy()
         state["request"] = state.pop('request').dict
         return state
 
     def __setstate__(self, state):
+        """Restores instance state from a pickled dictionary.
+
+        Converts the ``request`` dictionary back into a TradeRequest
+        object.
+
+        Args:
+            state: The pickled state dictionary.
+        """
         state['request'] = TradeRequest(**state['request'])
         self.__dict__.update(state)
 
@@ -578,11 +630,27 @@ class OrderSendResult(Base):
         self.request = TradeRequest(**req)
 
     def __getstate__(self):
+        """Prepares instance state for pickling.
+
+        Converts the ``request`` attribute from a TradeRequest object
+        to a plain dictionary so it can be serialized.
+
+        Returns:
+            dict: The instance state with ``request`` as a dict.
+        """
         state = self.__dict__.copy()
         state["request"] = state.pop('request').dict
         return state
 
     def __setstate__(self, state):
+        """Restores instance state from a pickled dictionary.
+
+        Converts the ``request`` dictionary back into a TradeRequest
+        object.
+
+        Args:
+            state: The pickled state dictionary.
+        """
         state['request'] = TradeRequest(**state['request'])
         self.__dict__.update(state)
 

@@ -35,7 +35,6 @@ from aiomql.lib.strategy import Strategy
 from aiomql.lib.symbol import Symbol
 from aiomql.core.config import Config
 from aiomql.core.meta_trader import MetaTrader
-from aiomql.core.meta_backtester import MetaBackTester
 
 
 class MockStrategy:
@@ -83,11 +82,9 @@ class TestBotInitialization:
     @patch('aiomql.lib.executor.signal')
     @patch.object(Config, '__new__')
     @patch('aiomql.lib.bot.MetaTrader')
-    @patch('aiomql.lib.bot.MetaBackTester')
-    def test_init_creates_config(self, mock_backtester, mock_metatrader, mock_config_new, mock_signal):
+    def test_init_creates_config(self, mock_metatrader, mock_config_new, mock_signal):
         """Test Bot init creates config instance."""
         mock_config = MagicMock()
-        mock_config.mode = "live"
         mock_config_new.return_value = mock_config
 
         bot = Bot()
@@ -97,11 +94,9 @@ class TestBotInitialization:
     @patch('aiomql.lib.executor.signal')
     @patch.object(Config, '__new__')
     @patch('aiomql.lib.bot.MetaTrader')
-    @patch('aiomql.lib.bot.MetaBackTester')
-    def test_init_creates_executor(self, mock_backtester, mock_metatrader, mock_config_new, mock_signal):
+    def test_init_creates_executor(self, mock_metatrader, mock_config_new, mock_signal):
         """Test Bot init creates executor instance."""
         mock_config = MagicMock()
-        mock_config.mode = "live"
         mock_config_new.return_value = mock_config
 
         bot = Bot()
@@ -112,11 +107,9 @@ class TestBotInitialization:
     @patch('aiomql.lib.executor.signal')
     @patch.object(Config, '__new__')
     @patch('aiomql.lib.bot.MetaTrader')
-    @patch('aiomql.lib.bot.MetaBackTester')
-    def test_init_creates_empty_strategies_list(self, mock_backtester, mock_metatrader, mock_config_new, mock_signal):
+    def test_init_creates_empty_strategies_list(self, mock_metatrader, mock_config_new, mock_signal):
         """Test Bot init creates empty strategies list."""
         mock_config = MagicMock()
-        mock_config.mode = "live"
         mock_config_new.return_value = mock_config
 
         bot = Bot()
@@ -126,11 +119,9 @@ class TestBotInitialization:
     @patch('aiomql.lib.executor.signal')
     @patch.object(Config, '__new__')
     @patch('aiomql.lib.bot.MetaTrader')
-    @patch('aiomql.lib.bot.MetaBackTester')
-    def test_init_sets_initialized_false(self, mock_backtester, mock_metatrader, mock_config_new, mock_signal):
+    def test_init_sets_initialized_false(self, mock_metatrader, mock_config_new, mock_signal):
         """Test Bot init sets initialized to False."""
         mock_config = MagicMock()
-        mock_config.mode = "live"
         mock_config_new.return_value = mock_config
 
         bot = Bot()
@@ -140,11 +131,9 @@ class TestBotInitialization:
     @patch('aiomql.lib.executor.signal')
     @patch.object(Config, '__new__')
     @patch('aiomql.lib.bot.MetaTrader')
-    @patch('aiomql.lib.bot.MetaBackTester')
-    def test_init_sets_login_false(self, mock_backtester, mock_metatrader, mock_config_new, mock_signal):
+    def test_init_sets_login_false(self, mock_metatrader, mock_config_new, mock_signal):
         """Test Bot init sets login to False."""
         mock_config = MagicMock()
-        mock_config.mode = "live"
         mock_config_new.return_value = mock_config
 
         bot = Bot()
@@ -154,11 +143,9 @@ class TestBotInitialization:
     @patch('aiomql.lib.executor.signal')
     @patch.object(Config, '__new__')
     @patch('aiomql.lib.bot.MetaTrader')
-    @patch('aiomql.lib.bot.MetaBackTester')
-    def test_init_uses_metatrader_for_live_mode(self, mock_backtester, mock_metatrader, mock_config_new, mock_signal):
-        """Test Bot init uses MetaTrader for live mode."""
+    def test_init_creates_metatrader_instance(self, mock_metatrader, mock_config_new, mock_signal):
+        """Test Bot init creates MetaTrader instance."""
         mock_config = MagicMock()
-        mock_config.mode = "live"
         mock_config_new.return_value = mock_config
         mock_mt = MagicMock()
         mock_metatrader.return_value = mock_mt
@@ -171,19 +158,15 @@ class TestBotInitialization:
     @patch('aiomql.lib.executor.signal')
     @patch.object(Config, '__new__')
     @patch('aiomql.lib.bot.MetaTrader')
-    @patch('aiomql.lib.bot.MetaBackTester')
-    def test_init_uses_metabacktester_for_backtest_mode(self, mock_backtester, mock_metatrader, mock_config_new, mock_signal):
-        """Test Bot init uses MetaBackTester for backtest mode."""
+    def test_init_passes_bot_to_config(self, mock_metatrader, mock_config_new, mock_signal):
+        """Test Bot init passes itself to Config constructor."""
         mock_config = MagicMock()
-        mock_config.mode = "backtest"
         mock_config_new.return_value = mock_config
-        mock_bt = MagicMock()
-        mock_backtester.return_value = mock_bt
 
         bot = Bot()
 
-        mock_backtester.assert_called_once()
-        assert bot.mt5 == mock_bt
+        # Config is called with bot=self
+        mock_config_new.assert_called()
 
 
 class TestProcessPool:
@@ -239,6 +222,31 @@ class TestProcessPool:
 
             mock_pool.assert_called_once_with(max_workers=5)
 
+    def test_process_pool_multiple_processes(self):
+        """Test process_pool submits all processes."""
+        def mock_process1(**kwargs):
+            pass
+
+        def mock_process2(**kwargs):
+            pass
+
+        def mock_process3(**kwargs):
+            pass
+
+        with patch.object(ProcessPoolExecutor, '__init__', return_value=None):
+            with patch.object(ProcessPoolExecutor, '__enter__') as mock_enter:
+                mock_executor = MagicMock()
+                mock_enter.return_value = mock_executor
+                with patch.object(ProcessPoolExecutor, '__exit__', return_value=None):
+                    processes = {
+                        mock_process1: {"x": 1},
+                        mock_process2: {"y": 2},
+                        mock_process3: {},
+                    }
+                    Bot.process_pool(processes=processes, num_workers=4)
+
+                    assert mock_executor.submit.call_count == 3
+
 
 class TestStartTerminal:
     """Test Bot start_terminal and start_terminal_sync methods."""
@@ -249,7 +257,6 @@ class TestStartTerminal:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config_new.return_value = mock_config
                 with patch('aiomql.lib.bot.MetaTrader') as mock_mt:
                     mock_mt_instance = MagicMock()
@@ -290,6 +297,25 @@ class TestStartTerminal:
         assert bot.initialized is True
         assert bot.login is False
 
+    async def test_start_terminal_calls_initialize_then_login(self, bot):
+        """Test start_terminal calls initialize before login."""
+        call_order = []
+        bot.mt5.initialize = AsyncMock(return_value=True, side_effect=lambda: call_order.append("init") or True)
+        bot.mt5.login = AsyncMock(return_value=True, side_effect=lambda: call_order.append("login") or True)
+
+        await bot.start_terminal()
+
+        assert call_order == ["init", "login"]
+
+    async def test_start_terminal_skips_login_when_init_fails(self, bot):
+        """Test start_terminal does not call login when initialize fails."""
+        bot.mt5.initialize = AsyncMock(return_value=False)
+        bot.mt5.login = AsyncMock(return_value=True)
+
+        await bot.start_terminal()
+
+        bot.mt5.login.assert_not_called()
+
     def test_start_terminal_sync_success(self, bot):
         """Test start_terminal_sync with successful login."""
         bot.mt5.initialize_sync = MagicMock(return_value=True)
@@ -322,6 +348,15 @@ class TestStartTerminal:
         assert bot.initialized is True
         assert bot.login is False
 
+    def test_start_terminal_sync_skips_login_when_init_fails(self, bot):
+        """Test start_terminal_sync does not call login_sync when initialize fails."""
+        bot.mt5.initialize_sync = MagicMock(return_value=False)
+        bot.mt5.login_sync = MagicMock(return_value=True)
+
+        bot.start_terminal_sync()
+
+        bot.mt5.login_sync.assert_not_called()
+
 
 class TestInitialize:
     """Test Bot initialize and initialize_sync methods."""
@@ -332,7 +367,6 @@ class TestInitialize:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config.shutdown = False
                 mock_config.task_queue = MagicMock()
                 mock_config.task_queue.run = AsyncMock()
@@ -403,6 +437,16 @@ class TestInitialize:
 
         assert bot.config.shutdown is False
 
+    async def test_initialize_calls_init_strategies(self, bot):
+        """Test initialize calls init_strategies."""
+        bot.mt5.initialize = AsyncMock(return_value=True)
+        bot.mt5.login = AsyncMock(return_value=True)
+
+        with patch.object(bot, 'init_strategies', new_callable=AsyncMock) as mock_init_strats:
+            await bot.initialize()
+
+            mock_init_strats.assert_called_once()
+
     def test_initialize_sync_successful_login(self, bot):
         """Test initialize_sync with successful login."""
         bot.mt5.initialize_sync = MagicMock(return_value=True)
@@ -449,6 +493,16 @@ class TestInitialize:
 
         assert bot.config.shutdown is True
 
+    def test_initialize_sync_calls_init_strategies_sync(self, bot):
+        """Test initialize_sync calls init_strategies_sync."""
+        bot.mt5.initialize_sync = MagicMock(return_value=True)
+        bot.mt5.login_sync = MagicMock(return_value=True)
+
+        with patch.object(bot, 'init_strategies_sync') as mock_init_strats:
+            bot.initialize_sync()
+
+            mock_init_strats.assert_called_once()
+
 
 class TestAddFunctionAndCoroutine:
     """Test Bot add_function and add_coroutine methods."""
@@ -459,7 +513,6 @@ class TestAddFunctionAndCoroutine:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config_new.return_value = mock_config
                 with patch('aiomql.lib.bot.MetaTrader'):
                     return Bot()
@@ -524,7 +577,6 @@ class TestExecuteAndStart:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config.shutdown = False
                 mock_config.task_queue = MagicMock()
                 mock_config.task_queue.run = AsyncMock()
@@ -618,7 +670,6 @@ class TestAddStrategy:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config_new.return_value = mock_config
                 with patch('aiomql.lib.bot.MetaTrader'):
                     return Bot()
@@ -667,6 +718,25 @@ class TestAddStrategy:
 
         assert len(bot.strategies) == 2
 
+    def test_add_strategies_with_tuple(self, bot):
+        """Test add_strategies works with tuple input."""
+        strategy1 = MockStrategy()
+        strategy2 = MockStrategy()
+
+        bot.add_strategies(strategies=(strategy1, strategy2))
+
+        assert len(bot.strategies) == 2
+
+    def test_add_strategies_with_generator(self, bot):
+        """Test add_strategies works with generator input."""
+        def strategy_gen():
+            yield MockStrategy()
+            yield MockStrategy()
+
+        bot.add_strategies(strategies=strategy_gen())
+
+        assert len(bot.strategies) == 2
+
     def test_add_strategy_all_creates_strategy_per_symbol(self, bot):
         """Test add_strategy_all creates strategy for each symbol."""
         mock_symbol1 = MagicMock(spec=Symbol)
@@ -705,6 +775,21 @@ class TestAddStrategy:
 
         assert bot.strategies[0].kwargs.get("extra_arg") == "extra_value"
 
+    def test_add_strategy_all_assigns_correct_symbols(self, bot):
+        """Test add_strategy_all assigns the correct symbol to each strategy."""
+        mock_symbol1 = MagicMock(spec=Symbol)
+        mock_symbol1.name = "EURUSD"
+        mock_symbol2 = MagicMock(spec=Symbol)
+        mock_symbol2.name = "GBPUSD"
+
+        bot.add_strategy_all(
+            strategy=MockStrategy,
+            symbols=[mock_symbol1, mock_symbol2]
+        )
+
+        assert bot.strategies[0].symbol == mock_symbol1
+        assert bot.strategies[1].symbol == mock_symbol2
+
 
 class TestInitStrategy:
     """Test Bot init_strategy, init_strategies, init_strategy_sync, and init_strategies_sync methods."""
@@ -715,7 +800,6 @@ class TestInitStrategy:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config_new.return_value = mock_config
                 with patch('aiomql.lib.bot.MetaTrader'):
                     return Bot()
@@ -739,6 +823,15 @@ class TestInitStrategy:
 
             assert result is False
             mock_add.assert_not_called()
+
+    async def test_init_strategy_returns_bool(self, bot):
+        """Test init_strategy returns boolean result."""
+        strategy = MockStrategy()
+
+        with patch.object(bot.executor, 'add_strategy'):
+            result = await bot.init_strategy(strategy=strategy)
+
+            assert isinstance(result, bool)
 
     async def test_init_strategies_initializes_all(self, bot):
         """Test init_strategies initializes all strategies."""
@@ -765,6 +858,20 @@ class TestInitStrategy:
 
             # Only successful strategy should be added
             assert bot.executor.add_strategy.call_count == 1
+
+    async def test_init_strategies_uses_gather(self, bot):
+        """Test init_strategies uses asyncio.gather for concurrent initialization."""
+        strategy1 = MockStrategy()
+        strategy2 = MockStrategy()
+        strategy3 = MockStrategy()
+
+        bot.strategies = [strategy1, strategy2, strategy3]
+
+        with patch.object(bot.executor, 'add_strategy'):
+            with patch('aiomql.lib.bot.asyncio.gather', new_callable=AsyncMock, return_value=[True, True, True]) as mock_gather:
+                await bot.init_strategies()
+
+                mock_gather.assert_called_once()
 
     def test_init_strategy_sync_success_adds_to_executor(self, bot):
         """Test init_strategy_sync adds successful strategy to executor."""
@@ -812,6 +919,22 @@ class TestInitStrategy:
             # Only successful strategy should be added
             assert bot.executor.add_strategy.call_count == 1
 
+    def test_init_strategies_sync_sequential(self, bot):
+        """Test init_strategies_sync initializes strategies sequentially."""
+        strategy1 = MockStrategy()
+        strategy2 = MockStrategy()
+
+        bot.strategies = [strategy1, strategy2]
+
+        with patch.object(bot.executor, 'add_strategy') as mock_add:
+            bot.init_strategies_sync()
+
+            # Verify both were added
+            calls = mock_add.call_args_list
+            assert len(calls) == 2
+            assert calls[0] == call(strategy=strategy1)
+            assert calls[1] == call(strategy=strategy2)
+
 
 class TestIntegration:
     """Integration tests for Bot."""
@@ -822,7 +945,6 @@ class TestIntegration:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config.shutdown = False
                 mock_config.task_queue = MagicMock()
                 mock_config.task_queue.run = AsyncMock()
@@ -913,38 +1035,20 @@ class TestIntegration:
         # Only successful strategy should be added to executor
         assert len(bot.executor.strategy_runners) == 1
 
-    def test_backtest_mode_uses_metabacktester(self):
-        """Test bot uses MetaBackTester in backtest mode."""
+    def test_bot_always_uses_metatrader(self):
+        """Test bot always creates MetaTrader instance."""
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "backtest"
-                mock_config_new.return_value = mock_config
-                with patch('aiomql.lib.bot.MetaTrader') as mock_mt:
-                    with patch('aiomql.lib.bot.MetaBackTester') as mock_bt:
-                        mock_bt_instance = MagicMock()
-                        mock_bt.return_value = mock_bt_instance
-
-                        bot = Bot()
-
-                        mock_bt.assert_called_once()
-                        assert bot.mt5 == mock_bt_instance
-
-    def test_live_mode_uses_metatrader(self):
-        """Test bot uses MetaTrader in live mode."""
-        with patch('aiomql.lib.executor.signal'):
-            with patch.object(Config, '__new__') as mock_config_new:
-                mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config_new.return_value = mock_config
                 with patch('aiomql.lib.bot.MetaTrader') as mock_mt:
                     mock_mt_instance = MagicMock()
                     mock_mt.return_value = mock_mt_instance
-                    with patch('aiomql.lib.bot.MetaBackTester'):
-                        bot = Bot()
 
-                        mock_mt.assert_called_once()
-                        assert bot.mt5 == mock_mt_instance
+                    bot = Bot()
+
+                    mock_mt.assert_called_once()
+                    assert bot.mt5 == mock_mt_instance
 
 
 class TestEdgeCases:
@@ -956,7 +1060,6 @@ class TestEdgeCases:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config_new:
                 mock_config = MagicMock()
-                mock_config.mode = "live"
                 mock_config.shutdown = False
                 mock_config.task_queue = MagicMock()
                 mock_config.task_queue.run = AsyncMock()
@@ -1040,3 +1143,28 @@ class TestEdgeCases:
         bot.init_strategies_sync()
 
         assert len(bot.executor.strategy_runners) == 0
+
+    async def test_start_terminal_return_value_propagated(self, bot):
+        """Test start_terminal return value is the result of the last operation."""
+        bot.mt5.initialize = AsyncMock(return_value=True)
+        bot.mt5.login = AsyncMock(return_value=True)
+
+        result = await bot.start_terminal()
+
+        assert result is True
+
+    def test_execute_checks_shutdown_after_initialize(self, bot):
+        """Test execute checks config.shutdown after initialize_sync."""
+        call_order = []
+
+        def mock_init():
+            call_order.append("init")
+            bot.config.shutdown = True  # Set shutdown during init
+
+        with patch.object(bot, 'initialize_sync', side_effect=mock_init):
+            with patch.object(bot.executor, 'execute') as mock_exec:
+                bot.execute()
+
+                # initialize_sync should be called but executor.execute should not
+                assert call_order == ["init"]
+                mock_exec.assert_not_called()

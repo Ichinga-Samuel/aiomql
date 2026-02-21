@@ -1,185 +1,166 @@
-# Aiomql - Bot Building Framework and Asynchronous MetaTrader5 Library
-![GitHub](https://img.shields.io/github/license/ichinga-samuel/aiomql?style=plastic)
-![GitHub issues](https://img.shields.io/github/issues/ichinga-samuel/aiomql?style=plastic)
-![PyPI](https://img.shields.io/pypi/v/aiomql)
+# aiomql
 
+**Asynchronous MetaTrader 5 Library & Algorithmic Trading Framework**
 
-### Installation
+![PyPI Version](https://img.shields.io/pypi/v/aiomql)
+![Python](https://img.shields.io/pypi/pyversions/aiomql)
+![License](https://img.shields.io/github/license/ichinga-samuel/aiomql?style=plastic)
+![GitHub Issues](https://img.shields.io/github/issues/ichinga-samuel/aiomql?style=plastic)
+
+---
+
+## Overview
+
+**aiomql** is a Python framework for building algorithmic trading bots on top of MetaTrader 5.
+It wraps every MT5 API call in an async-friendly interface and provides high-level abstractions
+for strategies, risk management, trade execution, session management, and position tracking —
+so you can focus on your trading logic instead of boilerplate.
+
+---
+
+## Key Features
+
+- **Async-first MT5 interface** — every MT5 function wrapped with `asyncio.to_thread` and automatic reconnection
+- **Full synchronous API** — every async class has a sync counterpart for scripts and notebooks
+- **Bot orchestrator** — run multiple strategies on multiple instruments concurrently via thread-pool executors
+- **Strategy base class** — define `trade()`, set parameters, and let the framework handle the execution loop
+- **Session management** — restrict trading to specific time windows (London, New York, Tokyo, etc.)
+- **Risk & money management** — built-in `RAM` (Risk Assessment & Money) manager
+- **Trade recording** — persist results to CSV, JSON, or SQLite
+- **Position tracking** — monitor open positions with trailing stops, extending take-profits, and custom tracking functions
+- **Technical analysis** — built-in pandas-ta integration plus optional TA-Lib support
+- **Multi-process execution** — run independent bots in parallel with `Bot.process_pool()`
+- **JSON configuration** — centralise credentials and settings in `aiomql.json`
+- **Contributed extensions** — pre-built traders (`SimpleTrader`, `ScalpTrader`), strategies (`Chaos`), and specialised symbols (`ForexSymbol`)
+
+---
+
+## Requirements
+
+- **Python ≥ 3.13**
+- **Windows** (MetaTrader 5 terminal requirement)
+- A MetaTrader 5 trading account
+
+---
+
+## Installation
+
 ```bash
 pip install aiomql
 ```
 
-### Key Features
-- Asynchronous Python Library For MetaTrader5
-- Asynchronous Bot Building Framework
-- Build bots for trading in different financial markets.
-- Use threadpool executors to run multiple strategies on multiple instruments concurrently
-- Records and keep track of trades and strategies in csv files.
-- Helper classes for Bot Building. Easy to use and extend.
-- Compatible with pandas-ta.
-- Sample Pre-Built strategies
-- Specify and Manage Trading Sessions
-- Risk Management
-- Backtesting Engine
-- Run multiple bots concurrently with different accounts from the same broker or different brokers
-- Easy to use and very accurate backtesting engine
+**Optional extras:**
 
-### As an asynchronous MetaTrader5 Libray
+```bash
+# TA-Lib technical indicators
+pip install aiomql[talib]
+
+# Performance (Cython, Numba, tqdm)
+pip install aiomql[performance]
+
+# Both
+pip install aiomql[talib,performance]
+```
+
+---
+
+## Quick Start
+
+### Configuration
+
+Create an `aiomql.json` file in your project root:
+
+```json
+{
+  "login": 12345678,
+  "password": "your_password",
+  "server": "YourBroker-Demo"
+}
+```
+
+All settings can also be set programmatically via the singleton `Config` class:
+
+```python
+from aiomql import Config
+
+config = Config(login=12345678, password="your_password", server="YourBroker-Demo")
+```
+
+### Using the MetaTrader Interface
+
 ```python
 import asyncio
-
 from aiomql import MetaTrader
 
 
 async def main():
-    mt5 = MetaTrader()
-    res = await mt5.initialize(login=31288540, password='nwa0#anaEze', server='Deriv-Demo')
-    if not res:
-        print('Unable to login and initialize')
-        return 
-    # get account information
-    acc = await mt5.account_info()
-    print(acc)
-    # get symbols
-    symbols = await mt5.symbols_get()
-    print(symbols)
-    
+    async with MetaTrader() as mt5:
+        # Account information
+        account = await mt5.account_info()
+        print(account)
+
+        # Available symbols
+        symbols = await mt5.symbols_get()
+        print(f"{len(symbols)} symbols available")
+
+
 asyncio.run(main())
 ```
 
-### As a Bot Building FrameWork using a Sample Strategy
-Aiomql allows you to focus on building trading strategies and not worry about the underlying infrastructure.
-It provides a simple and easy to use framework for building bots with rich features and functionalities.
+---
 
+## Building a Trading Bot
 
-```python
-from datetime import time
-import logging
+### 1. Define a Strategy
 
-from aiomql import Bot, ForexSymbol, FingerTrap, Session, Sessions, RAM, SimpleTrader, TimeFrame, Chaos
-
-logging.basicConfig(level=logging.INFO)
-
-
-def build_bot():
-    bot = Bot()
-    # configure the parameters and the trader for a strategy
-    params = {'fast_period': 8, 'slow_period': 34, 'etf': TimeFrame.M5}
-    symbols = ['GBPUSD', 'AUDUSD', 'USDCAD', 'EURGBP', 'EURUSD']
-    symbols = [ForexSymbol(name=sym) for sym in symbols]
-    strategies = [FingerTrap(symbol=sym, params=params)for sym in symbols]
-    bot.add_strategies(strategies)
-    
-    # create a strategy that uses sessions
-    # sessions are used to specify the trading hours for a particular market
-    # the strategy will only trade during the specified sessions
-    london = Session(name='London', start=time(8, 0), end=time(16, 0))
-    new_york = Session(name='New York', start=time(13, 0), end=time(21, 0))
-    tokyo = Session(name='Tokyo', start=time(0, 0), end=time(8, 0))
-    
-    sessions = Sessions(sessions=[london, new_york, tokyo])  
-    jpy_strategy = Chaos(symbol=ForexSymbol(name='USDJPY'), sessions=sessions)
-    bot.add_strategy(strategy=jpy_strategy)
-    bot.execute()
-
-# run the bot
-build_bot()
-```
-
-### Backtesting
-Aiomql provides a very accurate backtesting engine that allows you to test your trading strategies before deploying
-them in the market. The backtest engine prioritizes accuracy over speed, but allows you to increase the speed
-as desired. It is very easy to use and provides a lot of flexibility. The backtester is designed to run strategies
-seamlessly without need for modification of the strategy code. When running in backtest mode all the classes that
-needs to know if they are running in backtest mode will be able to do so and adjust their behavior accordingly.
+Subclass `Strategy` and implement the `trade()` method. Parameters declared in the
+`parameters` dict become instance attributes and can be overridden at construction time.
 
 ```python
-from aiomql import MetaBackTester, BackTestEngine, MetaTrader
-import logging
-from datetime import datetime, UTC
-
-from aiomql.lib.backtester import BackTester
-from aiomql.core import Config
-from aiomql.contrib.strategies import FingerTrap
-from aiomql.contrib.symbols import ForexSymbol
-from aiomql.core.backtesting import BackTestEngine
-
-
-def back_tester():
-    config = Config(mode="backtest")
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    syms = ["Volatility 75 Index", "Volatility 100 Index", "Volatility 25 Index", "Volatility 10 Index"]
-    symbols = [ForexSymbol(name=sym) for sym in syms]
-    strategies = [FingerTrap(symbol=symbol) for symbol in symbols]
-    
-    # create start time and end time for the backtest
-    start = datetime(2024, 5, 1, tzinfo=UTC)
-    stop_time = datetime(2024, 5, 2, tzinfo=UTC)
-    end = datetime(2024, 5, 7, tzinfo=UTC)
-    
-    # create a backtest engine
-    back_test_engine = BackTestEngine(start=start, end=end, speed=3600, stop_time=stop_time,
-                                      close_open_positions_on_exit=True, assign_to_config=True, preload=True,
-                                      account_info={"balance": 350})
-    # add it to the backtester
-    backtester = BackTester(backtest_engine=back_test_engine)
-    # add strategies to the backtester
-    backtester.add_strategies(strategies=strategies)
-    backtester.execute()
-
-
-back_tester()
-```
-
-### Writing a Custom Strategy
-Aiomql provides a simple and easy to use framework for building trading strategies. You can easily extend the
-framework to build your own custom strategies. Below is an example of a simple strategy that buys when the fast
-moving average crosses above the slow moving average and sells when the fast moving average crosses below the slow
-moving average.
-
-```python
-# emaxover.py
+# strategies/ema_crossover.py
 from aiomql import Strategy, ForexSymbol, TimeFrame, Tracker, OrderType, Sessions, Trader, ScalpTrader
 
 
 class EMAXOver(Strategy):
-    ttf: TimeFrame  # time frame for the strategy
-    tcc: int  # how many candles to consider
-    fast_ema: int  # fast moving average period
-    slow_ema: int  # slow moving average period
-    tracker: Tracker  # tracker to keep track of strategy state
-    interval: TimeFrame  # intervals to check for entry and exit signals
-    timeout: int  # timeout after placing an order in seconds
+    ttf: TimeFrame
+    tcc: int
+    fast_ema: int
+    slow_ema: int
+    tracker: Tracker
+    interval: TimeFrame
+    timeout: int
 
-    # default parameters for the strategy
-    # they are set as attributes. You can override them in the constructor via the params argument.
-    parameters = {'ttf': TimeFrame.H1, 'tcc': 3000, 'fast_ema': 34, 'slow_ema': 55, 'interval': TimeFrame.M15,
-                  'timeout': 3 * 60 * 60}
+    parameters = {
+        "ttf": TimeFrame.H1,
+        "tcc": 3000,
+        "fast_ema": 34,
+        "slow_ema": 55,
+        "interval": TimeFrame.M15,
+        "timeout": 3 * 60 * 60,
+    }
 
-    def __init__(self, *, symbol: ForexSymbol, params: dict | None = None, trader: Trader = None,
-                 sessions: Sessions = None, name: str = "EMAXOver"):
+    def __init__(self, *, symbol: ForexSymbol, params: dict | None = None,
+                 trader: Trader = None, sessions: Sessions = None,
+                 name: str = "EMAXOver"):
         super().__init__(symbol=symbol, params=params, sessions=sessions, name=name)
         self.tracker = Tracker(snooze=self.interval.seconds)
         self.trader = trader or ScalpTrader(symbol=self.symbol)
 
     async def find_entry(self):
-        # get the candles
-        candles = await self.symbol.copy_rates_from_pos(timeframe=self.ttf, start_position=0, count=self.tcc)
-
-        # get the fast moving average
+        candles = await self.symbol.copy_rates_from_pos(
+            timeframe=self.ttf, count=self.tcc
+        )
         candles.ta.ema(length=self.fast_ema, append=True)
-        # get the slow moving average
         candles.ta.ema(length=self.slow_ema, append=True)
-        # rename the columns
-        candles.rename(**{f"EMA_{self.fast_ema}": "fast_ema", f"EMA_{self.slow_ema}": "slow_ema"}, inplace=True)
+        candles.rename(
+            **{f"EMA_{self.fast_ema}": "fast_ema",
+               f"EMA_{self.slow_ema}": "slow_ema"},
+            inplace=True,
+        )
 
-        # check for crossovers
-        # fast above slow
-        fas = candles.ta_lib.cross(candles.fast_ema, candles.slow_ema, above=True)
-        # fast below slow
-        fbs = candles.ta_lib.cross(candles.fast_ema, candles.slow_ema, above=False)
+        fas = candles.ta_lib.above(candles.fast_ema, candles.slow_ema)
+        fbs = candles.ta_lib.below(candles.fast_ema, candles.slow_ema)
 
-        ## check for entry signals in the current candle
         if fas.iloc[-1]:
             self.tracker.update(order_type=OrderType.BUY, snooze=self.timeout)
         elif fbs.iloc[-1]:
@@ -192,32 +173,137 @@ class EMAXOver(Strategy):
         if self.tracker.order_type is None:
             await self.sleep(secs=self.tracker.snooze)
         else:
-            await self.trader.place_trade(order_type=self.tracker.order_type, parameters=self.parameters)
+            await self.trader.place_trade(
+                order_type=self.tracker.order_type, parameters=self.parameters
+            )
             await self.delay(secs=self.tracker.snooze)
 ```
 
-### Testing
+### 2. Wire It Up with a Bot
 
-Run the tests with pytest
+```python
+import logging
+from aiomql import Bot, ForexSymbol, OpenPositionsTracker
+from strategies.ema_crossover import EMAXOver
+
+logging.basicConfig(level=logging.INFO)
+
+
+def main():
+    symbols = [ForexSymbol(name=s) for s in ["EURUSD", "GBPUSD", "USDJPY"]]
+    strategies = [EMAXOver(symbol=sym) for sym in symbols]
+
+    bot = Bot()
+    bot.add_strategies(strategies)
+
+    # Optionally track open positions on a separate thread
+    bot.add_coroutine(
+        coroutine=OpenPositionsTracker(autocommit=True).track,
+        on_separate_thread=True,
+    )
+
+    bot.execute()  # synchronous entry point (blocks until shutdown)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+> **Tip:** Use `await bot.start()` instead of `bot.execute()` if you're already inside an async context.
+
+### 3. Trading Sessions
+
+Restrict when a strategy trades by passing `Sessions`:
+
+```python
+from datetime import time
+from aiomql import Session, Sessions, ForexSymbol, Chaos
+
+london = Session(name="London", start=time(8, 0), end=time(16, 0))
+new_york = Session(name="New York", start=time(13, 0), end=time(21, 0))
+
+sessions = Sessions(sessions=[london, new_york])
+strategy = Chaos(symbol=ForexSymbol(name="USDJPY"), sessions=sessions)
+```
+
+### 4. Multi-Process Execution
+
+Run completely independent bots in separate processes:
+
+```python
+from aiomql import Bot
+
+
+def run_forex():
+    bot = Bot()
+    # ... add forex strategies ...
+    bot.execute()
+
+
+def run_crypto():
+    bot = Bot()
+    # ... add crypto strategies ...
+    bot.execute()
+
+
+Bot.process_pool(processes={run_forex: {}, run_crypto: {}}, num_workers=2)
+```
+
+---
+
+## Project Structure
+
+```
+src/aiomql/
+├── core/           # MetaTrader interface, Config, constants, models, DB, State, errors
+│   └── sync/       # Synchronous MetaTrader wrapper
+├── lib/            # High-level components (Bot, Strategy, Order, Symbol, Candle, …)
+│   └── sync/       # Synchronous mirrors (Strategy, Symbol, Trader, …)
+├── contrib/        # Community extensions
+│   ├── strategies/ #   Chaos (random buy/sell demo)
+│   ├── symbols/    #   ForexSymbol (pip calculations)
+│   ├── trackers/   #   Position & open-positions trackers
+│   ├── traders/    #   SimpleTrader, ScalpTrader
+│   └── utils/      #   StrategyTracker (Tracker)
+├── ta_libs/        # Technical analysis (pandas-ta classic)
+└── utils/          # Decorators, price helpers, process pool
+```
+
+---
+
+## API Documentation
+
+See the full [API Reference](docs/toc.md) for detailed documentation of every module.
+
+---
+
+## Testing
 
 ```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run the test suite
 pytest tests
 ```
 
-### API Documentation
-see [API Documentation](docs) for more details
+---
 
-### Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+## Contributing
 
+Pull requests are welcome. For major changes, please open an [issue](https://github.com/Ichinga-Samuel/aiomql/issues) first
+to discuss what you would like to change.
 
-### Changelog
+---
 
-See [CHANGELOG](CHANGELOG.md) for more details
+## License
 
-### Support
-Feeling generous, like the package or want to see it become a more mature package?
+[MIT](LICENSE)
 
-Consider supporting the project by buying me a coffee.
+---
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ichingasamuel)
+## Support
+
+If you find this project useful, consider supporting its development:
+
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ichingasamuel)

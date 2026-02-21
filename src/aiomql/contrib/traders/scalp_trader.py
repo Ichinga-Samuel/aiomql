@@ -1,3 +1,10 @@
+"""Scalp trader for placing trades without stop levels.
+
+This module provides the ``ScalpTrader`` class, a concrete implementation
+of the ``Trader`` base class that places trades using the minimum lot size
+and no stop loss or take profit levels.
+"""
+
 from logging import getLogger
 
 from ...core.models import OrderType
@@ -7,6 +14,12 @@ logger = getLogger(__name__)
 
 
 class ScalpTrader(Trader):
+    """Trader that places scalping trades without stop/take-profit levels.
+
+    Extends the ``Trader`` base class to implement a simple scalping
+    strategy that uses the minimum volume by default and records the
+    trade result.
+    """
     async def place_trade(self, *, order_type: OrderType, volume: float = None, parameters: dict = None):
         """Places a trade based on the order_type and volume. The volume is optional. If not provided, the minimum volume
         for the symbol will be used. This trade is placed without a stop_loss or take_profit. The trade is recorded in the

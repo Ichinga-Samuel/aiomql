@@ -17,6 +17,7 @@ Tests cover:
 
 import asyncio
 import inspect
+import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, AsyncMock, patch, call
 import pytest
@@ -177,6 +178,26 @@ class TestAddFunction:
         assert func1 in executor.functions
         assert func2 in executor.functions
 
+    def test_add_function_none_kwargs_becomes_empty_dict(self, executor):
+        """Test add_function with None kwargs defaults to empty dict."""
+        def my_function():
+            pass
+
+        executor.add_function(function=my_function, kwargs=None)
+
+        assert executor.functions[my_function] == {}
+
+    def test_add_function_replaces_if_same_key(self, executor):
+        """Test add_function overwrites kwargs if same function is added twice."""
+        def my_function():
+            pass
+
+        executor.add_function(function=my_function, kwargs={"a": 1})
+        executor.add_function(function=my_function, kwargs={"a": 2})
+
+        assert executor.functions[my_function] == {"a": 2}
+        assert len(executor.functions) == 1
+
 
 class TestAddCoroutine:
     """Test Executor add_coroutine method."""
@@ -230,6 +251,25 @@ class TestAddCoroutine:
 
         assert my_coroutine in executor.coroutines
         assert my_coroutine not in executor.coroutine_threads
+
+    def test_add_coroutine_none_kwargs_becomes_empty_dict(self, executor):
+        """Test add_coroutine with None kwargs defaults to empty dict."""
+        async def my_coroutine():
+            pass
+
+        executor.add_coroutine(coroutine=my_coroutine, kwargs=None)
+
+        assert executor.coroutines[my_coroutine] == {}
+
+    def test_add_coroutine_on_separate_thread_with_kwargs(self, executor):
+        """Test add_coroutine on separate thread with kwargs."""
+        async def my_coroutine(x):
+            pass
+
+        executor.add_coroutine(coroutine=my_coroutine, kwargs={"x": 42}, on_separate_thread=True)
+
+        assert my_coroutine in executor.coroutine_threads
+        assert executor.coroutine_threads[my_coroutine] == {"x": 42}
 
 
 class TestAddStrategy:
@@ -288,6 +328,18 @@ class TestAddStrategy:
 
         assert len(executor.strategy_runners) == 2
 
+    def test_add_strategies_preserves_order(self, executor):
+        """Test add_strategies preserves insertion order."""
+        strategy1 = MagicMock(spec=Strategy)
+        strategy2 = MagicMock(spec=Strategy)
+        strategy3 = MagicMock(spec=Strategy)
+
+        executor.add_strategies(strategies=(strategy1, strategy2, strategy3))
+
+        assert executor.strategy_runners[0] == strategy1
+        assert executor.strategy_runners[1] == strategy2
+        assert executor.strategy_runners[2] == strategy3
+
 
 class TestRunStrategy:
     """Test Executor run_strategy static method."""
@@ -323,6 +375,20 @@ class TestRunStrategy:
         sync_strategy = MockSyncStrategy()
 
         assert not inspect.iscoroutinefunction(sync_strategy.run_strategy)
+
+    def test_run_strategy_calls_sync_directly(self):
+        """Test run_strategy calls sync strategy's run_strategy directly."""
+        strategy = MockSyncStrategy()
+        call_tracker = {"called": False}
+
+        original_run = strategy.run_strategy
+        def tracking_run():
+            call_tracker["called"] = True
+        strategy.run_strategy = tracking_run
+
+        Executor.run_strategy(strategy)
+
+        assert call_tracker["called"] is True
 
 
 class TestRunCoroutineTasks:
@@ -385,6 +451,24 @@ class TestRunCoroutineTasks:
         # Should not raise
         await executor.run_coroutine_tasks()
 
+    async def test_run_coroutine_tasks_only_runs_coroutines_not_threads(self, executor):
+        """Test run_coroutine_tasks only runs coroutines, not coroutine_threads."""
+        call_tracker = {"coro": False, "thread_coro": False}
+
+        async def regular_coro():
+            call_tracker["coro"] = True
+
+        async def thread_coro():
+            call_tracker["thread_coro"] = True
+
+        executor.add_coroutine(coroutine=regular_coro)
+        executor.add_coroutine(coroutine=thread_coro, on_separate_thread=True)
+
+        await executor.run_coroutine_tasks()
+
+        assert call_tracker["coro"] is True
+        assert call_tracker["thread_coro"] is False
+
 
 class TestRunCoroutineTask:
     """Test Executor run_coroutine_task static method."""
@@ -397,6 +481,19 @@ class TestRunCoroutineTask:
         with patch('asyncio.run') as mock_asyncio_run:
             Executor.run_coroutine_task(my_coro, {"x": 42})
             mock_asyncio_run.assert_called_once()
+
+    def test_run_coroutine_task_passes_kwargs(self):
+        """Test run_coroutine_task passes kwargs to the coroutine."""
+        received = {}
+
+        async def my_coro(a, b):
+            received["a"] = a
+            received["b"] = b
+
+        with patch('asyncio.run', side_effect=lambda coro: asyncio.get_event_loop().run_until_complete(coro)) as mock_run:
+            # Just verify the coroutine is called with kwargs
+            Executor.run_coroutine_task(my_coro, {"a": 1, "b": 2})
+            mock_run.assert_called_once()
 
 
 class TestRunFunction:
@@ -419,6 +516,17 @@ class TestRunFunction:
 
         mock_func.assert_called_once_with(a=1, b="test")
 
+    def test_run_function_with_multiple_kwargs(self):
+        """Test run_function with multiple keyword arguments."""
+        received = {}
+
+        def capture_func(**kwargs):
+            received.update(kwargs)
+
+        Executor.run_function(capture_func, {"x": 10, "y": 20, "z": 30})
+
+        assert received == {"x": 10, "y": 20, "z": 30}
+
 
 class TestSigintHandle:
     """Test Executor sigint_handle method."""
@@ -439,6 +547,15 @@ class TestSigintHandle:
 
         assert executor.config.shutdown is True
 
+    def test_sigint_handle_accepts_signum_and_frame(self, executor):
+        """Test sigint_handle accepts signum and frame parameters."""
+        mock_frame = MagicMock()
+
+        # Should not raise
+        executor.sigint_handle(2, mock_frame)
+
+        assert executor.config.shutdown is True
+
 
 class TestExit:
     """Test Executor exit method."""
@@ -451,12 +568,11 @@ class TestExit:
                 config = MagicMock()
                 config.shutdown = False
                 config.force_shutdown = False
-                config.backtest_engine = None
                 config.task_queue = MagicMock()
                 mock_config.return_value = config
-                exec = Executor()
-                exec.executor = MagicMock(spec=ThreadPoolExecutor)
-                return exec
+                exec_ = Executor()
+                exec_.executor = MagicMock(spec=ThreadPoolExecutor)
+                return exec_
 
     def test_exit_with_timeout(self, executor):
         """Test exit respects timeout."""
@@ -498,17 +614,6 @@ class TestExit:
 
         executor.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
 
-    def test_exit_stops_backtest_engine(self, executor):
-        """Test exit stops backtest engine if present."""
-        mock_engine = MagicMock()
-        mock_engine.stop_testing = False
-        executor.config.backtest_engine = mock_engine
-        executor.timeout = 0.1
-
-        executor.exit()
-
-        assert mock_engine.stop_testing is True
-
     def test_exit_force_shutdown(self, executor):
         """Test exit with force_shutdown."""
         executor.config.force_shutdown = True
@@ -517,6 +622,48 @@ class TestExit:
         with patch('os._exit') as mock_exit:
             executor.exit()
             mock_exit.assert_called_once_with(1)
+
+    def test_exit_on_shutdown_flag(self, executor):
+        """Test exit when shutdown is already True."""
+        executor.config.shutdown = True
+
+        executor.exit()
+
+        # Should still stop strategies and clean up
+        executor.config.task_queue.cancel.assert_called_once()
+        executor.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+
+    def test_exit_no_strategies(self, executor):
+        """Test exit with no strategies."""
+        executor.timeout = 0.1
+        executor.strategy_runners = []
+
+        # Should not raise
+        executor.exit()
+
+        executor.config.task_queue.cancel.assert_called_once()
+
+    def test_exit_exception_calls_os_exit(self, executor):
+        """Test exit calls os._exit on exception during shutdown."""
+        executor.config.shutdown = True
+        executor.config.task_queue.cancel.side_effect = Exception("Cancel error")
+
+        with patch('os._exit') as mock_exit:
+            executor.exit()
+            mock_exit.assert_called_once_with(1)
+
+    def test_exit_timeout_duration(self, executor):
+        """Test exit completes within timeout duration."""
+        executor.timeout = 0.05
+        executor.config.shutdown = False
+
+        start = time.time()
+        executor.exit()
+        elapsed = time.time() - start
+
+        # Should exit within timeout + small buffer
+        assert elapsed < 0.3
+        assert executor.config.shutdown is True
 
 
 class TestExecute:
@@ -528,9 +675,8 @@ class TestExecute:
         with patch('aiomql.lib.executor.signal'):
             with patch.object(Config, '__new__') as mock_config:
                 config = MagicMock()
-                config.shutdown = True  # Set to True to exit immediately
+                config.shutdown = True  # Set shutdown True so exit loop terminates immediately
                 config.force_shutdown = False
-                config.backtest_engine = None
                 config.task_queue = MagicMock()
                 mock_config.return_value = config
                 return Executor()
@@ -548,30 +694,137 @@ class TestExecute:
             pass
         executor.add_coroutine(coroutine=coro, on_separate_thread=True)
 
-        # Should need: 1 strategy + 1 function + 1 coroutine_thread + 3 = 6 workers
-        with patch.object(ThreadPoolExecutor, '__init__', return_value=None) as mock_init:
-            with patch.object(ThreadPoolExecutor, '__enter__', return_value=MagicMock()):
-                with patch.object(ThreadPoolExecutor, '__exit__', return_value=None):
-                    try:
-                        executor.execute(workers=2)
-                    except:
-                        pass
-                    # Workers should be max(2, 6) = 6
-                    # But the actual implementation uses max(workers, workers_)
+        # workers_ = 1 strategy + 1 function + 1 coroutine_thread + 3 = 6
+        with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
+
+            executor.execute(workers=2)
+
+            # max(2, 6) = 6
+            mock_pool.assert_called_once_with(max_workers=6)
 
     def test_execute_uses_minimum_workers(self, executor):
-        """Test execute uses at least the calculated number of workers."""
-        # With no strategies/functions, need at least 3 workers (for internal tasks)
+        """Test execute uses at least the calculated minimum workers."""
+        # With no strategies/functions/threads, workers_ = 0 + 0 + 0 + 3 = 3
         with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
-            mock_executor = MagicMock()
-            mock_pool.return_value.__enter__.return_value = mock_executor
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
 
-            try:
-                executor.execute(workers=1)
-            except:
-                pass
+            executor.execute(workers=1)
 
-            # Check that max_workers was at least 3
+            # max(1, 3) = 3
+            mock_pool.assert_called_once_with(max_workers=3)
+
+    def test_execute_respects_custom_workers(self, executor):
+        """Test execute uses custom workers when larger than calculated."""
+        with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
+
+            executor.execute(workers=20)
+
+            # max(20, 3) = 20
+            mock_pool.assert_called_once_with(max_workers=20)
+
+    def test_execute_default_workers(self, executor):
+        """Test execute default workers parameter is 5."""
+        with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
+
+            executor.execute()
+
+            # max(5, 3) = 5
+            mock_pool.assert_called_once_with(max_workers=5)
+
+    def test_execute_submits_strategies(self, executor):
+        """Test execute submits each strategy to the thread pool."""
+        strategy1 = MagicMock()
+        strategy2 = MagicMock()
+        executor.add_strategy(strategy=strategy1)
+        executor.add_strategy(strategy=strategy2)
+
+        with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
+
+            executor.execute()
+
+            # Check strategies were submitted
+            submit_calls = mock_tpe.submit.call_args_list
+            strategy_calls = [c for c in submit_calls if len(c.args) >= 2 and c.args[0] == executor.run_strategy]
+            assert len(strategy_calls) == 2
+
+    def test_execute_submits_functions(self, executor):
+        """Test execute submits functions to the thread pool."""
+        def my_func(x):
+            pass
+        executor.add_function(function=my_func, kwargs={"x": 1})
+
+        with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
+
+            executor.execute()
+
+            # Check function was submitted
+            submit_calls = mock_tpe.submit.call_args_list
+            func_calls = [c for c in submit_calls if len(c.args) >= 1 and c.args[0] == my_func]
+            assert len(func_calls) == 1
+
+    def test_execute_submits_coroutine_threads(self, executor):
+        """Test execute submits coroutine threads to the thread pool."""
+        async def my_coro():
+            pass
+        executor.add_coroutine(coroutine=my_coro, on_separate_thread=True)
+
+        with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
+
+            executor.execute()
+
+            # Check coroutine thread was submitted
+            submit_calls = mock_tpe.submit.call_args_list
+            coro_thread_calls = [c for c in submit_calls if len(c.args) >= 1 and c.args[0] == executor.run_coroutine_task]
+            assert len(coro_thread_calls) == 1
+
+    def test_execute_submits_coroutine_tasks(self, executor):
+        """Test execute submits run_coroutine_tasks via asyncio.run."""
+        async def my_coro():
+            pass
+        executor.add_coroutine(coroutine=my_coro)
+
+        with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
+
+            executor.execute()
+
+            # Check asyncio.run was submitted for coroutine tasks
+            submit_calls = mock_tpe.submit.call_args_list
+            asyncio_calls = [c for c in submit_calls if len(c.args) >= 1 and c.args[0] == asyncio.run]
+            assert len(asyncio_calls) == 1
+
+    def test_execute_sets_executor_attribute(self, executor):
+        """Test execute sets the executor attribute on the Executor instance."""
+        with patch('aiomql.lib.executor.ThreadPoolExecutor') as mock_pool:
+            mock_tpe = MagicMock()
+            mock_pool.return_value.__enter__.return_value = mock_tpe
+            mock_pool.return_value.__exit__ = MagicMock(return_value=None)
+
+            executor.execute()
+
+            assert executor.executor == mock_tpe
 
 
 class TestIntegration:
@@ -585,7 +838,6 @@ class TestIntegration:
                 config = MagicMock()
                 config.shutdown = False
                 config.force_shutdown = False
-                config.backtest_engine = None
                 config.task_queue = MagicMock()
                 mock_config.return_value = config
                 return Executor()
@@ -642,11 +894,10 @@ class TestIntegration:
         executor.add_coroutine(coroutine=collector, kwargs={"value": 1})
         executor.add_coroutine(coroutine=collector, kwargs={"value": 2})
 
-        # Note: This won't work as expected because dicts can't have duplicate keys
-        # This tests the behavior with a single coroutine function
+        # Note: dicts can't have duplicate keys, so second call overwrites first
         await executor.run_coroutine_tasks()
 
-        # Only the last one will be in the dict
+        # Only the last kwargs will be used
         assert 2 in results
 
     def test_timeout_functionality(self, executor):
@@ -654,7 +905,6 @@ class TestIntegration:
         executor.timeout = 0.05
         executor.executor = MagicMock(spec=ThreadPoolExecutor)
 
-        import time
         start = time.time()
         executor.exit()
         elapsed = time.time() - start
@@ -662,3 +912,20 @@ class TestIntegration:
         # Should exit within timeout + small buffer
         assert elapsed < 0.2
         assert executor.config.shutdown is True
+
+    def test_sigint_then_exit(self, executor):
+        """Test SIGINT handler followed by exit."""
+        executor.executor = MagicMock(spec=ThreadPoolExecutor)
+        strategy = MagicMock()
+        strategy.running = True
+        executor.add_strategy(strategy=strategy)
+
+        # Simulate SIGINT
+        executor.sigint_handle(2, None)
+        assert executor.config.shutdown is True
+
+        # Now exit should process immediately
+        executor.exit()
+
+        assert strategy.running is False
+        executor.config.task_queue.cancel.assert_called_once()

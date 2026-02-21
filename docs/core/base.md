@@ -1,135 +1,77 @@
-# Base
+# base
 
-## Table of Contents
-- [Base](#base.base)
-  - [set_attributes](#base.set_attributes)
-  - [annotations](#base.annotations)
-  - [get_dict](#base.get_dict)
-  - [class_vars](#base.class_vars)
-  - [dict](#base.dict)
+`aiomql.core.base` — Foundational base classes for data structure handling.
 
-- [_Base](#_base._base)
+## Overview
 
+Provides the `Base` and `_Base` classes that all data-model and trading classes inherit from.
+`Base` offers attribute management, dictionary conversion, and filtering.
+`_Base` extends it with automatic access to the MetaTrader terminal and configuration.
 
-<a id="base.base"></a>    
-### Base
-```python
-class Base
-```
-A base class for all data model classes in the aiomql package. This class provides a set of common methods
-and attributes for all data model classes.
+## Classes
 
-#### Attributes:
-| Name      | Type  | Description                                                                                          |
-|-----------|-------|------------------------------------------------------------------------------------------------------|
-| `exclude` | `set` | A set of attributes to be excluded when retrieving attributes using the *get_dict* and *dict* method |
-| `include` | `set` | A set of attributes to be included when retrieving attributes using the *get_dict* and *dict* method |
+### `BaseMeta`
 
+> Metaclass that lazily initialises `config` and `mt5` on first access.
 
-<a id="base.__init__"></a>
-### __init__
-```python
-def __init__(**kwargs)
-```
-#### Parameters:
-| Name     | Type  | Description                                       |
-|----------|-------|---------------------------------------------------|
-| `kwargs` | `Any` | Object attributes and values as keyword arguments |
+#### `_setup()`
 
+Attaches `Config()` and `MetaTrader()` (or sync variant) to the class if not already present.
 
-<a id="base.set_attributes"></a>
-### set_attributes
-```python
-def set_attributes(**kwargs)
-```
-Set keyword arguments as object attributes. Only sets attributes that have been annotated on the class body.
+---
 
-#### Parameters:
-| Name     | Type  | Description                                       |
-|----------|-------|---------------------------------------------------|
-| `kwargs` | `Any` | Object attributes and values as keyword arguments |
+### `Base`
 
-#### Raises:
-| Exception        | Description                                                                       |
-|------------------|-----------------------------------------------------------------------------------|
-| `AttributeError` | When assigning an attribute that does not belong to the class or any parent class |
+> Common base class for all data structures in aiomql.
 
-#### Notes:
-Only sets attributes that have been annotated on the class body.
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `exclude` | `set[str]` | Attributes excluded from dict conversion (default: `mt5`, `config`, …) |
+| `include` | `set[str]` | Attributes always included (overrides `exclude`) |
 
+#### `__init__(**kwargs)`
 
-<a id="base.annotations"></a>
-### annotations
-```python
-@property
-@cache
-def annotations() -> dict
-```
-Class annotations from all ancestor classes and the current class.
-#### Returns:
-| Type             | Description                       |
-|------------------|-----------------------------------|
-| `dict[str, Any]` | A dictionary of class annotations |
+Sets keyword arguments as instance attributes via `set_attributes`.
 
+#### `set_attributes(**kwargs)`
 
-<a id="base.get_dict"></a>
-#### get_dict
-```python
-def get_dict(exclude: set = None, include: set = None) -> dict
-```
-Returns class attributes as a dict, with the ability to filter
+Sets only attributes that are annotated on the class body. Logs a debug message for unknown or
+non-convertible attributes.
 
-#### Parameters:
-| Name      | Type  | Description                        |
-|-----------|-------|------------------------------------|
-| `exclude` | `set` | A set of attributes to be excluded |
-| `include` | `set` | Specific attributes to be returned |
+#### `annotations` *(property)*
 
-#### Returns:
-| Type   | Description                                |
-|--------|--------------------------------------------|
-| `dict` | A dictionary of specified class attributes |
+Merged `__annotations__` from all ancestor classes.
 
-#### Notes:
-You can only set either of include or exclude. If you set both, include will take precedence
+#### `class_vars` *(property)*
 
+Annotated class-level attributes from the full MRO.
 
-<a id="base.class_vars"></a>
-### class_vars
-```python
-@property
-@cache
-def class_vars()
-```
-Annotated class attributes
+#### `dict` *(property)*
 
-#### Returns:
-| Type   | Description                                                                               |
-|--------|-------------------------------------------------------------------------------------------|
-| `dict` | A dictionary of available class attributes in all ancestor classes and the current class. |
+All instance and class attributes as a dictionary, excluding those in `exclude`.
 
+#### `get_dict(exclude=None, include=None)`
 
-<a id="base.dict"></a>
-### dict
-```python
-@property
-def dict() -> dict
-```
-All instance and class attributes as a dictionary, except those excluded in the Meta class.
+Returns a filtered dictionary. If both `include` and `exclude` are provided, `include` takes precedence.
 
-#### Returns:
-| Type   | Description                                   |
-|--------|-----------------------------------------------|
-| `dict` | A dictionary of instance and class attributes |
+#### `__repr__()`
 
+Shows up to 3 key attributes; appends `...` with the last attribute if there are more.
 
-<a id="_base._base></a>
-### _Base(Base)
-Base class that provides access to the MetaTrader and Config classes as well as the MetaBackTester class for 
-backtesting mode.
+---
 
-#### Attributes:
-| Name     | Type         | Description                         | Default |
-|----------|--------------|-------------------------------------|---------|
-| `mt5`    | `MetaTrader` | An instance of the MetaTrader class |         |
-| `config` | `Config`     | An instance of the Config class     |         |
+### `_Base`
+
+> Extended base class with `MetaTrader` and `Config` integration.
+
+Inherits from `Base` with `BaseMeta` as its metaclass.
+
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `mt5` | `MetaTrader \| MetaTraderSync` | — | The MetaTrader interface (auto-initialised) |
+| `config` | `Config` | — | The global configuration instance |
+| `mode` | `Literal["async", "sync"]` | `"async"` | Determines which MetaTrader variant is used |
+
+#### `__getstate__()`
+
+Removes the `mt5` attribute before pickling to avoid serialization issues.

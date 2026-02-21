@@ -29,7 +29,6 @@ from functools import cache
 from .config import Config
 from .meta_trader import MetaTrader
 from .sync.meta_trader import MetaTrader as MetaTraderSync
-from .meta_backtester import MetaBackTester
 
 logger = getLogger(__name__)
 
@@ -48,7 +47,7 @@ class BaseMeta(type):
         if 'config' not in cls.__dict__:
             cls.config = Config()
         if 'mt5' not in cls.__dict__:
-            cls.mt5 = (MetaTrader() if cls.__dict__.get("mode", "") != "sync" else MetaTraderSync()) if cls.config.mode != "backtest" else MetaBackTester()
+            cls.mt5 = MetaTrader() if cls.__dict__.get("mode", "") != "sync" else MetaTraderSync()
 
 
 class Base:
@@ -194,19 +193,17 @@ class _Base(Base, metaclass=BaseMeta):
     """Extended base class with MetaTrader and Config integration.
 
     Provides automatic access to the MetaTrader terminal and configuration
-    settings. Automatically switches between MetaTrader and MetaBackTester
-    based on the configured mode.
+    settings.
 
     Attributes:
-        mt5 (MetaTrader | MetaBackTester): The MetaTrader interface. Uses
-            MetaBackTester when in backtest mode.
+        mt5 (MetaTrader): The MetaTrader interface.
         config (Config): The global configuration instance.
 
     Note:
         The mt5 attribute is excluded from serialization via __getstate__
         to prevent issues when pickling instances.
     """
-    mt5: MetaTrader | MetaBackTester | MetaTraderSync
+    mt5: MetaTrader | MetaTraderSync
     config: Config
     mode: Literal["async", "sync"] = "async"
 

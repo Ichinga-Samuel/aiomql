@@ -14,5 +14,4 @@ from .strategy import Strategy
 from .sessions import Sessions, Session
 from .trade_records import TradeRecords
 from .terminal import Terminal
-from .backtester import BackTester
 from .result_db import ResultDB

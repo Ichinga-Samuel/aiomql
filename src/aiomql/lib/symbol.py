@@ -172,7 +172,7 @@ class Symbol(_Base, SymbolInfo):
              bool: True if successful, otherwise – False.
         """
         res = await self.mt5.market_book_add(self.name)
-        if res is False:
+        if not res:
             logger.debug("Could not add %s to market book", self.name)
         return res
 

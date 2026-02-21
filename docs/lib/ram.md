@@ -1,86 +1,37 @@
-# Risk Assessment and Management
+# ram
 
-## Table of Contents
-- [RAM](#ram.ram)
-- [\__init\__](#ram.__init__)
-- [get_amount](#ram.get_amount)
-- [check_losing_positions](#ram.check_losing_positions)
-- [check_open_positions](#ram.check_open_positions)
-- [modify_ram](#ram.modify_ram)
+`aiomql.lib.ram` — Risk Assessment and Money management.
 
-<a id="ram.ram"></a>
-### RAM
-```python
-class RAM
-```
-Risk Assessment and Management. You can customize this class based on how you want to manage risk.
+## Overview
 
-#### Attributes:
-| Name             | Type      | Description                                       | Default   |
-|------------------|-----------|---------------------------------------------------|-----------|
-| `account`        | `Account` | The account object                                | Account() |
-| `risk_to_reward` | `float`   | Risk to reward ratio                              | 2         |
-| `risk`           | `float`   | Percentage of account balance to risk per trade   | 1%        |
-| `fixed_amount`   | `float`   | A fixed amount to risk per trade                  |           |
-| `min_amount`     | `float`   | Minimum amount to risk per trade                  |           |
-| `max_amount`     | `float`   | Maximum amount to risk per trade                  |           |
-| `loss_limit`     | `int`     | Number of open losing trades to allow at any time | 3         |
-| `open_limit`     | `int`     | Number of open trades to allow at any time        | 3         |
+The `RAM` class calculates position sizes based on risk parameters and account balance.
+It checks open positions against configured limits and determines the volume for new trades.
 
+Inherits from [`_Base`](../core/base.md).
 
-<a id="ram.__init__"></a>
-### \_\_init\_\_
-```python
-def __init__(self, **kwargs):
-```
-Risk Assessment and Management. All provided keyword arguments are set as attributes.
-#### Parameters
-| Name             | Type   | Description                                        | Default   |
-|------------------|--------|----------------------------------------------------|-----------|
-| `kwargs`         | `dict` | Keyword arguments to be set as instance attributes | {}        |
+## Classes
 
+### `RAM`
 
-<a id="ram.get_amount"></a>
-### ram.get_amount
-```python
-async def get_amount() -> float
-```
-Calculate the amount to risk per trade as a percentage of balance.
+> Calculates trade volumes using risk-based sizing.
 
-#### Returns:
-| Type    | Description                                           |
-|---------|-------------------------------------------------------|
-| `float` | Amount to risk per trade in terms of account currency |
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `risk_to_reward` | `float` | `2` | Risk-to-reward ratio |
+| `risk` | `float` | `0.01` | Risk per trade as a fraction of balance |
+| `min_amount` | `float` | `0` | Minimum trade amount in account currency |
+| `max_amount` | `float` | `0` | Maximum trade amount (0 = unlimited) |
+| `max_open_positions` | `int` | `0` | Maximum concurrent positions (0 = unlimited) |
+| `fixed_amount` | `float` | `0` | Fixed trade amount (overrides risk calculation) |
 
-<a id="ram.check_losing_positions"></a>
-### check_losing_positions
-```python
-async def check_losing_positions(self) -> bool:
-```
-Check if the number of open losing trades is greater than or equal to the loss limit.
+#### Methods
 
-#### Returns:
-| Type   | Description                                                                           |
-|--------|---------------------------------------------------------------------------------------|
-| `bool` | True if the number of open losing trades is more than the loss limit, False otherwise |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `check_open_positions()` | `bool` | `True` if under the open-position limit |
+| `get_amount()` | `float` | Calculates the trade amount based on risk parameters |
+| `calc_volume(symbol, amount, pips, …)` | `float` | Calculates lot size from amount and stop distance |
 
+## Synchronous API
 
-<a id="ram.check_open_positions"></a>
-### check_open_positions
-```python
-async def check_open_positions(self) -> bool:
-```
-Check if the number of open positions is less than or equal the loss limit.
-
-#### Returns:
-| Type   | Description                                                                           |
-|--------|---------------------------------------------------------------------------------------|
-| `bool` | True if the number of open losing trades is more than the loss limit, False otherwise |
-
-
-<a id="ram.modify_ram"></a>
-### modify_ram
-```python
-def modify_ram(**kwargs):
-```
-Modify the RAM attributes. All provided keyword arguments are set as attributes.
+Available in `aiomql.lib.sync.ram`.

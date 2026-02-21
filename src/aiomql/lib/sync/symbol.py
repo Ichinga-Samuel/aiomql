@@ -15,12 +15,8 @@ Example:
 
 from datetime import datetime
 from logging import getLogger
-
-from ...core.meta_backtester import MetaBackTester
 from ...core.constants import TimeFrame, CopyTicks
 from ...core.base import _Base
-from ...core.config import Config
-from ...core.sync.meta_trader import MetaTrader
 from ...core.models import SymbolInfo, BookInfo
 from ...utils import round_off
 from ..ticks import Tick

@@ -23,7 +23,6 @@ def ema(close, length=None, talib=None, offset=None, **kwargs):
     # Calculate Result
     if Imports["talib"] and mode_tal:
         from talib import EMA
-
         ema = EMA(close, length)
     else:
         if sma:

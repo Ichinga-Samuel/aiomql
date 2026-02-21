@@ -16,7 +16,6 @@ async def cleanup():
         shutil.rmtree(Path("tests/live/configs"), ignore_errors=True)
         Path.unlink(Path("tests/live/test.json"), missing_ok=True)
         shutil.rmtree(Path("tests/live/trade_records"), ignore_errors=True)
-        shutil.rmtree(Path("tests/live/backtesting"), ignore_errors=True)
         await close_all_positions()
         await MetaTrader().shutdown()
     except Exception as err:

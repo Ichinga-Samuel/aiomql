@@ -1,182 +1,43 @@
-# Trader
-Trader class module. Handles the creation of an order and the placing of trades
+# trader
 
-## Table of Contents
-- [Trader](#trader)
-- [\_\_init\_\_](#trader.__init__)
-- [set_trade_stop_levels_points](#trader.set_trade_stop_levels_points)
-- [set_trade_stop_levels_pips](#trader.set_trade_stop_levels_pips)
-- [create_order_with_points](#trade.create_order_with_points)
-- [create_order_with_sl](#trade.create_order_with_sl)
-- [create_order_with_stops](#trade.create_order_with_stops)
-- [create_order_no_stops](#trade.create_order_no_stops)
-- [send_order](#trader.send_order)
-- [check_order](#trader.check_order)
-- [record_trade](#trader.record_trade)
-- [place_trade](#trader.place_trade)
+`aiomql.lib.trader` — Trader base class for order management.
 
-<a name="trader.trader"></a>
-### Trader
-```python
-class Trader()
-```
-Base class for creating a Trader object. Handles the creation of an order and the placing of trades
+## Overview
 
-#### Attributes:
-| Name         | Type     | Description                                           | Default |
-|--------------|----------|-------------------------------------------------------|---------|
-| `ram`        | `RAM`    | Risk Assessment Management System.                    | None    |
-| `config`     | `Config` | Config instance.                                      | None    |
-| `order`      | `Order`  | Order instance.                                       | None    |
-| `symbol`     | `Symbol` | The Financial Instrument                              | None    |
-| `parameters` | `dict`   | A dictionary of parameters associated with the trade. | None    |
+The `Trader` class is the base for creating and managing trade orders. It brings together
+`Symbol`, `RAM`, `Order`, and `Result` to provide a complete workflow for placing trades
+with risk management and result recording.
 
-<a name="trader.__init__"></a>
-### \_\_init\_\_
-```python
-def __init__(*, symbol: Symbol, ram: RAM = None)
-```
-#### Parameters:
-| Name     | Type     | Description                             | Default |
-|----------|----------|-----------------------------------------|---------|
-| `symbol` | `Symbol` | The Financial instrument                |         |
-| `ram`    | `RAM`    | Risk Assessment and Management instance | None    |
+Inherits from [`_Base`](../core/base.md).
 
+## Classes
 
-<a name="trader.set_trade_stop_levels_pips"></a>
-### set_trade_stop_levels_pips
-```python
-async def set_trade_stop_levels_pips(*, pips: float, risk_to_reward: float = None):
-```
-Sets the stop loss and take profit for the order. This method uses pips as defined for forex instruments.
+### `Trader`
 
-#### Parameters:
-| Name             | Type    | Description                   | Default |
-|------------------|---------|-------------------------------|---------|
-| `pips`           | `float` | Target pips                   |         |
-| `risk_to_reward` | `float` | Optional risk to reward ratio | None    |
+> Base class for placing risk-managed trades.
 
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `symbol` | `Symbol` | The trading instrument |
+| `ram` | `RAM` | Risk Assessment and Money manager |
+| `order` | `Order` | The current trade order |
+| `result` | `Result` | Trade result recorder |
+| `parameters` | `dict` | Strategy parameters to record |
 
-<a name="trader.set_trade_stop_levels_points"></a>
-### set_trade_stop_levels_points
-```python
-async def set_trade_stop_levels_points(*, points: float, risk_to_reward: float = None):
-```
-Sets the stop loss and take profit for the order. This method uses points as defined for forex instruments.
+#### Lifecycle
 
-#### Parameters:
-| Name             | Type    | Description                   | Default |
-|------------------|---------|-------------------------------|---------|
-| `points`         | `float` | Target points                 |         |
-| `risk_to_reward` | `float` | Optional risk to reward ratio | None    |
+| Method | Description |
+|--------|-------------|
+| `__init__(symbol, ram, params, …)` | Initialises with a symbol and risk parameters |
+| `create_order(order_type, …)` | Creates an `Order` with calculated volume and stops |
+| `set_stop_levels(order_type, sl, tp)` | Sets stop loss and take profit prices |
 
+#### Trade Placement
 
-<a name="trader.create_order_no_stops"></a>
-### create_order_no_stops
-```python
-async def create_order_no_stops(*, order_type: OrderType, volume: float = None)
-```
-Create an order without setting stop loss and take profit. Using minimum lot size.
+| Method | Description |
+|--------|-------------|
+| `place_trade(*, order_type, sl, tp, …)` | **Abstract** — subclasses implement to place trades |
 
-#### Parameters:
-| Name         | Type        | Description         | Default |
-|--------------|-------------|---------------------|---------|
-| `order_type` | `OrderType` | The order type      |         |
-| `volume`     | `float`     | The volume to trade | None    |
+## Synchronous API
 
-
-<a name="trader.create_order_with_stops"></a>
-### create_order_with_stops
-```python
-async def create_order_with_stops(*, order_type: OrderType, sl: float, tp: float, amount_to_risk: float = None)
-```
-Create an order with stop loss and take profit levels. Use the amount to risk per trade to 
-calculate the volume.
-
-#### Parameters:
-| Name             | Type        | Description        | Default |
-|------------------|-------------|--------------------|---------|
-| `order_type`     | `OrderType` | The order type     |         |
-| `sl`             | `float`     | The stop loss`     |         |
-| `tp`             | `float`     | The take profit`   |         |
-| `amount_to_risk` | `float`     | The amount to risk | None    |
-
-
-<a name="trader.create_order_with_sl"></a>
-### create_order_with_sl
-```python
-async def create_order_with_sl(*, order_type: OrderType, sl: float, amount_to_risk: float = None, risk_to_reward: float = None)
-```
-Create an order with a given stop_loss level. Use the amount to risk per trade to calculate the volume.
-
-#### Parameters:
-| Name             | Type        | Description                              | Default |
-|------------------|-------------|------------------------------------------|---------|
-| `order_type`     | `OrderType` | The order type                           |         |
-| `sl`             | `float`     | The stop loss`                           |         |
-| `risk_to_reward` | `float`     | Risk to reward ratio. Optional parameter | None    |
-| `amount_to_risk` | `float`     | The amount to risk                       | None    |
-
-
-<a name="trader.create_order_with_points"></a>
-### create_order_with_points
-```python
-async def create_order_with_points(*, order_type: OrderType, points: float, amount_to_risk: float = None, risk_to_reward: float = None)
-```
-Create an order with specific points to risk. Use the amount to risk per trade to calculate the volume.
-
-#### Parameters:
-| Name             | Type        | Description                              | Default |
-|------------------|-------------|------------------------------------------|---------|
-| `order_type`     | `OrderType` | The order type                           |         |
-| `points`         | `float`     | Points to risk                           |         |
-| `risk_to_reward` | `float`     | Risk to reward ratio. Optional parameter | None    |
-| `amount_to_risk` | `float`     | The amount to risk                       | None    |
-
-
-<a name="trader.send_order"></a>
-### send_order
-```python
-async def send_order() -> OrderSendResult
-```
-Sends the order to the broker for execution.
-
-#### Returns:
-| Type              | Description                |
-|-------------------|----------------------------|
-| `OrderSendResult` | The OrderSendResult object |
-
-
-<a name="trader.check_order"></a>
-### check_order
-```python
-async def check_order() -> OrderCheckResult
-```
-Checks the status of the order before placing the trade.
-
-#### Returns:
-| Type               | Description                 |
-|--------------------|-----------------------------|
-| `OrderCheckResult` | The OrderCheckResult object |
-
-<a name="trader.record_trade"></a>
-### record_trade
-```python
-async def record_trade(*, result: OrderSendResult, parameters: dict = None, name: str = '')
-```
-Records the trade and the order details if `Config.record_trades` is true. Trades are recorded as either json or csv.
-
-#### Parameters:
-| Name         | Type              | Description                                                  | Default |
-|--------------|-------------------|--------------------------------------------------------------|---------|
-| `result`     | `OrderSendResult` | The result of the placed order                               |         |
-| `parameters` | `dict`            | parameters to saved instead of the ones in `self.parameters` | None    |
-| `name`       | `str`             | Name for the csv or json file                                | ''      |
-
-<a name="trader.place_trade"></a>
-### place_trade
-```python
-@abstractmethod
-async def place_trade(self, *args, **kwargs)
-```
-Places a trade. All traders must implement this method.
+Available in `aiomql.lib.sync.trader`.

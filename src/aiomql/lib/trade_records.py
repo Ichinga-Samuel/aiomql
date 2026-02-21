@@ -29,7 +29,6 @@ from typing import Iterable
 from .result_db import ResultDB
 from ..core.config import Config
 from ..core.meta_trader import MetaTrader
-from ..core.meta_backtester import MetaBackTester
 from ..core.models import TradePosition
 
 logger = logging.getLogger(__name__)
@@ -43,7 +42,7 @@ class TradeRecords:
 
     Attributes:
         config: Configuration object for accessing settings.
-        mt5: MetaTrader or MetaBackTester instance for retrieving trade data.
+        mt5: MetaTrader instance for retrieving trade data.
         result_db: ResultDB class reference for SQL operations.
         records_dir: Path to directory containing trade record files.
         positions: Cached list of open positions, or None.
@@ -54,7 +53,7 @@ class TradeRecords:
         >>> await records.update_sql_records()
     """
     config: Config
-    mt5: MetaTrader | MetaBackTester
+    mt5: MetaTrader
     result_db: type[ResultDB]
     positions: list[TradePosition] | None = None
 
@@ -66,7 +65,7 @@ class TradeRecords:
             records_dir (Path): Absolute path to directory containing record of placed trades.
         """
         self.config = Config()
-        self.mt5 = MetaTrader() if self.config.mode != "backtest" else MetaBackTester()
+        self.mt5 = MetaTrader()
         self.records_dir = records_dir or self.config.records_dir
         self.result_db = ResultDB
 
@@ -190,6 +189,18 @@ class TradeRecords:
 
     @staticmethod
     def str_to_bool(val: bool | str):
+        """Converts a string or boolean value to a Python bool.
+
+        Args:
+            val: The value to convert. Accepts ``True``, ``False``,
+                ``"true"``, or ``"false"`` (case-insensitive).
+
+        Returns:
+            bool: The corresponding boolean value.
+
+        Raises:
+            TypeError: If ``val`` is not a recognised boolean string.
+        """
         if isinstance(val, bool):
             return val
         elif val.lower() == "true":

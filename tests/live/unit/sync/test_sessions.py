@@ -23,7 +23,7 @@ from datetime import time, datetime, timedelta, UTC
 from unittest.mock import MagicMock, patch
 import pytest
 
-from aiomql.lib.sync.sessions import Session, Sessions, Duration, delta, backtest_sleep
+from aiomql.lib.sync.sessions import Session, Sessions, Duration, delta
 from aiomql.core.config import Config
 from aiomql.core.models import TradePosition, OrderSendResult
 

@@ -1,27 +1,43 @@
-# Account
+# account
 
-## Table of Contents
-- [Account](#account.account)
-- [refresh](#account.refresh)
+`aiomql.lib.account` — Trading account connection manager.
 
+## Overview
 
-<a id="account.account"></a>
-### Account
-```python
-class Account(_Base, AccountInfo)
-```
-A singleton class for managing a trading account. A subclass of _Base and AccountInfo. It supports asynchronous context
-management protocol.
+The `Account` class is a singleton that manages the connection to a MetaTrader 5 trading
+account. It supports both async and sync context managers for connecting and disconnecting,
+and provides access to account properties such as balance, equity, and margin.
 
-#### Attributes:
-| Name        | Type              | Description                                          | Default |
-|-------------|-------------------|------------------------------------------------------|---------|
-| `connected` | `bool`            | Status of connection to MetaTrader 5 Terminal        | False   |
+Inherits from [`_Base`](../core/base.md).
 
+## Classes
 
-<a id="account.refresh"></a>
-### refresh
-```python
-async def refresh()
-```
-Refreshes the account instance with the latest data from the MetaTrader 5 terminal
+### `Account`
+
+> Singleton for managing the MT5 account connection.
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `connected` | `bool` | Whether the account is currently connected |
+
+All `AccountInfo` fields (e.g. `login`, `balance`, `equity`, `margin`, `leverage`, `currency`)
+are available as instance attributes after a successful connection.
+
+#### `__aenter__()` / `__aexit__(…)`
+
+Async context manager — initializes the terminal, logs in, and populates account info.
+
+#### `__enter__()` / `__exit__(…)`
+
+Sync context manager — same as above using synchronous calls.
+
+#### `refresh()`
+
+Re-fetches account info from the terminal and updates instance attributes.
+
+**Returns:** `bool` — `True` if the account info was successfully refreshed.
+
+## Synchronous API
+
+The sync context manager (`with Account() as acc:`) uses `initialize_sync` and `login_sync`
+internally. See [`sync/account.py`] for the full synchronous wrapper.

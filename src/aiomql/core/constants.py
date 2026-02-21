@@ -49,7 +49,7 @@ class Repr:
         MY_ENUM_VALUE
     """
 
-    __enum_name__ = ""
+    __enum_name__: str = ""
     name: str
 
     def __str__(self):
