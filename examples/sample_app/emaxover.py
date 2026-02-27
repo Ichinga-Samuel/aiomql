@@ -14,7 +14,7 @@ class EMAXOver(Strategy):
     # default parameters for the strategy
     # they are set as attributes. You can override them in the constructor via the params argument.
     parameters = {'ttf': TimeFrame.M10, 'tcc': 3000, 'fast_ema': 34, 'slow_ema': 55, 'interval': TimeFrame.M5,
-                  'timeout': 120, "macd": 87, "sma": 90}
+                  'timeout': 120}
 
     def __init__(self, *, symbol: ForexSymbol, params: dict | None = None, trader: Trader = None,
                  sessions: Sessions = None, name: str = "EMAXOver"):

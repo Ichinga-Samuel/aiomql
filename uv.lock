@@ -12,7 +12,7 @@ resolution-markers = [
 
 [[package]]
 name = "aiomql"
-version = "4.0.17"
+version = "4.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "metatrader5" },
@@ -22,6 +22,12 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "cython" },
+    { name = "numba" },
+    { name = "ta-lib" },
+    { name = "tqdm" },
+]
+optional = [
     { name = "cython" },
     { name = "numba" },
     { name = "tqdm" },
@@ -40,15 +46,16 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cython", marker = "extra == 'all'", specifier = ">=3.2.4" },
+    { name = "aiomql", extras = ["talib", "optional"], marker = "extra == 'all'" },
+    { name = "cython", marker = "extra == 'optional'", specifier = ">=3.2.4" },
     { name = "metatrader5", specifier = ">=5.0.5640" },
     { name = "mplfinance", specifier = ">=0.12.10b0" },
-    { name = "numba", marker = "extra == 'all'", specifier = ">=0.64.0" },
+    { name = "numba", marker = "extra == 'optional'", specifier = ">=0.64.0" },
     { name = "pandas", specifier = ">=3.0.1" },
     { name = "ta-lib", marker = "extra == 'talib'", specifier = ">=0.6.8" },
-    { name = "tqdm", marker = "extra == 'all'", specifier = ">=4.67.3" },
+    { name = "tqdm", marker = "extra == 'optional'", specifier = ">=4.67.3" },
 ]
-provides-extras = ["all", "talib"]
+provides-extras = ["optional", "talib", "all"]
 
 [package.metadata.requires-dev]
 dev = [

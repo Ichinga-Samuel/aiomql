@@ -41,7 +41,6 @@ async def auto_commit():
     try:
         with config.state.conn as conn:
             while config.shutdown is False:
-                print("committing state to the database")
                 await config.state.acommit(conn=conn, close=False)
                 await sleep(config.db_commit_interval)
     except Exception as err:

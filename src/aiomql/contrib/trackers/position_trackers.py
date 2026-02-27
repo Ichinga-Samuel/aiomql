@@ -12,7 +12,6 @@ import asyncio
 from collections.abc import Callable
 from typing import Any, TypeVar, ClassVar
 from logging import getLogger
-import logging
 
 from ...core import Config, State, sleep
 from ...lib import Positions

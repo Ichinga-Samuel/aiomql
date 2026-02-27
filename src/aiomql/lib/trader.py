@@ -17,7 +17,6 @@ Example:
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime, UTC
 from typing import TypeVar
 from logging import getLogger
 
@@ -146,7 +145,7 @@ class Trader(ABC):
         dsl = abs(price - sl)
         dtp = dsl * (risk_to_reward or self.ram.risk_to_reward)
         tp = price + dtp if order_type == OrderType.BUY else price - dtp
-        volume = self.symbol.compute_volume_sl(amount=amount, price=price, sl=sl)
+        volume = await self.symbol.compute_volume_sl(amount=amount, price=price, sl=sl)
         self.order.set_attributes(sl=sl, tp=tp, volume=volume, price=price, type=order_type)
 
     async def create_order_with_points(
@@ -167,7 +166,7 @@ class Trader(ABC):
         amount = await self.symbol.amount_in_quote_currency(amount=amount)
         tick = await self.symbol.info_tick()
         self.order.price = tick.ask if order_type == OrderType.BUY else tick.bid
-        volume = self.symbol.compute_volume_points(amount=amount, points=points)
+        volume = await self.symbol.compute_volume_points(amount=amount, points=points)
         self.order.volume = volume
         self.set_trade_stop_levels_points(points=points, risk_to_reward=risk_to_reward)
 
@@ -237,6 +236,9 @@ class Trader(ABC):
             self.config.task_queue.add(item=QueueItem(res.save), must_complete=True)
         else:
             await res.save()
+
+    def reset_order(self):
+        self.order = Order(symbol=self.symbol)
 
     @abstractmethod
     async def place_trade(self, *args, **kwargs):

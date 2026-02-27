@@ -237,6 +237,9 @@ class Trader(ABC):
         else:
             res.save_sync()
 
+    def reset_order(self):
+        self.order = Order(symbol=self.symbol)
+
     @abstractmethod
     def place_trade(self, *args, **kwargs):
         """Places a trade based on the order_type."""

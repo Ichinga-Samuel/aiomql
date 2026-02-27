@@ -151,6 +151,7 @@ class Executor:
             signum: The signal number received.
             frame: The current stack frame.
         """
+        print("shutting down")
         self.config.shutdown = True
 
     def exit(self):
@@ -162,12 +163,16 @@ class Executor:
         """
         start = time.time()
         try:
-            while self.config.shutdown is False and self.config.force_shutdown is False:
+            while True:
                 if self.timeout is not None and self.timeout < (time.time() - start):
                     self.config.shutdown = True
                     break
                 timeout = self.timeout or 1
                 time.sleep(timeout)
+                if self.config.shutdown or self.config.force_shutdown:
+                    break
+                if all(strategy.running is False for strategy in self.strategy_runners):
+                    break
             for strategy in self.strategy_runners:
                 strategy.running = False
             self.config.task_queue.cancel()
@@ -188,9 +193,11 @@ class Executor:
         Notes:
             No matter the number specified, the executor will always use a minimum of 5 workers.
         """
+        signal(SIGINT, self.sigint_handle)
         workers_ = len(self.strategy_runners) + len(self.functions) + len(self.coroutine_threads) + 3
         workers = max(workers, workers_)
         with ThreadPoolExecutor(max_workers=workers) as executor:
+            signal(SIGINT, self.sigint_handle)
             self.executor = executor
             [self.executor.submit(self.run_strategy, strategy) for strategy in self.strategy_runners]
             [self.executor.submit(function, **kwargs) for function, kwargs in self.functions.items()]

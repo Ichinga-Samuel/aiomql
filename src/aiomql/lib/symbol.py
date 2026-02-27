@@ -233,7 +233,7 @@ class Symbol(_Base, SymbolInfo):
             )
         return amount
 
-    def compute_volume(self) -> float:
+    async def compute_volume(self, *args, **kwargs) -> float:
         """Computes the volume required for a trade usually based on the amount and any other keyword arguments.
         This is a dummy method that returns the minimum volume of the symbol. It is meant to be overridden by a subclass
         that implements the computation of volume.
@@ -387,10 +387,10 @@ class Symbol(_Base, SymbolInfo):
             return Ticks(data=ticks)
         raise ValueError(f"Could not get ticks for {self.name}.")
 
-    def compute_volume_sl(self, *, amount: float, price: float, sl: float, round_down: bool = False) -> float:
+    async def compute_volume_sl(self, *, amount: float, price: float, sl: float, round_down: bool = False) -> float:
         raise NotImplementedError
 
-    def compute_volume_points(self, *, amount: float, points: float, round_down: bool = False) -> float:
+    async def compute_volume_points(self, *, amount: float, points: float, round_down: bool = False) -> float:
         raise NotImplementedError
 
     @property

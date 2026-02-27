@@ -85,7 +85,7 @@ class ForexSymbol(Symbol):
         points = amount / (volume * self.point * self.trade_contract_size)
         return points
 
-    def compute_volume_points(self, *, amount: float, points: float, round_down: bool = False) -> float:
+    async def compute_volume_points(self, *, amount: float, points: float, round_down: bool = False) -> float:
         """Compute the volume required for a trade based on points.
 
         Calculates the appropriate trade volume to risk a specified amount
@@ -116,7 +116,7 @@ class ForexSymbol(Symbol):
         volume = amount / (self.point * points * self.trade_contract_size)
         return self.round_off_volume(volume=volume, round_down=round_down)
 
-    def compute_volume_sl(self, *, amount: float, price: float, sl: float, round_down: bool = False) -> float:
+    async def compute_volume_sl(self, *, amount: float, price: float, sl: float, round_down: bool = False) -> float:
         """Compute the volume required for a trade based on stop loss.
 
         Calculates the appropriate trade volume to risk a specified amount
