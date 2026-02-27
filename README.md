@@ -255,18 +255,50 @@ Bot.process_pool(processes={run_forex: {}, run_crypto: {}}, num_workers=2)
 
 ```
 src/aiomql/
-├── core/           # MetaTrader interface, Config, constants, models, DB, State, errors
-│   └── sync/       # Synchronous MetaTrader wrapper
-├── lib/            # High-level components (Bot, Strategy, Order, Symbol, Candle, …)
-│   └── sync/       # Synchronous mirrors (Strategy, Symbol, Trader, …)
-├── contrib/        # Community extensions
-│   ├── strategies/ #   Chaos (random buy/sell demo)
-│   ├── symbols/    #   ForexSymbol (pip calculations)
-│   ├── trackers/   #   Position & open-positions trackers
-│   ├── traders/    #   SimpleTrader, ScalpTrader
-│   └── utils/      #   StrategyTracker (Tracker)
-├── ta_libs/        # Technical analysis (pandas-ta classic)
-└── utils/          # Decorators, price helpers, process pool
+├── core/               # Low-level infrastructure
+│   ├── _core.py        #   MT5 function definitions & async wrappers
+│   ├── meta_trader.py  #   MetaTrader singleton (init, login, symbol/order calls)
+│   ├── config.py       #   Singleton Config (JSON + programmatic settings)
+│   ├── constants.py    #   Enums (TimeFrame, OrderType, TradeAction, …)
+│   ├── models.py       #   Data models (SymbolInfo, AccountInfo, TradeRequest, …)
+│   ├── base.py         #   _Base metaclass (attribute helpers, MT5 access)
+│   ├── db.py           #   SQLite trade-results database
+│   ├── store.py        #   In-memory shared state store
+│   ├── state.py        #   State management
+│   ├── task_queue.py   #   Async task queue for scheduled work
+│   ├── errors.py       #   Error definitions
+│   ├── exceptions.py   #   Custom exceptions (OrderError, LoginError, …)
+│   └── sync/           #   Synchronous MetaTrader wrapper
+│
+├── lib/                # High-level trading components
+│   ├── bot.py          #   Bot orchestrator (strategy runner, process pool)
+│   ├── executor.py     #   Thread/task executor for strategies
+│   ├── strategy.py     #   Strategy base class (trade loop, sessions)
+│   ├── symbol.py       #   Symbol (market data, ticks, rates)
+│   ├── order.py        #   Order (check, send, margin, profit)
+│   ├── trader.py       #   Trader (place_trade, SL/TP management)
+│   ├── account.py      #   Account singleton
+│   ├── candle.py       #   Candles collection (DataFrame + TA)
+│   ├── ticks.py        #   Tick & Ticks (tick data collections)
+│   ├── positions.py    #   Position querying & management
+│   ├── history.py      #   Trade & order history
+│   ├── ram.py          #   RAM (Risk Assessment & Money) manager
+│   ├── sessions.py     #   Session & Sessions (time-window trading)
+│   ├── terminal.py     #   Terminal info wrapper
+│   ├── result.py       #   Trade result recording (CSV/JSON)
+│   ├── result_db.py    #   Trade result recording (SQLite)
+│   ├── trade_records.py#   Trade records management
+│   └── sync/           #   Synchronous mirrors of lib modules
+│
+├── contrib/            # Community extensions
+│   ├── strategies/     #   Chaos (random buy/sell demo)
+│   ├── symbols/        #   ForexSymbol (pip & volume calculations)
+│   ├── trackers/       #   Position & open-positions trackers
+│   ├── traders/        #   SimpleTrader, ScalpTrader
+│   └── utils/          #   StrategyTracker (Tracker)
+│
+├── ta_libs/            # Technical analysis (pandas-ta classic)
+└── utils/              # Decorators, price helpers, process pool
 ```
 
 ---

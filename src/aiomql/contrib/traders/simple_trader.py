@@ -36,5 +36,6 @@ class SimpleTrader(Trader):
                 return
             self.order.comment = self.parameters.get("name", self.__class__.__name__)
             await self.send_order()
+            self.reset_order()
         except Exception as err:
             logger.error(f"{err} in {self.__class__.__name__}.place_trade for {self.symbol.name}")

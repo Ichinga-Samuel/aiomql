@@ -40,5 +40,6 @@ class ScalpTrader(Trader):
             res = await self.send_order()
             if res is not None:
                 await self.record_trade(result=res, parameters=self.parameters)
+            self.reset_order()
         except Exception as err:
             logger.error(f"{err} in {self.__class__.__name__}.place_trade for {self.symbol.name}")
