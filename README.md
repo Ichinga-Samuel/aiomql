@@ -1,5 +1,7 @@
 # aiomql
 
+![aiomql](docs/images/cover.png)
+
 **Asynchronous MetaTrader 5 Library & Algorithmic Trading Framework**
 
 ![PyPI Version](https://img.shields.io/pypi/v/aiomql)
@@ -338,4 +340,5 @@ to discuss what you would like to change.
 
 If you find this project useful, consider supporting its development:
 
-[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ichingasamuel)
+- [❤️ Sponsor on GitHub](https://github.com/sponsors/Ichinga-Samuel)
+- [☕ Buy Me a Coffee](https://buymeacoffee.com/ichingasamuel)

@@ -2,8 +2,6 @@
 
 > **An in-depth tutorial covering every feature of the aiomql framework — from your first async connection to production-grade, multi-instrument trading bots.**
 
----
-
 ## Table of Contents
 
 1. [What is aiomql?](#what-is-aiomql)
@@ -1576,3 +1574,12 @@ strategy**.
 *For the full API reference, see the [documentation](docs/toc.md).*
 
 *aiomql is MIT-licensed and maintained by [Ichinga Samuel](https://github.com/Ichinga-Samuel/aiomql).*
+
+---
+
+### Support This Project
+
+If you found this tutorial helpful, consider supporting the development of aiomql:
+
+- [❤️ Sponsor on GitHub](https://github.com/sponsors/Ichinga-Samuel)
+- [☕ Buy Me a Coffee](https://buymeacoffee.com/ichingasamuel)
