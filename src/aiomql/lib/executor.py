@@ -17,7 +17,6 @@ import inspect
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from signal import signal, SIGINT
 from typing import Coroutine, Callable
 from logging import getLogger
 
@@ -61,7 +60,6 @@ class Executor:
         self.functions: dict[Callable:dict] = {}
         self.config = Config()
         self.timeout = None  # Timeout for the executor. For testing purposes only
-        signal(SIGINT, self.sigint_handle)
 
     def add_function(self, *, function: Callable, kwargs: dict = None):
         """Registers a synchronous function to run in the executor.
@@ -144,16 +142,6 @@ class Executor:
         """
         function(**kwargs)
 
-    def sigint_handle(self, signum, frame):
-        """Handles SIGINT (Ctrl+C) by signaling a shutdown.
-
-        Args:
-            signum: The signal number received.
-            frame: The current stack frame.
-        """
-        print("shutting down")
-        self.config.shutdown = True
-
     def exit(self):
         """Monitors for shutdown signals and gracefully shuts down the executor.
 
@@ -193,11 +181,9 @@ class Executor:
         Notes:
             No matter the number specified, the executor will always use a minimum of 5 workers.
         """
-        signal(SIGINT, self.sigint_handle)
         workers_ = len(self.strategy_runners) + len(self.functions) + len(self.coroutine_threads) + 3
         workers = max(workers, workers_)
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            signal(SIGINT, self.sigint_handle)
             self.executor = executor
             [self.executor.submit(self.run_strategy, strategy) for strategy in self.strategy_runners]
             [self.executor.submit(function, **kwargs) for function, kwargs in self.functions.items()]
